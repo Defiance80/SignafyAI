@@ -1,0 +1,42 @@
+{
+  "name": "signafy-ai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "16.2.4",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
+    "@clerk/nextjs": "^7.2.3",
+    "@supabase/supabase-js": "^2.104.0",
+    "@tanstack/react-query": "^5.99.2",
+    "@tanstack/react-table": "^8.21.3",
+    "lucide-react": "^1.8.0",
+    "nuqs": "^2.8.9",
+    "react-hook-form": "^7.73.1",
+    "resend": "^6.12.2",
+    "sonner": "^2.0.7",
+    "svix": "^1.91.1",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.12",
+    "@hookform/resolvers": "^5.2.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^6.0.3",
+    "tailwindcss": "^4.2.4",
+    "@tailwindcss/postcss": "^4.2.4",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4"
+  }
+}
