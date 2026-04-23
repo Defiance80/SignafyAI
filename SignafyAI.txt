@@ -1,0 +1,597 @@
+# SIGNAFYai BETA BUILD INSTRUCTIONS
+## Objective
+Build a professional beta SaaS platform called **SignafyAI**.  
+SignalForge is a multi-tenant AI growth operating system connected to **n8n** for automation.  
+The system must help businesses across different industries generate leads, create SEO-oriented social content, manage social responses in brand voice, and drive traffic back to their websites.
+
+This is a **beta launch build** intended to be:
+- developed in Claude
+- committed to GitHub
+- deployed on Vercel
+- connected to self-hosted or cloud n8n as the automation engine
+
+---
+
+# CORE PRODUCT VISION
+
+SignafyAI should feel like a premium SaaS product for agencies, consultants, and brands that want semi-autonomous growth operations.
+
+The platform should do 4 major things:
+
+1. **Lead Generation**
+   - Generate business leads across industries and local markets
+   - Pull, organize, and score prospect data
+   - Allow filtering by niche, city, service type, company size, keyword intent, and platform/source
+   - Support lead enrichment and lead scoring
+   - Store leads inside the SaaS for review/export/action
+
+2. **SEO and Content Automation**
+   - Generate SEO-based captions and content for social media posts
+   - Highlight keyword intent naturally in captions, not in a spammy way
+   - Support image post, carousel post, short video post, and blog/social repurposing
+   - Produce platform variations for Instagram, TikTok, YouTube Shorts, Facebook, X, and LinkedIn
+   - Create content tied to search intent, local relevance, and offer relevance
+
+3. **Traffic Generation**
+   - Create workflows that push traffic back to websites through strategic content, CTA sequencing, lead magnets, profile optimization suggestions, and post scheduling
+   - Support internal link suggestions for websites and landing pages
+   - Support campaign logic around local SEO, offer campaigns, educational content, testimonial content, and retargeting hooks
+
+4. **Social Response Automation**
+   - Answer inbound questions and comments on Instagram, YouTube, and TikTok
+   - Responses must sound natural and brand-matched
+   - Allow different response modes:
+     - fully autonomous
+     - suggested reply for approval
+     - high-risk questions escalated to manual review
+   - Must avoid robotic tone, repetition, spammy CTA behavior, or policy-unsafe actions
+
+---
+
+# IMPORTANT PRODUCT STRATEGY
+
+Do NOT build this like one giant AI bot.
+
+Build it as:
+- a **control dashboard**
+- connected to **specialized workflow engines in n8n**
+- with modular services for:
+  - lead generation
+  - enrichment
+  - content generation
+  - posting orchestration
+  - social response handling
+  - analytics
+  - tenant settings
+
+Each of these should be isolated as its own workflow/service area so the platform is stable, scalable, and easier to debug.
+
+---
+
+# PHASE 1: N8N FIRST
+
+## Goal
+Build the automation foundation first in n8n before building the full SaaS interface.
+
+## N8N Architecture Requirements
+Create separate n8n workflow groups for the following systems:
+
+### 1. Lead Discovery Engine
+Should:
+- accept user inputs from webhook or API
+- inputs include:
+  - industry
+  - location
+  - target keywords
+  - business type
+  - website URL
+  - ideal customer type
+  - desired platform/source
+- find leads from supported sources and normalize the data
+- enrich with:
+  - company name
+  - website
+  - email if available
+  - social links if available
+  - phone if available
+  - niche tags
+  - local relevance
+  - lead score
+- send normalized results to database/API
+
+### 2. Content Intelligence Engine
+Should:
+- accept business profile data and campaign goals
+- generate:
+  - caption ideas
+  - short-form video prompts
+  - post descriptions
+  - keyword clusters
+  - hashtag ideas
+  - SEO-based topic ideas
+  - CTA recommendations
+- support platform-specific formatting for:
+  - Instagram
+  - TikTok
+  - YouTube
+  - LinkedIn
+  - Facebook
+  - X
+- output content to database with statuses:
+  - draft
+  - queued
+  - approved
+  - posted
+  - needs review
+
+### 3. Social Listening and Response Engine
+Should:
+- receive inbound comments, questions, and DM-like message events through available integrations/webhooks
+- classify message intent:
+  - question
+  - objection
+  - praise
+  - complaint
+  - buying signal
+  - spam
+- generate a natural response based on:
+  - brand voice
+  - tone settings
+  - platform style
+  - CTA rules
+  - escalation thresholds
+- output either:
+  - auto-send response
+  - draft response for user approval
+  - escalate to human review
+
+### 4. SEO Traffic Support Engine
+Should:
+- generate keyword clusters based on business niche
+- identify search intent categories:
+  - informational
+  - local
+  - commercial
+  - transactional
+- create content suggestions aligned to intent
+- suggest landing page themes
+- suggest internal linking ideas
+- suggest FAQ ideas for websites
+- suggest metadata ideas and headings for SEO pages
+- send all outputs back to SaaS dashboard for user review
+
+### 5. Campaign Scheduler Engine
+Should:
+- queue posts
+- stagger timing by platform
+- avoid obvious spam patterns
+- support campaign calendars
+- trigger content publish workflows
+- update post status after publish attempt
+- notify dashboard of success/failure
+
+### 6. Analytics Sync Engine
+Should:
+- receive and store:
+  - lead counts
+  - content counts
+  - reply counts
+  - post engagement
+  - clicks
+  - site traffic snapshots
+  - conversion events if connected
+- create summaries for dashboard cards and reports
+
+---
+
+# N8N ENGINEERING RULES
+
+1. Build all workflows to be modular and reusable
+2. Use webhook entry points where possible so the SaaS can trigger them cleanly
+3. Return structured JSON responses from each workflow
+4. Use retries, fallback paths, and error logging
+5. Every workflow should write logs to a database table or logging endpoint
+6. Protect secrets and credentials carefully
+7. Use queue-friendly design patterns so future scale is possible
+8. Use environment variables for keys, URLs, tokens, and secrets
+9. Add clear workflow naming and documentation for each workflow
+10. Each workflow should be easy to test independently
+
+---
+
+# PHASE 2: BUILD THE SAAS PLATFORM
+
+## SaaS Stack
+Build the frontend/admin app using:
+- **Next.js**
+- **TypeScript**
+- **Tailwind CSS**
+- **shadcn/ui**
+- **server actions or API routes where appropriate**
+- deploy to **Vercel**
+
+Use a clean, premium, modern UI that feels high value and investor-ready as a beta.
+
+## Product Feel
+The UI should feel like:
+- HubSpot meets an AI control center
+- sleek, modern, intelligent
+- easy for non-technical users
+- not cluttered
+- clear use of cards, dashboards, tables, drawers, and workflow panels
+
+---
+
+# CORE SAAS FEATURES
+
+## 1. Authentication and User Roles
+Support:
+- admin
+- tenant owner
+- team member
+- viewer
+
+## 2. Multi-Tenant Architecture
+Each customer must have isolated:
+- leads
+- content
+- social settings
+- workflows
+- posting accounts
+- analytics
+- billing info
+- brand voice settings
+
+## 3. Onboarding Flow
+Create an onboarding wizard that asks:
+- business name
+- website URL
+- niche/industry
+- service areas
+- brand tone
+- content goals
+- target customer
+- CTA preference
+- connected platforms
+- main keywords
+- competitor examples
+- approval mode preferences
+
+Save this data to create a business profile used by all automation.
+
+## 4. Dashboard
+Create a main dashboard with:
+- lead volume
+- content generated
+- scheduled posts
+- response queue
+- traffic summary
+- campaign performance snapshot
+- workflow health
+- recent activity
+
+## 5. Leads Module
+Allow users to:
+- launch lead searches
+- filter leads
+- tag leads
+- export leads
+- review lead scores
+- push leads into outreach workflows later
+- see source and enrichment status
+
+## 6. Content Module
+Allow users to:
+- generate content
+- approve/reject/edit drafts
+- view keyword targets
+- generate image/video prompt ideas
+- see channel variants
+- queue or publish approved content
+
+## 7. Social Response Module
+Allow users to:
+- connect platforms
+- see inbound questions/comments
+- review AI-generated responses
+- approve or reject when needed
+- set autonomy thresholds
+- set banned phrases
+- control tone and CTA aggressiveness
+
+## 8. SEO Module
+Allow users to:
+- view keyword clusters
+- generate local SEO ideas
+- generate FAQ ideas
+- generate title/meta suggestions
+- generate landing page suggestions
+- view topic maps
+
+## 9. Campaign Calendar
+Allow users to:
+- see all queued content
+- schedule by channel
+- drag and adjust timing
+- view status
+- pause or resume campaign flows
+
+## 10. Analytics Module
+Show:
+- post counts
+- engagement
+- reply rate
+- leads found
+- traffic trend
+- top performing content
+- keyword trend movement
+- conversion event summaries if configured
+
+---
+
+# BRAND VOICE SYSTEM
+
+This is critical.
+
+Create a brand voice engine that stores:
+- tone
+- phrase preferences
+- vocabulary restrictions
+- CTA style
+- emoji behavior
+- humor level
+- professionalism level
+- platform-specific tone rules
+
+The AI outputs must use this voice profile consistently.
+
+Add a **“sound like us”** training area where the user can paste:
+- old captions
+- brand language
+- website copy
+- founder voice notes
+- example replies
+
+The system should use this to guide future content and social replies.
+
+---
+
+# AUTOMATION SAFETY RULES
+
+Add controls so the user can choose:
+- fully autonomous
+- approval required
+- mixed mode
+
+Mixed mode rules:
+- low-risk content can auto-post
+- questions with pricing/legal/medical/political sensitivity require review
+- complaint handling should usually require approval
+- high-buying-intent responses can be suggested with alerting
+
+The system must never feel reckless or spammy.
+
+---
+
+# DATABASE REQUIREMENTS
+
+Create a schema for at least:
+- users
+- organizations
+- memberships
+- business_profiles
+- connected_accounts
+- leads
+- lead_sources
+- lead_runs
+- lead_tags
+- content_items
+- content_variants
+- keyword_clusters
+- social_messages
+- response_suggestions
+- campaigns
+- campaign_schedules
+- analytics_events
+- workflow_runs
+- notifications
+- billing_customers
+- audit_logs
+
+Each table should support tenant scoping.
+
+---
+
+# API / N8N CONNECTION DESIGN
+
+The SaaS platform should communicate with n8n through secure webhooks and internal API endpoints.
+
+For each major workflow:
+- create a trigger endpoint in the SaaS
+- validate tenant auth
+- send structured payload to n8n webhook
+- receive response
+- store workflow output
+- update UI in real time or poll status
+
+Support:
+- synchronous quick jobs for light tasks
+- asynchronous queued jobs for heavy tasks
+
+Add a workflow run viewer in admin so it is easy to debug beta users.
+
+---
+
+# UI PAGES TO BUILD
+
+## Marketing Site
+- homepage
+- features
+- pricing
+- contact/demo request
+- beta waitlist
+
+## App
+- login
+- signup
+- onboarding
+- main dashboard
+- leads
+- content
+- social inbox
+- SEO lab
+- campaigns
+- analytics
+- settings
+- billing
+- admin panel
+
+---
+
+# ADMIN PANEL
+
+Create an internal admin area for platform owner to:
+- view tenants
+- impersonate support view if needed
+- monitor workflow health
+- monitor API failures
+- monitor usage
+- set plan limits
+- disable abusive accounts
+- review beta feedback flags
+
+---
+
+# BILLING PREP
+
+Even if full billing is not finished, prepare the architecture for plans like:
+- Starter
+- Pro
+- Agency
+- Enterprise
+
+Each plan should later support limits such as:
+- number of brands
+- workflow runs
+- leads per month
+- social accounts
+- content generations
+- analytics retention
+
+---
+
+# VERCEL DEPLOYMENT REQUIREMENTS
+
+The codebase should be ready for GitHub and Vercel deployment.
+
+Requirements:
+- production-ready env variable handling
+- `.env.example`
+- clear README
+- deploy instructions
+- clean build setup
+- use Vercel-friendly patterns
+- support cron/scheduled jobs if needed
+- protect internal scheduled routes with a secret
+
+---
+
+# GITHUB REQUIREMENTS
+
+Prepare the repo to be clean and professional:
+- meaningful folder structure
+- README
+- install instructions
+- local dev instructions
+- environment variable documentation
+- GitHub Actions-ready structure for CI later
+- avoid committing secrets
+- support staging and production patterns
+
+---
+
+# CODE QUALITY RULES
+
+1. Type-safe where practical
+2. Reusable components
+3. Avoid spaghetti logic
+4. Separate UI, business logic, and integration logic
+5. Add comments only where they help
+6. Create seeds/mock data for beta demo mode
+7. Make the app look polished enough to impress early users and investors
+
+---
+
+# BETA SCOPE PRIORITY
+
+Build in this order:
+
+## Step 1
+n8n workflow architecture and documentation
+
+## Step 2
+SaaS database schema and backend integration layer
+
+## Step 3
+Frontend shell and onboarding
+
+## Step 4
+Leads, content, and social inbox modules
+
+## Step 5
+Analytics, admin, and billing scaffolding
+
+Do NOT try to fully perfect every external integration in version one.
+Design for growth, but ship a believable beta fast.
+
+---
+
+# DELIVERABLES I WANT FROM YOU
+
+1. Full recommended file/folder structure
+2. Database schema proposal
+3. n8n workflow architecture map
+4. UI page map
+5. API route map
+6. Environment variable list
+7. Build order checklist
+8. README draft
+9. First-pass code scaffolding for the SaaS
+10. Clean modern UI direction matching a premium SaaS product
+11. Suggestions for later support of:
+   - outreach automation
+   - CRM sync
+   - stronger SEO audits
+   - white-label agency mode
+   - marketplace/integrations
+
+---
+
+# VISUAL DESIGN DIRECTION
+
+Use a modern dark/light professional SaaS aesthetic.
+Think:
+- elegant
+- premium
+- fast
+- intelligent
+- slightly futuristic
+- high trust
+- not cartoonish
+
+Use:
+- rounded cards
+- clean data tables
+- strong typography
+- subtle gradients
+- modern dashboard spacing
+- professional iconography
+- polished onboarding flow
+
+---
+
+# FINAL NOTE
+
+This system should be engineered as a serious beta SaaS product, not a toy demo.
+The code should be structured so it can actually become a sellable platform after beta.
+Prioritize architecture, modularity, and user trust.
