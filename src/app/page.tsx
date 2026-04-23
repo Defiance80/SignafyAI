@@ -112,10 +112,10 @@ export default function LandingPage() {
             <a
               key={link}
               href={`#${link.toLowerCase()}`}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-              style={{ color: "var(--color-text-2)" }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--color-text-1)"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--color-text-2)"; }}
+              className="px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+              style={{ color: "#d4d4e8" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#ffffff"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "#d4d4e8"; }}
             >
               {link}
             </a>
@@ -126,21 +126,25 @@ export default function LandingPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/sign-in"
-            className="text-sm font-medium transition-colors hidden sm:block"
-            style={{ color: "var(--color-text-2)" }}
+            className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
+            style={{
+              color: "#ffffff",
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.15)",
+            }}
           >
-            Sign in
+            Log In
           </Link>
           <Link
             href="/sign-in"
-            className="px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200"
+            className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
             style={{
               background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)",
-              color: "white",
-              boxShadow: "0 4px 12px rgba(124,58,237,0.3)",
+              color: "#ffffff",
+              boxShadow: "0 4px 16px rgba(124,58,237,0.4)",
             }}
           >
-            Get started
+            Start Free Trial
           </Link>
         </div>
       </nav>
@@ -164,7 +168,7 @@ export default function LandingPage() {
           }}
         />
 
-        <div className="relative max-w-4xl mx-auto">
+        <div className="relative max-w-5xl mx-auto">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold mb-8 animate-fade-up"
             style={{
@@ -189,8 +193,8 @@ export default function LandingPage() {
 
           {/* Sub */}
           <p
-            className="text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed animate-fade-up delay-200"
-            style={{ color: "var(--color-text-2)" }}
+            className="text-lg sm:text-xl max-w-3xl mx-auto mb-10 leading-relaxed animate-fade-up delay-200"
+            style={{ color: "var(--color-text-2)", fontSize: "clamp(17px, 2vw, 20px)" }}
           >
             Generate leads, create on-brand content, automate social responses, and drive traffic — all connected to your business profile and powered by your own n8n automation engine.
           </p>
@@ -199,25 +203,27 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-up delay-300">
             <Link
               href="/sign-in"
-              className="w-full sm:w-auto px-8 py-4 rounded-2xl text-base font-semibold transition-all duration-200"
+              className="w-full sm:w-auto px-10 py-4 rounded-2xl text-base font-bold transition-all duration-200"
               style={{
                 background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)",
-                color: "white",
-                boxShadow: "0 8px 24px rgba(124,58,237,0.35)",
+                color: "#ffffff",
+                boxShadow: "0 8px 32px rgba(124,58,237,0.4)",
+                fontSize: "17px",
               }}
             >
-              Try the demo →
+              Start Your Free Trial →
             </Link>
             <a
               href="#features"
-              className="w-full sm:w-auto px-8 py-4 rounded-2xl text-base font-semibold transition-all duration-200"
+              className="w-full sm:w-auto px-10 py-4 rounded-2xl text-base font-semibold transition-all duration-200"
               style={{
-                background: "transparent",
-                border: "1px solid var(--color-border)",
-                color: "var(--color-text-2)",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: "#ffffff",
+                fontSize: "17px",
               }}
             >
-              See how it works
+              See How It Works
             </a>
           </div>
 
@@ -405,18 +411,20 @@ export default function LandingPage() {
               </ul>
               <Link
                 href="/sign-in"
-                className="block text-center py-3 rounded-xl text-sm font-semibold transition-all duration-200"
+                className="block text-center py-3.5 rounded-xl text-sm font-bold transition-all duration-200"
                 style={
                   plan.highlight
                     ? {
                         background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)",
-                        color: "white",
-                        boxShadow: "0 4px 12px rgba(124,58,237,0.35)",
+                        color: "#ffffff",
+                        boxShadow: "0 4px 16px rgba(124,58,237,0.4)",
+                        fontSize: "15px",
                       }
                     : {
-                        background: "var(--color-surface-2)",
-                        border: "1px solid var(--color-border)",
-                        color: "var(--color-text-1)",
+                        background: "rgba(255,255,255,0.06)",
+                        border: "1px solid rgba(255,255,255,0.15)",
+                        color: "#ffffff",
+                        fontSize: "15px",
                       }
                 }
               >
@@ -456,14 +464,15 @@ export default function LandingPage() {
             </p>
             <Link
               href="/sign-in"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-base font-semibold transition-all duration-200"
+              className="inline-flex items-center gap-2 px-10 py-4 rounded-2xl text-base font-bold transition-all duration-200"
               style={{
                 background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)",
-                color: "white",
-                boxShadow: "0 8px 24px rgba(124,58,237,0.35)",
+                color: "#ffffff",
+                boxShadow: "0 8px 32px rgba(124,58,237,0.4)",
+                fontSize: "17px",
               }}
             >
-              Try the demo free
+              Start Your Free Trial
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
