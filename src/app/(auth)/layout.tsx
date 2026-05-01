@@ -26,7 +26,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           backgroundSize: "48px 48px",
         }}
       />
-      <div className="relative z-10 w-full px-4">
+      <div className="relative z-10 w-full px-4 py-8">
         {children}
       </div>
     </div>

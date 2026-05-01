@@ -35,19 +35,43 @@ I can share some case studies that might be relevant to your goals!`;
 
 export default function SocialPage() {
   const [selected, setSelected] = useState(0);
+  const [mobileView, setMobileView] = useState<"list" | "thread">("list");
   const msg = MESSAGES[selected];
+
+  function selectMessage(i: number) {
+    setSelected(i);
+    setMobileView("thread");
+  }
 
   return (
     <div className="p-5 sm:p-8 max-w-[1400px] mx-auto space-y-6">
       {/* Header */}
-      <div className="animate-fade-up">
-        <p className="text-sm mb-1" style={{ color: "var(--color-text-2)" }}>Manage conversations</p>
-        <h1 className="text-2xl sm:text-3xl font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Social Inbox</h1>
+      <div className="animate-fade-up flex items-center justify-between">
+        <div>
+          <p className="text-sm mb-1" style={{ color: "var(--color-text-2)" }}>Manage conversations</p>
+          <h1 className="text-2xl sm:text-3xl font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Social Inbox</h1>
+        </div>
+        {/* Mobile back button — only shown in thread view */}
+        {mobileView === "thread" && (
+          <button
+            className="lg:hidden flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium"
+            style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}
+            onClick={() => setMobileView("list")}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Back
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 animate-fade-up" style={{ animationDelay: "0.1s", minHeight: "calc(100vh - 220px)" }}>
         {/* Message List */}
-        <div className="lg:col-span-2 rounded-2xl overflow-hidden" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
+        <div
+          className={`lg:col-span-2 rounded-2xl overflow-hidden ${mobileView === "thread" ? "hidden lg:block" : "block"}`}
+          style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
+        >
           <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
             <h2 className="text-sm font-semibold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>
               Messages <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-md" style={{ background: "rgba(124,58,237,0.15)", color: "#a78bfa" }}>3 new</span>
@@ -57,7 +81,7 @@ export default function SocialPage() {
             {MESSAGES.map((m, i) => (
               <div
                 key={m.id}
-                onClick={() => setSelected(i)}
+                onClick={() => selectMessage(i)}
                 className="flex items-start gap-3 px-5 py-4 cursor-pointer transition-colors"
                 style={{ background: selected === i ? "var(--color-surface-2)" : "transparent" }}
                 onMouseEnter={(e) => { if (selected !== i) (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
@@ -81,7 +105,10 @@ export default function SocialPage() {
         </div>
 
         {/* Conversation Detail */}
-        <div className="lg:col-span-3 rounded-2xl flex flex-col" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
+        <div
+          className={`lg:col-span-3 rounded-2xl flex flex-col ${mobileView === "list" ? "hidden lg:flex" : "flex"}`}
+          style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
+        >
           {/* Header */}
           <div className="flex items-center gap-3 px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
             <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: `${PLATFORM_COLORS[msg.platform]}20`, color: PLATFORM_COLORS[msg.platform] }}>

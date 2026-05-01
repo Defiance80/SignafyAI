@@ -8,14 +8,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-dvh overflow-hidden" style={{ background: "var(--color-bg)" }}>
-      {/* Desktop sidebar */}
-      <div className="hidden lg:flex flex-col flex-shrink-0">
+      {/* Desktop sidebar — visible on md (768px+) */}
+      <div className="hidden md:flex flex-col flex-shrink-0">
         <Sidebar />
       </div>
 
-      {/* Mobile sidebar overlay */}
+      {/* Mobile sidebar overlay — visible below md */}
       {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
+        <div className="md:hidden fixed inset-0 z-50 flex">
           <div
             className="absolute inset-0"
             style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
@@ -31,7 +31,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile header */}
         <header
-          className="lg:hidden flex items-center justify-between px-4 py-3 flex-shrink-0"
+          className="md:hidden flex items-center justify-between px-4 py-3 flex-shrink-0"
           style={{
             background: "var(--color-surface)",
             borderBottom: "1px solid var(--color-border)",

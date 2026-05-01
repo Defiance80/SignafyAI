@@ -330,7 +330,7 @@ function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunch
     <>
       <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose} />
       <div
-        className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg"
+        className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg max-h-[90dvh] overflow-y-auto"
         style={{ transform: "translate(-50%, -50%)", background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 20, boxShadow: "0 24px 80px rgba(0,0,0,0.5)", padding: 24 }}
       >
         <div className="flex items-center justify-between mb-6">
@@ -527,7 +527,7 @@ function AddLeadModal({ onClose }: { onClose: () => void }) {
   return (
     <>
       <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose} />
-      <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md" style={{ transform: "translate(-50%, -50%)", background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 20, boxShadow: "0 24px 80px rgba(0,0,0,0.5)" }}>
+      <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md max-h-[90dvh] overflow-y-auto" style={{ transform: "translate(-50%, -50%)", background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 20, boxShadow: "0 24px 80px rgba(0,0,0,0.5)" }}>
         <div className="px-6 py-5" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
           <h2 className="text-base font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Add Lead Manually</h2>
         </div>

@@ -126,7 +126,7 @@ export default function LandingPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/sign-in"
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
+            className="hidden sm:inline-flex px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
             style={{
               color: "#ffffff",
               background: "rgba(255,255,255,0.06)",
