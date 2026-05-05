@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { requireOrgContext, getSupabaseServiceClient, DEMO_ORG_ID } from "@/lib/supabase/server";
-import { triggerLeadDiscovery } from "@/lib/n8n";
+import { triggerLeadDiscovery, type LeadDiscoveryInput } from "@/lib/n8n";
 import { LIMITS } from "@/lib/ratelimit";
 import { errorResponse, jsonResponse, sanitizeText, generateId, withinLimit } from "@/lib/utils";
 import type { Lead, WorkflowRun } from "@/lib/supabase/types";
@@ -70,6 +70,16 @@ const DiscoverSchema = z.object({
   min_score: z.number().int().min(0).max(100).optional(),
   save_config_name: z.string().max(100).optional(),
 });
+
+const DEFAULT_B2C_SOURCES: NonNullable<LeadDiscoveryInput["b2c_sources"]> = [
+  "reddit",
+  "review_platforms",
+  "directories",
+];
+const DEFAULT_B2B_SOURCES: NonNullable<LeadDiscoveryInput["b2b_sources"]> = [
+  "linkedin",
+  "directories",
+];
 
 export async function POST(request: Request) {
   const ctx = await requireOrgContext(request).catch(() => null);
@@ -156,15 +166,20 @@ async function handleDiscover(ctx: Awaited<ReturnType<typeof requireOrgContext>>
   }
 
   const market = parsed.data.target_market ?? "b2b";
+  const b2c_sources: LeadDiscoveryInput["b2c_sources"] =
+    market === "b2c"
+      ? (parsed.data.b2c_sources?.length ? parsed.data.b2c_sources : DEFAULT_B2C_SOURCES)
+      : undefined;
+  const b2b_sources: LeadDiscoveryInput["b2b_sources"] =
+    market === "b2b"
+      ? (parsed.data.b2b_sources?.length ? parsed.data.b2b_sources : DEFAULT_B2B_SOURCES)
+      : undefined;
+
   const normalizedParams = {
     ...parsed.data,
     target_market: market,
-    b2c_sources: market === "b2c"
-      ? (parsed.data.b2c_sources?.length ? parsed.data.b2c_sources : ["reddit", "review_platforms", "directories"])
-      : undefined,
-    b2b_sources: market === "b2b"
-      ? (parsed.data.b2b_sources?.length ? parsed.data.b2b_sources : ["linkedin", "directories"])
-      : undefined,
+    b2c_sources,
+    b2b_sources,
   };
 
   if (!await LIMITS.leadDiscovery(ctx.org.id)) {
@@ -213,8 +228,15 @@ async function handleDiscover(ctx: Awaited<ReturnType<typeof requireOrgContext>>
   const n8nResult = await triggerLeadDiscovery({
     run_id: runId,
     org_id: ctx.org.id,
-    ...normalizedParams,
     callback_url: callbackUrl,
+    target_market: market,
+    b2c_sources,
+    b2b_sources,
+    industry: parsed.data.industry,
+    location: parsed.data.location,
+    platforms: parsed.data.platforms,
+    keywords: parsed.data.keywords,
+    min_score: parsed.data.min_score,
   });
 
   return jsonResponse({
