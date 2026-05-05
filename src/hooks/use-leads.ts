@@ -83,6 +83,9 @@ export function useDiscoverLeads() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (params: {
+      target_market?: "b2b" | "b2c";
+      b2c_sources?: Array<"reddit" | "review_platforms" | "directories">;
+      b2b_sources?: Array<"linkedin" | "directories" | "company_websites">;
       industry?: string;
       location?: string;
       platforms?: string[];

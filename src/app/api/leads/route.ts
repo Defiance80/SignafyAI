@@ -60,6 +60,9 @@ const AddLeadSchema = z.object({
 
 const DiscoverSchema = z.object({
   action: z.literal("discover"),
+  target_market: z.enum(["b2b", "b2c"]).optional(),
+  b2c_sources: z.array(z.enum(["reddit", "review_platforms", "directories"])).max(3).optional(),
+  b2b_sources: z.array(z.enum(["linkedin", "directories", "company_websites"])).max(3).optional(),
   industry: z.string().max(100).optional(),
   location: z.string().max(100).optional(),
   platforms: z.array(z.string()).max(6).optional(),
@@ -152,6 +155,18 @@ async function handleDiscover(ctx: Awaited<ReturnType<typeof requireOrgContext>>
     return errorResponse(parsed.error.issues.map(i => i.message).join(", "), 422);
   }
 
+  const market = parsed.data.target_market ?? "b2b";
+  const normalizedParams = {
+    ...parsed.data,
+    target_market: market,
+    b2c_sources: market === "b2c"
+      ? (parsed.data.b2c_sources?.length ? parsed.data.b2c_sources : ["reddit", "review_platforms", "directories"])
+      : undefined,
+    b2b_sources: market === "b2b"
+      ? (parsed.data.b2b_sources?.length ? parsed.data.b2b_sources : ["linkedin", "directories"])
+      : undefined,
+  };
+
   if (!await LIMITS.leadDiscovery(ctx.org.id)) {
     return errorResponse("Lead discovery rate limit exceeded — max 10 runs/hour", 429);
   }
@@ -170,21 +185,24 @@ async function handleDiscover(ctx: Awaited<ReturnType<typeof requireOrgContext>>
       org_id: ctx.org.id,
       workflow_type: "lead_discovery",
       status: "pending",
-      input_params: parsed.data,
+      input_params: normalizedParams,
       started_at: new Date().toISOString(),
     });
 
     // Save discovery config if requested
-    if (parsed.data.save_config_name) {
+    if (normalizedParams.save_config_name) {
       await db.from("lead_discovery_configs").insert({
         org_id: ctx.org.id,
-        name: sanitizeText(parsed.data.save_config_name),
+        name: sanitizeText(normalizedParams.save_config_name),
         filters: {
-          industry: parsed.data.industry,
-          location: parsed.data.location,
-          platforms: parsed.data.platforms,
-          keywords: parsed.data.keywords,
-          min_score: parsed.data.min_score,
+          target_market: normalizedParams.target_market,
+          b2c_sources: normalizedParams.b2c_sources,
+          b2b_sources: normalizedParams.b2b_sources,
+          industry: normalizedParams.industry,
+          location: normalizedParams.location,
+          platforms: normalizedParams.platforms,
+          keywords: normalizedParams.keywords,
+          min_score: normalizedParams.min_score,
         },
       });
     }
@@ -195,7 +213,7 @@ async function handleDiscover(ctx: Awaited<ReturnType<typeof requireOrgContext>>
   const n8nResult = await triggerLeadDiscovery({
     run_id: runId,
     org_id: ctx.org.id,
-    ...parsed.data,
+    ...normalizedParams,
     callback_url: callbackUrl,
   });
 

@@ -82,6 +82,9 @@ export interface LeadDiscoveryConfig {
   org_id: string;
   name: string;
   filters: {
+    target_market?: "b2b" | "b2c";
+    b2c_sources?: Array<"reddit" | "review_platforms" | "directories">;
+    b2b_sources?: Array<"linkedin" | "directories" | "company_websites">;
     industry?: string;
     location?: string;
     platforms?: string[];

@@ -53,6 +53,9 @@ async function trigger(path: string, body: object): Promise<{ ok: boolean; error
 export interface LeadDiscoveryInput {
   run_id: string;
   org_id: string;
+  target_market?: "b2b" | "b2c";
+  b2c_sources?: Array<"reddit" | "review_platforms" | "directories">;
+  b2b_sources?: Array<"linkedin" | "directories" | "company_websites">;
   industry?: string;
   location?: string;
   platforms?: string[];

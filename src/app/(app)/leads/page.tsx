@@ -30,6 +30,16 @@ const INDUSTRIES = [
 ];
 
 const PLATFORMS = ["instagram", "linkedin", "tiktok", "twitter", "facebook", "google"];
+const B2C_SOURCES = [
+  { id: "reddit", label: "Reddit conversations" },
+  { id: "review_platforms", label: "Review platforms" },
+  { id: "directories", label: "Consumer directories" },
+] as const;
+const B2B_SOURCES = [
+  { id: "linkedin", label: "LinkedIn" },
+  { id: "directories", label: "Business directories" },
+  { id: "company_websites", label: "Company websites" },
+] as const;
 
 // ─── Score Bar ────────────────────────────────────────────────────────────────
 function ScoreBar({ score }: { score: number }) {
@@ -289,6 +299,16 @@ function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }
 // ─── Discovery Modal ──────────────────────────────────────────────────────────
 function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunched: (runId: string) => void }) {
   const discover = useDiscoverLeads();
+  const [targetMarket, setTargetMarket] = useState<"b2b" | "b2c">("b2b");
+  const [b2cSources, setB2cSources] = useState<Array<"reddit" | "review_platforms" | "directories">>([
+    "reddit",
+    "review_platforms",
+    "directories",
+  ]);
+  const [b2bSources, setB2bSources] = useState<Array<"linkedin" | "directories" | "company_websites">>([
+    "linkedin",
+    "directories",
+  ]);
   const [industry, setIndustry] = useState("");
   const [location, setLocation] = useState("");
   const [platforms, setPlatforms] = useState<string[]>(["linkedin", "instagram"]);
@@ -303,15 +323,34 @@ function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunch
     );
   }
 
+  function toggleB2cSource(source: "reddit" | "review_platforms" | "directories") {
+    setB2cSources((prev) => prev.includes(source) ? prev.filter((x) => x !== source) : [...prev, source]);
+  }
+
+  function toggleB2bSource(source: "linkedin" | "directories" | "company_websites") {
+    setB2bSources((prev) => prev.includes(source) ? prev.filter((x) => x !== source) : [...prev, source]);
+  }
+
   async function handleLaunch() {
     setError("");
     if (!industry && !location && keywords.trim().length === 0) {
       setError("Add at least one filter: industry, location, or keywords.");
       return;
     }
+    if (targetMarket === "b2c" && b2cSources.length === 0) {
+      setError("Select at least one B2C source.");
+      return;
+    }
+    if (targetMarket === "b2b" && b2bSources.length === 0) {
+      setError("Select at least one B2B source.");
+      return;
+    }
 
     try {
       const result = await discover.mutateAsync({
+        target_market: targetMarket,
+        b2c_sources: targetMarket === "b2c" ? b2cSources : undefined,
+        b2b_sources: targetMarket === "b2b" ? b2bSources : undefined,
         industry: industry || undefined,
         location: location || undefined,
         platforms: platforms.length > 0 ? platforms : undefined,
@@ -344,6 +383,74 @@ function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunch
         </div>
 
         <div className="space-y-4">
+          {/* Target market */}
+          <div>
+            <label className="text-xs font-semibold block mb-2" style={{ color: "var(--color-text-muted)" }}>LEAD TYPE</label>
+            <div className="grid grid-cols-2 gap-2">
+              {(["b2b", "b2c"] as const).map((market) => {
+                const active = targetMarket === market;
+                return (
+                  <button
+                    key={market}
+                    onClick={() => setTargetMarket(market)}
+                    className="text-xs px-3 py-2 rounded-lg text-left transition-all"
+                    style={{
+                      background: active ? "rgba(124,58,237,0.15)" : "var(--color-surface-2)",
+                      border: active ? "1px solid rgba(124,58,237,0.3)" : "1px solid var(--color-border-subtle)",
+                      color: active ? "#a78bfa" : "var(--color-text-2)",
+                    }}
+                  >
+                    {market.toUpperCase()}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Source targeting */}
+          <div>
+            <label className="text-xs font-semibold block mb-1.5" style={{ color: "var(--color-text-muted)" }}>
+              {targetMarket === "b2c" ? "B2C SOURCES" : "B2B SOURCES"}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {targetMarket === "b2c"
+                ? B2C_SOURCES.map((source) => {
+                    const active = b2cSources.includes(source.id);
+                    return (
+                      <button
+                        key={source.id}
+                        onClick={() => toggleB2cSource(source.id)}
+                        className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all"
+                        style={{
+                          background: active ? "rgba(124,58,237,0.15)" : "var(--color-surface-2)",
+                          border: active ? "1px solid rgba(124,58,237,0.3)" : "1px solid var(--color-border-subtle)",
+                          color: active ? "#a78bfa" : "var(--color-text-muted)",
+                        }}
+                      >
+                        {source.label}
+                      </button>
+                    );
+                  })
+                : B2B_SOURCES.map((source) => {
+                    const active = b2bSources.includes(source.id);
+                    return (
+                      <button
+                        key={source.id}
+                        onClick={() => toggleB2bSource(source.id)}
+                        className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all"
+                        style={{
+                          background: active ? "rgba(124,58,237,0.15)" : "var(--color-surface-2)",
+                          border: active ? "1px solid rgba(124,58,237,0.3)" : "1px solid var(--color-border-subtle)",
+                          color: active ? "#a78bfa" : "var(--color-text-muted)",
+                        }}
+                      >
+                        {source.label}
+                      </button>
+                    );
+                  })}
+            </div>
+          </div>
+
           {/* Industry */}
           <div>
             <label className="text-xs font-semibold block mb-2" style={{ color: "var(--color-text-muted)" }}>TARGET INDUSTRY</label>
