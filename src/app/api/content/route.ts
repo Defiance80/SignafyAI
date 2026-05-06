@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { requireOrgContext, getSupabaseServiceClient } from "@/lib/supabase/server";
 import { generateContent } from "@/lib/ai";
-import { LIMITS } from "@/lib/ratelimit";
-import { errorResponse, jsonResponse, sanitizeText, generateId, withinLimit } from "@/lib/utils";
+import { guardApiRate, guardContentGenerationUsage } from "@/lib/access";
+import { errorResponse, jsonResponse, sanitizeText, generateId } from "@/lib/utils";
 
 const GenerateSchema = z.object({
   content_type: z.enum(["blog_post","social_caption","email_sequence","ad_copy","video_script"]),
@@ -17,13 +17,10 @@ export async function POST(request: Request) {
   const ctx = await requireOrgContext(request).catch(() => null);
   if (!ctx) return errorResponse("Unauthorized", 401);
 
-  if (!await LIMITS.contentGenerate(ctx.org.id)) {
-    return errorResponse("Content generation rate limit exceeded — max 50/hour", 429);
-  }
-
-  if (!withinLimit(ctx.org.usage_content_mo, ctx.org.limits_content_mo)) {
-    return errorResponse(`Monthly content limit reached (${ctx.org.limits_content_mo}). Upgrade your plan.`, 402);
-  }
+  const apiLimit = await guardApiRate(ctx);
+  if (apiLimit) return apiLimit;
+  const usageLimit = await guardContentGenerationUsage(ctx);
+  if (usageLimit) return usageLimit;
 
   let body: unknown;
   try {

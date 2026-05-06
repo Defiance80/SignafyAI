@@ -1,31 +1,29 @@
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 
-const PROTECTED = ["/dashboard", "/leads", "/content", "/social", "/seo", "/campaigns", "/analytics", "/settings", "/admin"];
-const AUTH_ONLY = ["/sign-in", "/sign-up"];
+/**
+ * Edge proxy (formerly "middleware"): Clerk auth for app + APIs, demo cookie bypass,
+ * public machine webhooks.
+ */
+const isPublicRoute = createRouteMatcher([
+  "/",
+  "/sign-in(.*)",
+  "/api/webhooks/(.*)",
+]);
 
-export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const session = request.cookies.get("signafy_session")?.value;
-
-  const isProtected = PROTECTED.some((p) => pathname.startsWith(p));
-  const isAuthOnly = AUTH_ONLY.some((p) => pathname.startsWith(p));
-
-  if (isProtected && !session) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/sign-in";
-    return NextResponse.redirect(url);
+export default clerkMiddleware(async (auth, request) => {
+  if (request.cookies.get("signafy_session")?.value === "demo") {
+    return NextResponse.next();
   }
-
-  if (isAuthOnly && session) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
+  if (isPublicRoute(request)) {
+    return NextResponse.next();
   }
-
-  return NextResponse.next();
-}
+  await auth.protect();
+});
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)",
+    "/(api|trpc)(.*)",
+  ],
 };

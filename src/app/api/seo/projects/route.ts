@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { requireOrgContext, getSupabaseServiceClient } from "@/lib/supabase/server";
 import { triggerSeoResearch } from "@/lib/n8n";
-import { LIMITS } from "@/lib/ratelimit";
+import { guardApiRate, guardSeoResearchRate } from "@/lib/access";
 import { errorResponse, jsonResponse, sanitizeText, generateId } from "@/lib/utils";
 
 const CreateProjectSchema = z.object({
@@ -18,9 +18,10 @@ export async function POST(request: Request) {
   const ctx = await requireOrgContext(request).catch(() => null);
   if (!ctx) return errorResponse("Unauthorized", 401);
 
-  if (!await LIMITS.seoResearch(ctx.org.id)) {
-    return errorResponse("SEO research rate limit exceeded — max 20/hour", 429);
-  }
+  const apiLimit = await guardApiRate(ctx);
+  if (apiLimit) return apiLimit;
+  const seoLimit = await guardSeoResearchRate(ctx);
+  if (seoLimit) return seoLimit;
 
   let body: unknown;
   try { body = await request.json(); } catch { return errorResponse("Invalid JSON", 400); }

@@ -135,7 +135,8 @@ function isSuperAdminUser(clerkUserId: string): boolean {
 
 async function upsertUserFromClerk(db: SupabaseClient, clerkUserId: string): Promise<string | null> {
   try {
-    const user = await clerkClient.users.getUser(clerkUserId);
+    const c = await clerkClient();
+    const user = await c.users.getUser(clerkUserId);
     const email = user.emailAddresses?.[0]?.emailAddress ?? "";
     const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || null;
     const avatarUrl = user.imageUrl ?? null;
@@ -170,7 +171,8 @@ async function ensureDefaultOrg(
   let name = "My Workspace";
   let slugSeed = `user-${clerkUserId.slice(0, 8)}`;
   try {
-    const user = await clerkClient.users.getUser(clerkUserId);
+    const c = await clerkClient();
+    const user = await c.users.getUser(clerkUserId);
     const email = user.emailAddresses?.[0]?.emailAddress ?? "";
     const firstName = user.firstName ?? "";
     name = `${firstName || email || "My"} Workspace`;

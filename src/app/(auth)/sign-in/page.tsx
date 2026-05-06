@@ -1,8 +1,11 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { SignIn } from "@clerk/nextjs";
+import { useActionState } from "react";
 import { loginAction } from "./actions";
 import Link from "next/link";
+
+const CLERK_ENABLED = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
 const DEMO_EMAIL = "demo@signafyai.com";
 const DEMO_PASSWORD = "Demo1234!";
@@ -70,6 +73,31 @@ export default function SignInPage() {
             Sign in to your SignafyAI dashboard
           </p>
         </div>
+
+        {CLERK_ENABLED && (
+          <div className="mb-8 flex justify-center [&_.cl-card]:shadow-none [&_.cl-rootBox]:mx-auto">
+            <SignIn
+              routing="hash"
+              appearance={{
+                variables: {
+                  colorPrimary: "#7c3aed",
+                  borderRadius: "12px",
+                },
+                elements: {
+                  rootBox: { width: "100%", maxWidth: "420px" },
+                },
+              }}
+            />
+          </div>
+        )}
+
+        {CLERK_ENABLED && (
+          <div className="flex items-center gap-4 my-6">
+            <div className="flex-1 h-px" style={{ background: "var(--color-border)" }} />
+            <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>or demo login</span>
+            <div className="flex-1 h-px" style={{ background: "var(--color-border)" }} />
+          </div>
+        )}
 
         {/* Demo callout */}
         <button

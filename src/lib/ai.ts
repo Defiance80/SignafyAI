@@ -1,22 +1,46 @@
 /**
- * AI client — OpenAI GPT-4o by default, with Anthropic Claude as fallback.
- * Switch provider via AI_PROVIDER env var: "openai" | "anthropic"
+ * AI client — OpenAI by default, or Qwen (DashScope compatible mode) via AI_PROVIDER=qwen.
  */
 
 import OpenAI from "openai";
 
-let _openai: OpenAI | null = null;
+let _client: OpenAI | null = null;
 
-function getOpenAI(): OpenAI {
-  if (!_openai) {
-    _openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY ?? "not-configured",
-    });
+function getChatClient(): OpenAI {
+  if (!_client) {
+    const provider = (process.env.AI_PROVIDER ?? "openai").toLowerCase();
+    if (provider === "qwen") {
+      _client = new OpenAI({
+        apiKey: process.env.QWEN_API_KEY ?? process.env.DASHSCOPE_API_KEY ?? "not-configured",
+        baseURL:
+          process.env.QWEN_BASE_URL ??
+          "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      });
+    } else {
+      _client = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY ?? "not-configured",
+      });
+    }
   }
-  return _openai;
+  return _client;
 }
 
-const MODEL = process.env.AI_MODEL ?? "gpt-4o";
+function resolveModel(): string {
+  if (process.env.AI_MODEL) return process.env.AI_MODEL;
+  const provider = (process.env.AI_PROVIDER ?? "openai").toLowerCase();
+  if (provider === "qwen") return "qwen-max";
+  return "gpt-4o";
+}
+
+const MODEL = resolveModel();
+
+function isAiConfigured(): boolean {
+  const provider = (process.env.AI_PROVIDER ?? "openai").toLowerCase();
+  if (provider === "qwen") {
+    return !!(process.env.QWEN_API_KEY ?? process.env.DASHSCOPE_API_KEY);
+  }
+  return !!process.env.OPENAI_API_KEY;
+}
 
 // ─── Lead Scoring ─────────────────────────────────────────────────────────────
 
@@ -38,7 +62,7 @@ export interface LeadScoringResult {
 }
 
 export async function scoreLead(input: LeadScoringInput): Promise<LeadScoringResult> {
-  if (!process.env.OPENAI_API_KEY) {
+  if (!isAiConfigured()) {
     // Deterministic mock scoring for demo mode
     const base = Math.floor(Math.random() * 60) + 20;
     return {
@@ -62,7 +86,7 @@ Return valid JSON matching this exact shape:
   ]
 }`;
 
-  const res = await getOpenAI().chat.completions.create({
+  const res = await getChatClient().chat.completions.create({
     model: MODEL,
     messages: [{ role: "user", content: prompt }],
     response_format: { type: "json_object" },
@@ -107,7 +131,7 @@ const CHAR_LIMITS: Record<string, number> = {
 };
 
 export async function generateContent(input: ContentGenerationInput): Promise<ContentGenerationResult> {
-  if (!process.env.OPENAI_API_KEY) {
+  if (!isAiConfigured()) {
     return {
       body: `[Demo mode] ${input.content_type} for ${input.platform}: ${input.prompt}`,
       char_count: 80,
@@ -139,7 +163,7 @@ Return JSON:
   "media_suggestions": ["<suggestion>"]
 }`;
 
-  const res = await getOpenAI().chat.completions.create({
+  const res = await getChatClient().chat.completions.create({
     model: MODEL,
     messages: [
       { role: "system", content: systemPrompt },
@@ -175,7 +199,7 @@ export interface ClassificationResult {
 }
 
 export async function classifyMessage(input: ClassificationInput): Promise<ClassificationResult> {
-  if (!process.env.OPENAI_API_KEY) {
+  if (!isAiConfigured()) {
     return {
       intent: "inquiry",
       sentiment: 0.5,
@@ -183,7 +207,7 @@ export async function classifyMessage(input: ClassificationInput): Promise<Class
     };
   }
 
-  const res = await getOpenAI().chat.completions.create({
+  const res = await getChatClient().chat.completions.create({
     model: MODEL,
     messages: [{
       role: "user",

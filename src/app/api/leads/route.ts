@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { requireOrgContext, getSupabaseServiceClient, DEMO_ORG_ID } from "@/lib/supabase/server";
 import { triggerLeadDiscovery, type LeadDiscoveryInput } from "@/lib/n8n";
-import { LIMITS } from "@/lib/ratelimit";
-import { errorResponse, jsonResponse, sanitizeText, generateId, withinLimit } from "@/lib/utils";
-import type { Lead, WorkflowRun } from "@/lib/supabase/types";
+import { guardApiRate, guardLeadDiscoveryUsage } from "@/lib/access";
+import { errorResponse, jsonResponse, sanitizeText, generateId } from "@/lib/utils";
+import type { Lead } from "@/lib/supabase/types";
 
 // ─── GET /api/leads ────────────────────────────────────────────────────────────
 export async function GET(request: Request) {
@@ -85,9 +85,8 @@ export async function POST(request: Request) {
   const ctx = await requireOrgContext(request).catch(() => null);
   if (!ctx) return errorResponse("Unauthorized", 401);
 
-  if (!await LIMITS.api(ctx.org.id)) {
-    return errorResponse("Rate limit exceeded — too many requests", 429);
-  }
+  const apiLimit = await guardApiRate(ctx);
+  if (apiLimit) return apiLimit;
 
   let body: unknown;
   try {
@@ -182,13 +181,8 @@ async function handleDiscover(ctx: Awaited<ReturnType<typeof requireOrgContext>>
     b2b_sources,
   };
 
-  if (!await LIMITS.leadDiscovery(ctx.org.id)) {
-    return errorResponse("Lead discovery rate limit exceeded — max 10 runs/hour", 429);
-  }
-
-  if (!withinLimit(ctx.org.usage_leads_mo, ctx.org.limits_leads_mo)) {
-    return errorResponse(`Monthly lead limit reached (${ctx.org.limits_leads_mo}). Upgrade your plan.`, 402);
-  }
+  const discoveryLimit = await guardLeadDiscoveryUsage(ctx);
+  if (discoveryLimit) return discoveryLimit;
 
   const runId = generateId();
   const db = getSupabaseServiceClient();
