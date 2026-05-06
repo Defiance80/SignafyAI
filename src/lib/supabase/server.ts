@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import type { OrgContext } from "./types";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -60,13 +61,58 @@ export async function getOrgContext(request: Request): Promise<OrgContext | null
     return DEMO_ORG_CONTEXT;
   }
 
-  // Production: resolve from Clerk JWT → look up org membership
-  // TODO: wire Clerk auth() here when Clerk is activated
-  // const { userId } = auth();
-  // if (!userId) return null;
-  // ... look up org_members record ...
+  const { userId } = await auth();
+  if (!userId) return null;
 
-  return null;
+  const db = getSupabaseServiceClient();
+  if (!db) return null;
+
+  const isSuperAdmin = isSuperAdminUser(userId);
+
+  // Ensure user exists (Clerk webhooks should create it, but don't rely on it)
+  const { data: existingUser } = await db
+    .from("users")
+    .select("id, clerk_id, email")
+    .eq("clerk_id", userId)
+    .maybeSingle();
+
+  const supaUserId = existingUser?.id ?? await upsertUserFromClerk(db, userId);
+  if (!supaUserId) return null;
+
+  // Resolve org membership (pick most recent membership if multiple)
+  const { data: member, error: memberErr } = await db
+    .from("org_members")
+    .select("org_id, role")
+    .eq("user_id", supaUserId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (memberErr) return null;
+
+  // If no membership exists (edge case), create a default org + membership.
+  let orgId = member?.org_id as string | undefined;
+  let role = (member?.role as OrgContext["role"] | undefined) ?? "member";
+  if (!orgId) {
+    const created = await ensureDefaultOrg(db, supaUserId, userId);
+    if (!created) return null;
+    orgId = created.orgId;
+    role = created.role;
+  }
+
+  const { data: org, error: orgErr } = await db
+    .from("organizations")
+    .select("*")
+    .eq("id", orgId)
+    .single();
+  if (orgErr || !org) return null;
+
+  return {
+    org,
+    userId,
+    role,
+    isSuperAdmin,
+  };
 }
 
 /** Convenience wrapper — throws a 401 Response if not authenticated. */
@@ -79,4 +125,89 @@ export async function requireOrgContext(request: Request): Promise<OrgContext> {
     });
   }
   return ctx;
+}
+
+function isSuperAdminUser(clerkUserId: string): boolean {
+  const raw = process.env.SUPER_ADMIN_CLERK_IDS ?? "";
+  const ids = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  return ids.includes(clerkUserId);
+}
+
+async function upsertUserFromClerk(db: SupabaseClient, clerkUserId: string): Promise<string | null> {
+  try {
+    const user = await clerkClient.users.getUser(clerkUserId);
+    const email = user.emailAddresses?.[0]?.emailAddress ?? "";
+    const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || null;
+    const avatarUrl = user.imageUrl ?? null;
+
+    const { data, error } = await db
+      .from("users")
+      .upsert(
+        {
+          clerk_id: clerkUserId,
+          email,
+          full_name: fullName,
+          avatar_url: avatarUrl,
+        },
+        { onConflict: "clerk_id" }
+      )
+      .select("id")
+      .single();
+
+    if (error) return null;
+    return data?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function ensureDefaultOrg(
+  db: SupabaseClient,
+  supaUserId: string,
+  clerkUserId: string
+): Promise<{ orgId: string; role: OrgContext["role"] } | null> {
+  // Create org name/slug based on Clerk user if possible.
+  let name = "My Workspace";
+  let slugSeed = `user-${clerkUserId.slice(0, 8)}`;
+  try {
+    const user = await clerkClient.users.getUser(clerkUserId);
+    const email = user.emailAddresses?.[0]?.emailAddress ?? "";
+    const firstName = user.firstName ?? "";
+    name = `${firstName || email || "My"} Workspace`;
+    slugSeed = (email.split("@")[0] || slugSeed).toLowerCase().replace(/[^a-z0-9]/g, "-");
+  } catch {
+    // ignore
+  }
+
+  const { data: org, error: orgErr } = await db
+    .from("organizations")
+    .insert({
+      name,
+      slug: `${slugSeed}-${Date.now()}`,
+      owner_id: supaUserId,
+      plan: "starter",
+      subscription_status: "trialing",
+      limits_leads_mo: 100,
+      limits_content_mo: 50,
+    })
+    .select("id")
+    .single();
+  if (orgErr || !org) return null;
+
+  const { error: memErr } = await db.from("org_members").insert({
+    org_id: org.id,
+    user_id: supaUserId,
+    role: "owner",
+  });
+  if (memErr) return null;
+
+  // Default voice (optional best-effort)
+  await db.from("brand_voices").insert({
+    org_id: org.id,
+    name: "Default",
+    tone: "professional",
+    is_default: true,
+  });
+
+  return { orgId: org.id, role: "owner" };
 }

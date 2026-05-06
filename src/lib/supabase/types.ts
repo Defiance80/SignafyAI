@@ -279,4 +279,6 @@ export interface OrgContext {
   org: Organization;
   userId: string;
   role: OrgRole;
+  /** Super admin can bypass plan gates/limits for testing. */
+  isSuperAdmin?: boolean;
 }
