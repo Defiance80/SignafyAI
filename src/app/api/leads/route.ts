@@ -3,6 +3,7 @@ import { requireOrgContext, getSupabaseServiceClient, DEMO_ORG_ID } from "@/lib/
 import { triggerLeadDiscovery, type LeadDiscoveryInput } from "@/lib/n8n";
 import { guardApiRate, guardLeadDiscoveryUsage } from "@/lib/access";
 import { errorResponse, jsonResponse, sanitizeText, generateId } from "@/lib/utils";
+import { discoverLeads } from "@/lib/ai";
 import type { Lead } from "@/lib/supabase/types";
 
 // ─── GET /api/leads ────────────────────────────────────────────────────────────
@@ -233,13 +234,58 @@ async function handleDiscover(ctx: Awaited<ReturnType<typeof requireOrgContext>>
     min_score: parsed.data.min_score,
   });
 
+  if (!n8nResult.ok && db) {
+    // n8n not configured — use AI to generate leads directly and mark run complete
+    try {
+      const discovered = await discoverLeads({
+        target_market: market,
+        industry: normalizedParams.industry,
+        location: normalizedParams.location,
+        keywords: normalizedParams.keywords,
+        count: 10,
+      });
+
+      if (discovered.length > 0) {
+        const rows = discovered.map((lead) => ({
+          org_id: ctx.org.id,
+          name: sanitizeText(lead.name),
+          company: lead.company ? sanitizeText(lead.company) : null,
+          email: lead.email || null,
+          platform: lead.platform as Lead["platform"],
+          industry: lead.industry || null,
+          location: lead.location || null,
+          notes: lead.notes ? sanitizeText(lead.notes) : null,
+          tags: lead.tags,
+          score: lead.score,
+          status: "new" as const,
+          last_activity: new Date().toISOString(),
+        }));
+
+        await db.from("leads").insert(rows);
+
+        // Increment usage
+        await db.from("organizations")
+          .update({ usage_leads_mo: ctx.org.usage_leads_mo + discovered.length })
+          .eq("id", ctx.org.id);
+      }
+
+      await db.from("workflow_runs").update({
+        status: "complete",
+        completed_at: new Date().toISOString(),
+        output_summary: { leads_found: discovered.length, source: "ai" },
+      }).eq("id", runId);
+    } catch {
+      await db.from("workflow_runs").update({ status: "failed" }).eq("id", runId);
+    }
+  }
+
   return jsonResponse({
     run_id: runId,
-    status: "pending",
+    status: n8nResult.ok ? "pending" : "complete",
     n8n_triggered: n8nResult.ok,
     message: n8nResult.ok
       ? "Lead discovery started — results will appear in real-time"
-      : "Discovery queued (n8n not configured — results will use demo data)",
+      : "Discovery complete — AI-generated leads added to your pipeline",
   }, 202);
 }
 

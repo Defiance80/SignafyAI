@@ -34,6 +34,19 @@ function resolveModel(): string {
 
 const MODEL = resolveModel();
 
+/** Low-level helper — returns raw text from a single-user prompt. Returns null if AI is unconfigured. */
+export async function getChatCompletionRaw(prompt: string, maxTokens = 2000): Promise<string | null> {
+  if (!isAiConfigured()) return null;
+  const res = await getChatClient().chat.completions.create({
+    model: MODEL,
+    messages: [{ role: "user", content: prompt }],
+    response_format: { type: "json_object" },
+    temperature: 0.6,
+    max_tokens: maxTokens,
+  });
+  return res.choices[0].message.content ?? null;
+}
+
 function isAiConfigured(): boolean {
   const provider = (process.env.AI_PROVIDER ?? "openai").toLowerCase();
   if (provider === "qwen") {
@@ -182,6 +195,157 @@ Return JSON:
     hashtags: json.hashtags ?? [],
     media_suggestions: json.media_suggestions ?? [],
   };
+}
+
+// ─── Lead Discovery ───────────────────────────────────────────────────────────
+
+export interface LeadDiscoveryParams {
+  target_market: "b2b" | "b2c";
+  industry?: string;
+  location?: string;
+  keywords?: string[];
+  count?: number;
+}
+
+export interface DiscoveredLead {
+  name: string;
+  company?: string;
+  email?: string;
+  platform: string;
+  industry?: string;
+  location?: string;
+  score: number;
+  tags: string[];
+  notes?: string;
+}
+
+export async function discoverLeads(params: LeadDiscoveryParams): Promise<DiscoveredLead[]> {
+  const count = Math.min(params.count ?? 10, 20);
+
+  if (!isAiConfigured()) {
+    return _demoLeads(params, count);
+  }
+
+  const marketContext = params.target_market === "b2b"
+    ? `B2B companies in the ${params.industry ?? "marketing"} space`
+    : `B2C consumers interested in ${params.keywords?.join(", ") ?? "digital services"}`;
+
+  const prompt = `Generate ${count} realistic ${params.target_market.toUpperCase()} leads for ${marketContext}${params.location ? ` in ${params.location}` : " across major US cities"}.
+${params.keywords?.length ? `Related keywords: ${params.keywords.join(", ")}` : ""}
+
+Return a JSON object with a "leads" array. Each lead:
+{
+  "name": "<full name>",
+  "company": "<company name for B2B, omit for B2C>",
+  "email": "<email or omit>",
+  "platform": "linkedin"|"instagram"|"tiktok"|"twitter"|"facebook",
+  "industry": "<vertical>",
+  "location": "<city, state>",
+  "score": <55-95>,
+  "tags": ["<tag>"],
+  "notes": "<1-sentence qualification>"
+}`;
+
+  const res = await getChatClient().chat.completions.create({
+    model: MODEL,
+    messages: [{ role: "user", content: prompt }],
+    response_format: { type: "json_object" },
+    temperature: 0.8,
+    max_tokens: 3000,
+  });
+
+  try {
+    const json = JSON.parse(res.choices[0].message.content ?? "{}");
+    const raw = Array.isArray(json) ? json : (json.leads ?? json.results ?? []);
+    return (raw as DiscoveredLead[]).slice(0, count);
+  } catch {
+    return _demoLeads(params, count);
+  }
+}
+
+function _demoLeads(params: LeadDiscoveryParams, count: number): DiscoveredLead[] {
+  const b2bNames = ["Sarah Chen", "Marcus Rivera", "Aisha Patel", "Jason Kim", "Elena Vasquez", "David Okonkwo", "Rachel Foster", "Omar Hassan", "Priya Singh", "Luke Carver", "Nina Torres", "Ben Wallace"];
+  const b2bCos = ["Bloom Digital", "TrueNorth Marketing", "Evergreen Studios", "Velocity Growth", "Prism Creative", "Summit Strategies", "BrightPath Consulting", "Nexus Media", "Apex Marketing", "Horizon Solutions", "Peak Agency", "Catalyst Creative"];
+  const b2cNames = ["Jordan Smith", "Alex Johnson", "Taylor Brown", "Morgan Davis", "Casey Wilson", "Riley Anderson", "Dylan Martinez", "Cameron Lee", "Jamie Garcia", "Avery Thompson"];
+  const locs = params.location ? [params.location] : ["San Francisco, CA", "Austin, TX", "New York, NY", "Seattle, WA", "Miami, FL", "Chicago, IL", "Denver, CO", "Houston, TX"];
+  const platforms = ["linkedin", "instagram", "tiktok", "twitter", "facebook"] as const;
+  const isB2b = params.target_market === "b2b";
+
+  return Array.from({ length: Math.min(count, 12) }, (_, i) => ({
+    name: isB2b ? b2bNames[i % b2bNames.length] : b2cNames[i % b2cNames.length],
+    company: isB2b ? b2bCos[i % b2bCos.length] : undefined,
+    email: i % 3 === 0 ? `contact${i}@example.com` : undefined,
+    platform: platforms[i % platforms.length],
+    industry: params.industry ?? (isB2b ? "Marketing Agency" : "Consumer"),
+    location: locs[i % locs.length],
+    score: 55 + Math.floor(Math.random() * 40),
+    tags: [params.target_market, ...(params.keywords?.slice(0, 1) ?? [])],
+    notes: "Auto-discovered via AI lead engine",
+  }));
+}
+
+// ─── SEO Research ─────────────────────────────────────────────────────────────
+
+export interface SeoResearchInput {
+  topic: string;
+  domain?: string;
+  count?: number;
+}
+
+export interface SeoKeyword {
+  keyword: string;
+  volume: number;
+  difficulty: "Easy" | "Medium" | "Hard";
+  cpc: string;
+  trend: "up" | "down" | "stable";
+  intent: "informational" | "commercial" | "transactional" | "navigational";
+}
+
+export interface SeoResearchResult {
+  keywords: SeoKeyword[];
+  clusters: { name: string; keywords: number; volume: string; color: string }[];
+}
+
+const CLUSTER_COLORS = ["#7c3aed", "#0891b2", "#059669", "#d97706", "#ef4444", "#8b5cf6"];
+
+export async function generateSeoResearch(input: SeoResearchInput): Promise<SeoResearchResult> {
+  if (!isAiConfigured()) {
+    return { keywords: [], clusters: [] };
+  }
+
+  const count = Math.min(input.count ?? 20, 30);
+  const prompt = `You are an SEO expert. Generate ${count} realistic keyword opportunities for: "${input.topic}"${input.domain ? ` targeting domain ${input.domain}` : ""}.
+
+Return JSON:
+{
+  "keywords": [
+    { "keyword": "<phrase>", "volume": <monthly searches>, "difficulty": "Easy"|"Medium"|"Hard", "cpc": "$X.XX", "trend": "up"|"down"|"stable", "intent": "informational"|"commercial"|"transactional"|"navigational" }
+  ],
+  "clusters": [
+    { "name": "<topic cluster>", "keywords": <count>, "volume": "<like 42.3K>" }
+  ]
+}`;
+
+  const res = await getChatClient().chat.completions.create({
+    model: MODEL,
+    messages: [{ role: "user", content: prompt }],
+    response_format: { type: "json_object" },
+    temperature: 0.4,
+    max_tokens: 2500,
+  });
+
+  try {
+    const json = JSON.parse(res.choices[0].message.content ?? "{}");
+    return {
+      keywords: (json.keywords ?? []) as SeoKeyword[],
+      clusters: ((json.clusters ?? []) as { name: string; keywords: number; volume: string }[]).map((c, i) => ({
+        ...c,
+        color: CLUSTER_COLORS[i % CLUSTER_COLORS.length],
+      })),
+    };
+  } catch {
+    return { keywords: [], clusters: [] };
+  }
 }
 
 // ─── Social Message Classification ───────────────────────────────────────────

@@ -6,28 +6,52 @@ const NAV_LINKS = ["Features", "Pricing", "Docs", "Blog"];
 
 const MODULES = [
   {
-    icon: "🎯",
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="9" r="5" stroke="currentColor" strokeWidth="1.6"/>
+        <path d="M4 24c0-5.523 4.477-9 10-9s10 3.477 10 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+        <circle cx="22" cy="8" r="3" stroke="currentColor" strokeWidth="1.4"/>
+        <path d="M19 16c1-.4 2.5-.5 3.5 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      </svg>
+    ),
     title: "Lead Generation",
     desc: "Find, score, and enrich prospects across industries. Filter by niche, city, intent, and source. Export ready-to-act lead lists.",
     color: "#7c3aed",
     stats: "2,847 leads found",
   },
   {
-    icon: "✍️",
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect x="3" y="3" width="22" height="22" rx="3.5" stroke="currentColor" strokeWidth="1.6"/>
+        <path d="M8 10h12M8 14h9M8 18h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+        <path d="M22 10l-3 4 3 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" strokeOpacity="0.5"/>
+      </svg>
+    ),
     title: "Content Engine",
     desc: "Generate on-brand captions, video hooks, and posts for all 6 platforms in one click — guided by your brand voice profile.",
     color: "#0891b2",
     stats: "184 posts created",
   },
   {
-    icon: "💬",
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <path d="M24 13c0 5.523-4.477 8.5-10 8.5a12.4 12.4 0 0 1-4-.64L4 23l1.4-4.9A8.3 8.3 0 0 1 4 13C4 7.477 8.477 4 14 4s10 3.477 10 9z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
+        <path d="M10 13h8M10 10h5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      </svg>
+    ),
     title: "Social Inbox",
     desc: "Classify inbound comments by intent. Get brand-matched reply drafts. Approve, edit, or escalate — full control over every response.",
     color: "#059669",
     stats: "943 replies handled",
   },
   {
-    icon: "📈",
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <path d="M4 20l5.5-6 4.5 4 5-8 5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+        <circle cx="21" cy="10" r="3" stroke="currentColor" strokeWidth="1.4"/>
+        <path d="M4 24h20" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeOpacity="0.4"/>
+      </svg>
+    ),
     title: "SEO Lab",
     desc: "Generate keyword clusters with intent mapping, local SEO combos, FAQ ideas, metadata, and landing page content briefs.",
     color: "#d97706",
@@ -37,35 +61,43 @@ const MODULES = [
 
 const FEATURES = [
   { title: "Multi-Tenant Architecture", desc: "Each client brand is fully isolated. Perfect for agencies managing multiple accounts." },
-  { title: "n8n Automation Backend", desc: "All heavy processing runs on your self-hosted n8n instance. You own the automation." },
+  { title: "AI-Powered Lead Discovery", desc: "Generate qualified leads from any niche with our AI engine — no n8n required." },
   { title: "Brand Voice Engine", desc: "Define tone, vocabulary, CTA style, and paste examples. Every output sounds like you." },
-  { title: "Real-Time Job Status", desc: "Supabase Realtime pushes updates as your automation workflows complete." },
-  { title: "Role-Based Access", desc: "Admin, owner, member, and viewer roles with full permission enforcement." },
-  { title: "Campaign Calendar", desc: "Schedule, stagger, and manage content across all channels from one view." },
+  { title: "Backlink Discovery", desc: "Find high-DA link building opportunities in your niche. Auto-draft outreach emails." },
+  { title: "Role-Based Access", desc: "Customer, vendor, and staff accounts with full permission enforcement." },
+  { title: "Stripe Billing", desc: "Subscription management built-in. Plans, upgrades, portal — all connected." },
 ];
 
 const PLANS = [
   {
+    name: "Free",
+    price: "$0",
+    desc: "Explore at your own pace",
+    features: ["25 leads/mo", "10 content pieces/mo", "Basic analytics", "Manual lead entry", "1 brand voice"],
+    cta: "Get started free",
+    highlight: false,
+  },
+  {
     name: "Starter",
     price: "$49",
-    desc: "Perfect for solo consultants",
-    features: ["1 brand workspace", "500 leads/mo", "100 content generations", "2 social accounts", "Email support"],
+    desc: "For growing teams ready to automate",
+    features: ["100 leads/mo", "50 content pieces/mo", "Lead discovery automation", "Full analytics dashboard", "3 brand voices", "Campaign management"],
     cta: "Start free trial",
     highlight: false,
   },
   {
     name: "Pro",
     price: "$149",
-    desc: "For growing teams",
-    features: ["5 brand workspaces", "2,500 leads/mo", "500 content generations", "10 social accounts", "Priority support", "Campaign calendar"],
+    desc: "Built for agencies running at scale",
+    features: ["500 leads/mo", "200 content pieces/mo", "Priority lead discovery", "SEO research suite", "Backlink discovery", "Social inbox + AI replies", "10 brand voices"],
     cta: "Start free trial",
     highlight: true,
   },
   {
     name: "Agency",
     price: "$399",
-    desc: "For agencies at scale",
-    features: ["Unlimited workspaces", "10,000 leads/mo", "Unlimited content", "Unlimited social accounts", "Dedicated support", "Admin panel", "Custom workflows"],
+    desc: "Maximum scale, everything included",
+    features: ["5,000 leads/mo", "1,000 content pieces/mo", "All Pro features", "Unlimited brand voices", "Dedicated onboarding", "Priority support"],
     cta: "Contact sales",
     highlight: false,
   },
@@ -284,7 +316,7 @@ export default function LandingPage() {
                 }}
               />
               <div className="relative">
-                <div className="text-3xl mb-5">{mod.icon}</div>
+                <div className="mb-5 p-2.5 rounded-xl w-fit" style={{ background: `${mod.color}15`, color: mod.color }}>{mod.icon}</div>
                 <h3
                   className="text-lg font-bold mb-3"
                   style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}
@@ -360,7 +392,7 @@ export default function LandingPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
           {PLANS.map((plan) => (
             <div
               key={plan.name}
@@ -452,7 +484,13 @@ export default function LandingPage() {
             }}
           />
           <div className="relative">
-            <div className="text-4xl mb-6">🚀</div>
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ background: "rgba(124,58,237,0.15)", color: "#a78bfa" }}>
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                <path d="M14 4C14 4 20 7 22 14C22 14 19 12 14 12C9 12 6 14 6 14C8 7 14 4 14 4Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
+                <path d="M14 12v12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                <path d="M10 20l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
             <h2
               className="text-3xl sm:text-4xl font-bold mb-4"
               style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}
