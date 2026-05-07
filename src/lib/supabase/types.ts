@@ -1,6 +1,21 @@
-export type Plan = "starter" | "pro" | "agency";
+export type Plan = "free" | "starter" | "pro" | "agency";
+export type AccountType = "customer" | "vendor" | "staff";
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled" | "paused";
 export type OrgRole = "owner" | "admin" | "member" | "viewer";
+
+export const PLAN_LIMITS: Record<Plan, { leads_mo: number; content_mo: number }> = {
+  free:    { leads_mo: 25,   content_mo: 10 },
+  starter: { leads_mo: 100,  content_mo: 50 },
+  pro:     { leads_mo: 500,  content_mo: 200 },
+  agency:  { leads_mo: 5000, content_mo: 1000 },
+};
+
+export const PLAN_PRICES: Record<Plan, number> = {
+  free:    0,
+  starter: 49,
+  pro:     149,
+  agency:  399,
+};
 export type LeadStatus = "new" | "contacted" | "qualified" | "converted" | "lost";
 export type LeadPlatform = "instagram" | "linkedin" | "tiktok" | "twitter" | "facebook" | "google" | "manual";
 export type ContentType = "blog_post" | "social_caption" | "email_sequence" | "ad_copy" | "video_script";
@@ -34,6 +49,7 @@ export interface User {
   email: string;
   full_name: string | null;
   avatar_url: string | null;
+  account_type: AccountType;
   notification_prefs: Record<string, boolean> | null;
   created_at: string;
 }

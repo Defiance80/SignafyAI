@@ -41,50 +41,19 @@ export async function POST(request: Request) {
     const lastName = (data.last_name as string) ?? "";
     const avatarUrl = (data.image_url as string) ?? null;
 
+    // Sync user record. account_type defaults to "customer" — staff/vendor are
+    // set explicitly by admins. Org creation happens in the onboarding flow.
     const { error } = await db.from("users").upsert({
       clerk_id: clerkId,
       email,
       full_name: `${firstName} ${lastName}`.trim() || null,
       avatar_url: avatarUrl,
+      ...(type === "user.created" ? { account_type: "customer" } : {}),
     }, { onConflict: "clerk_id" });
 
     if (error) {
       console.error("[clerk-webhook] upsert user failed:", error.message);
       return errorResponse("Failed to sync user", 500);
-    }
-
-    // On new user creation, create a default org + membership
-    if (type === "user.created") {
-      const slug = email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "-");
-      const { data: user } = await db.from("users").select("id").eq("clerk_id", clerkId).single();
-
-      if (user) {
-        const { data: org } = await db.from("organizations").insert({
-          name: `${firstName || email}'s Workspace`,
-          slug: `${slug}-${Date.now()}`,
-          owner_id: user.id,
-          plan: "starter",
-          subscription_status: "trialing",
-          limits_leads_mo: 100,   // Starter limits
-          limits_content_mo: 50,
-        }).select().single();
-
-        if (org) {
-          await db.from("org_members").insert({
-            org_id: org.id,
-            user_id: user.id,
-            role: "owner",
-          });
-
-          // Create default brand voice
-          await db.from("brand_voices").insert({
-            org_id: org.id,
-            name: "Default",
-            tone: "professional",
-            is_default: true,
-          });
-        }
-      }
     }
   }
 

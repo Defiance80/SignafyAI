@@ -1,7 +1,8 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { auth, clerkClient } from "@clerk/nextjs/server";
-import type { OrgContext } from "./types";
+import type { OrgContext, Plan } from "./types";
+import { PLAN_LIMITS } from "./types";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -30,10 +31,10 @@ export const DEMO_USER_ID = "00000000-0000-0000-0000-000000000002";
 export const DEMO_ORG_CONTEXT: OrgContext = {
   org: {
     id: DEMO_ORG_ID,
-    name: "Acme Agency",
+    name: "Acme Agency (Demo)",
     slug: "acme-agency",
     owner_id: DEMO_USER_ID,
-    plan: "pro",
+    plan: "pro", // Demo always shows Pro features
     stripe_customer_id: null,
     stripe_subscription_id: null,
     subscription_status: "active",
@@ -90,15 +91,11 @@ export async function getOrgContext(request: Request): Promise<OrgContext | null
 
   if (memberErr) return null;
 
-  // If no membership exists (edge case), create a default org + membership.
-  let orgId = member?.org_id as string | undefined;
-  let role = (member?.role as OrgContext["role"] | undefined) ?? "member";
-  if (!orgId) {
-    const created = await ensureDefaultOrg(db, supaUserId, userId);
-    if (!created) return null;
-    orgId = created.orgId;
-    role = created.role;
-  }
+  // No membership → user hasn't completed onboarding yet
+  if (!member) return null;
+
+  const orgId = member.org_id as string;
+  const role = (member.role as OrgContext["role"]) ?? "member";
 
   const { data: org, error: orgErr } = await db
     .from("organizations")
@@ -162,24 +159,31 @@ async function upsertUserFromClerk(db: SupabaseClient, clerkUserId: string): Pro
   }
 }
 
-async function ensureDefaultOrg(
-  db: SupabaseClient,
+/**
+ * Creates an org for a user during onboarding. Called by the onboarding server action.
+ * Sets the signafy_org_id cookie so middleware is satisfied.
+ */
+export async function createOrgForUser(
   supaUserId: string,
-  clerkUserId: string
-): Promise<{ orgId: string; role: OrgContext["role"] } | null> {
-  // Create org name/slug based on Clerk user if possible.
-  let name = "My Workspace";
+  clerkUserId: string,
+  plan: Plan = "free",
+  orgName?: string,
+): Promise<string | null> {
+  const db = getSupabaseServiceClient();
+  if (!db) return null;
+
+  let name = orgName ?? "My Workspace";
   let slugSeed = `user-${clerkUserId.slice(0, 8)}`;
   try {
     const c = await clerkClient();
     const user = await c.users.getUser(clerkUserId);
     const email = user.emailAddresses?.[0]?.emailAddress ?? "";
     const firstName = user.firstName ?? "";
-    name = `${firstName || email || "My"} Workspace`;
+    if (!orgName) name = `${firstName || email.split("@")[0] || "My"} Workspace`;
     slugSeed = (email.split("@")[0] || slugSeed).toLowerCase().replace(/[^a-z0-9]/g, "-");
-  } catch {
-    // ignore
-  }
+  } catch { /* ignore */ }
+
+  const limits = PLAN_LIMITS[plan];
 
   const { data: org, error: orgErr } = await db
     .from("organizations")
@@ -187,10 +191,10 @@ async function ensureDefaultOrg(
       name,
       slug: `${slugSeed}-${Date.now()}`,
       owner_id: supaUserId,
-      plan: "starter",
-      subscription_status: "trialing",
-      limits_leads_mo: 100,
-      limits_content_mo: 50,
+      plan,
+      subscription_status: plan === "free" ? "active" : "trialing",
+      limits_leads_mo: limits.leads_mo,
+      limits_content_mo: limits.content_mo,
     })
     .select("id")
     .single();
@@ -203,7 +207,6 @@ async function ensureDefaultOrg(
   });
   if (memErr) return null;
 
-  // Default voice (optional best-effort)
   await db.from("brand_voices").insert({
     org_id: org.id,
     name: "Default",
@@ -211,5 +214,14 @@ async function ensureDefaultOrg(
     is_default: true,
   });
 
-  return { orgId: org.id, role: "owner" };
+  return org.id;
+}
+
+/** Finds or creates the Supabase user record for a Clerk user. */
+export async function resolveSupabaseUser(clerkUserId: string): Promise<string | null> {
+  const db = getSupabaseServiceClient();
+  if (!db) return null;
+  const { data: existing } = await db.from("users").select("id").eq("clerk_id", clerkUserId).maybeSingle();
+  if (existing) return existing.id;
+  return upsertUserFromClerk(db, clerkUserId);
 }
