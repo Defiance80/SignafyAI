@@ -7,6 +7,8 @@ import { createOrgForUser, resolveSupabaseUser, getSupabaseServiceClient } from 
 import { createCheckoutSession } from "@/lib/stripe";
 import type { Plan } from "@/lib/supabase/types";
 
+type AccountType = "customer" | "vendor" | "staff";
+
 const COOKIE_OPTS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
@@ -30,11 +32,18 @@ async function alreadyOnboarded(clerkUserId: string): Promise<string | null> {
   return member?.org_id ?? null;
 }
 
+async function saveAccountType(db: ReturnType<typeof getSupabaseServiceClient>, clerkUserId: string, accountType: AccountType) {
+  if (!db) return;
+  // Attempt to set account_type — silently ignored if column doesn't exist yet
+  try {
+    await db.from("users").update({ account_type: accountType }).eq("clerk_id", clerkUserId);
+  } catch { /* column may not exist if migration pending */ }
+}
+
 /** Complete onboarding with the free plan — creates org, sets cookie, redirects. */
-export async function chooseFreeAction() {
+export async function chooseFreeAction(accountType: AccountType = "customer") {
   const clerkUserId = await getClerkUser();
 
-  // Idempotent: if they already have an org, just set the cookie and continue
   const existingOrgId = await alreadyOnboarded(clerkUserId);
   if (existingOrgId) {
     const jar = await cookies();
@@ -45,6 +54,9 @@ export async function chooseFreeAction() {
   const supaUserId = await resolveSupabaseUser(clerkUserId);
   if (!supaUserId) throw new Error("Failed to resolve user record");
 
+  const db = getSupabaseServiceClient();
+  await saveAccountType(db, clerkUserId, accountType);
+
   const orgId = await createOrgForUser(supaUserId, clerkUserId, "free");
   if (!orgId) throw new Error("Failed to create workspace");
 
@@ -54,7 +66,7 @@ export async function chooseFreeAction() {
 }
 
 /** Start a paid plan — creates org (trialing), returns Stripe checkout URL. */
-export async function choosePaidAction(plan: Exclude<Plan, "free">): Promise<{ url: string }> {
+export async function choosePaidAction(plan: Exclude<Plan, "free">, accountType: AccountType = "customer"): Promise<{ url: string }> {
   const clerkUserId = await getClerkUser();
 
   const existingOrgId = await alreadyOnboarded(clerkUserId);
@@ -67,15 +79,15 @@ export async function choosePaidAction(plan: Exclude<Plan, "free">): Promise<{ u
   const supaUserId = await resolveSupabaseUser(clerkUserId);
   if (!supaUserId) throw new Error("Failed to resolve user record");
 
-  // Create org in trialing state — Stripe webhook activates it on payment
+  const db = getSupabaseServiceClient();
+  await saveAccountType(db, clerkUserId, accountType);
+
   const orgId = await createOrgForUser(supaUserId, clerkUserId, plan);
   if (!orgId) throw new Error("Failed to create workspace");
 
-  // Set org cookie now so the user lands on dashboard after Stripe redirects back
   const jar = await cookies();
   jar.set("signafy_org_id", orgId, COOKIE_OPTS);
 
-  const db = getSupabaseServiceClient();
   const { data: user } = await db!.from("users").select("email").eq("id", supaUserId).single();
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -88,7 +100,6 @@ export async function choosePaidAction(plan: Exclude<Plan, "free">): Promise<{ u
   );
 
   if (!session) {
-    // Stripe not configured — activate immediately (dev/staging only)
     return { url: "/dashboard?welcome=1" };
   }
 
