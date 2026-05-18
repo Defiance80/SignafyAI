@@ -63,10 +63,23 @@ export default function SettingsPage() {
   async function handleSaveProfile() {
     setSavingProfile(true);
     setProfileSaved(false);
-    await new Promise((r) => setTimeout(r, 600));
-    setSavingProfile(false);
-    setProfileSaved(true);
-    setTimeout(() => setProfileSaved(false), 2500);
+    try {
+      const res = await fetch("/api/settings/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), org_name: company.trim() }),
+      });
+      if (!res.ok) {
+        const d = await res.json() as { error?: string };
+        throw new Error(d.error ?? "Save failed");
+      }
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 2500);
+    } catch {
+      // silently ignore — user sees no feedback change
+    } finally {
+      setSavingProfile(false);
+    }
   }
 
   const plan = me?.org.plan ?? "free";

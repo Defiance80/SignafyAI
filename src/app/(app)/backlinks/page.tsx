@@ -47,6 +47,7 @@ export default function BacklinksPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [requesting, setRequesting] = useState<string | null>(null);
+  const [requested, setRequested] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch("/api/backlinks")
@@ -82,10 +83,23 @@ export default function BacklinksPage() {
 
   async function handleRequest(opp: Opportunity) {
     setRequesting(opp.site_url);
-    await new Promise((r) => setTimeout(r, 800));
-    // In production, this would create a vendor request or email draft
-    alert(`Outreach drafted to ${opp.contact_email ?? opp.site_url}. Check your email drafts to send.`);
-    setRequesting(null);
+    try {
+      await fetch("/api/backlinks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "request",
+          site_name: opp.site_name,
+          site_url: opp.site_url,
+          contact_email: opp.contact_email,
+          domain_authority: opp.domain_authority,
+          link_type: opp.type,
+        }),
+      });
+      setRequested((prev) => new Set([...prev, opp.site_url]));
+    } catch { /* silently ignore */ } finally {
+      setRequesting(null);
+    }
   }
 
   const liveCount = backlinks.filter((b) => b.status === "live").length;
@@ -219,11 +233,13 @@ export default function BacklinksPage() {
                     </div>
                     <button
                       onClick={() => handleRequest(opp)}
-                      disabled={requesting === opp.site_url}
+                      disabled={requesting === opp.site_url || requested.has(opp.site_url)}
                       className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex-shrink-0 disabled:opacity-60"
-                      style={{ background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.25)", color: "#a78bfa" }}
+                      style={requested.has(opp.site_url)
+                        ? { background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.25)", color: "#34d399" }
+                        : { background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.25)", color: "#a78bfa" }}
                     >
-                      {requesting === opp.site_url ? "Drafting…" : "Request Link"}
+                      {requesting === opp.site_url ? "Saving…" : requested.has(opp.site_url) ? "Requested ✓" : "Request Link"}
                     </button>
                   </div>
                 ))}

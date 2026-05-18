@@ -10,6 +10,15 @@ const DiscoverSchema = z.object({
   niche: z.string().max(100).optional(),
 });
 
+const RequestSchema = z.object({
+  action: z.literal("request"),
+  site_name: z.string().min(1).max(200),
+  site_url: z.string().url(),
+  contact_email: z.string().email().optional().or(z.literal("")),
+  domain_authority: z.number().int().min(0).max(100).optional(),
+  link_type: z.string().max(50).optional(),
+});
+
 const AddSchema = z.object({
   url: z.string().url(),
   target_url: z.string().url(),
@@ -46,8 +55,12 @@ export async function POST(request: Request) {
     return errorResponse("Invalid JSON", 400);
   }
 
-  if (typeof body === "object" && body !== null && (body as Record<string, unknown>).action === "discover") {
+  const action = (body as Record<string, unknown>).action;
+  if (typeof body === "object" && body !== null && action === "discover") {
     return handleDiscover(ctx, body);
+  }
+  if (typeof body === "object" && body !== null && action === "request") {
+    return handleRequest(ctx, body);
   }
 
   const parsed = AddSchema.safeParse(body);
@@ -61,6 +74,31 @@ export async function POST(request: Request) {
   const { data, error } = await db.from("backlinks").insert({
     org_id: ctx.org.id,
     ...parsed.data,
+  }).select().single();
+
+  if (error) return errorResponse(error.message, 500);
+  return jsonResponse(data, 201);
+}
+
+async function handleRequest(ctx: Awaited<ReturnType<typeof requireOrgContext>>, body: unknown) {
+  const parsed = RequestSchema.safeParse(body);
+  if (!parsed.success) return errorResponse(parsed.error.issues.map(i => i.message).join(", "), 422);
+
+  const { site_name, site_url, contact_email, domain_authority, link_type } = parsed.data;
+  const db = getSupabaseServiceClient();
+
+  if (!db) {
+    return jsonResponse({ id: generateId(), org_id: ctx.org.id, url: site_url, target_url: site_url, anchor_text: site_name, domain_authority, status: "pending", created_at: new Date().toISOString() }, 201);
+  }
+
+  const { data, error } = await db.from("backlinks").insert({
+    org_id: ctx.org.id,
+    url: site_url,
+    target_url: site_url,
+    anchor_text: site_name,
+    domain_authority,
+    status: "pending",
+    notes: contact_email ? `Contact: ${contact_email}${link_type ? ` · Type: ${link_type}` : ""}` : undefined,
   }).select().single();
 
   if (error) return errorResponse(error.message, 500);

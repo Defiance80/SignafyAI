@@ -124,11 +124,20 @@ export default function SocialPage() {
   async function handleGenerateReply() {
     if (!msg) return;
     setIsGenerating(true);
-    // Use the classify endpoint (or generate via content API)
-    await new Promise((r) => setTimeout(r, 1500)); // graceful fallback with a small delay
+    try {
+      const res = await fetch(`/api/social/messages/${msg.id}/generate-reply`, { method: "POST" });
+      if (res.ok) {
+        const d = await res.json() as { reply?: string };
+        if (d.reply) {
+          setMessages((prev) => prev.map((m, i) => i === selected ? { ...m, ai_reply: d.reply! } : m));
+          return;
+        }
+      }
+    } catch { /* fall through to local fallback */ } finally {
+      setIsGenerating(false);
+    }
     const fallback = `Hi ${msg.author_name.split(" ")[0]}! Thanks for reaching out.\n\nWe'd love to connect and learn more about what you're working on. Feel free to share more details or suggest a time to chat!`;
     setMessages((prev) => prev.map((m, i) => i === selected ? { ...m, ai_reply: fallback } : m));
-    setIsGenerating(false);
   }
 
   return (
