@@ -61,6 +61,8 @@ export interface LeadDiscoveryInput {
   platforms?: string[];
   keywords?: string[];
   min_score?: number;
+  count?: number;
+  user_email?: string;
   callback_url: string;
 }
 

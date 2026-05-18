@@ -1,0 +1,453 @@
+{
+  "name": "SignafyAI — Lead Generation (Apify + Airtable + Email)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "lead-discovery",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "sf000001-0000-4000-8000-000000000001",
+      "name": "Receive Lead Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 460],
+      "webhookId": "signafy-lead-discovery"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "run_id",
+              "value": "={{ $json.body.run_id ?? $json.run_id ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "org_id",
+              "value": "={{ $json.body.org_id ?? $json.org_id ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "lead_type",
+              "value": "={{ ($json.body.target_market ?? $json.target_market ?? 'b2b').toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "f4",
+              "name": "industry",
+              "value": "={{ $json.body.industry ?? $json.industry ?? 'businesses' }}",
+              "type": "string"
+            },
+            {
+              "id": "f5",
+              "name": "location",
+              "value": "={{ $json.body.location ?? $json.location ?? 'United States' }}",
+              "type": "string"
+            },
+            {
+              "id": "f6",
+              "name": "keywords",
+              "value": "={{ ($json.body.keywords ?? $json.keywords ?? []).join(' ') }}",
+              "type": "string"
+            },
+            {
+              "id": "f7",
+              "name": "count",
+              "value": "={{ Math.min(Number($json.body.count ?? $json.count ?? 25), 50) }}",
+              "type": "number"
+            },
+            {
+              "id": "f8",
+              "name": "user_email",
+              "value": "={{ $json.body.user_email ?? $json.user_email ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "f9",
+              "name": "callback_url",
+              "value": "={{ $json.body.callback_url ?? $json.callback_url ?? '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sf000001-0000-4000-8000-000000000002",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [480, 460]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.lead_type }}",
+              "rightValue": "b2b",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "sf000001-0000-4000-8000-000000000003",
+      "name": "Route by Lead Type",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [720, 460]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build Apify Google Maps Scraper request body for B2B\n// Docs: https://apify.com/apify/google-maps-scraper\nconst item = $input.first().json;\nconst queryParts = [item.industry, 'in', item.location];\nif (item.keywords && item.keywords.trim()) queryParts.push(item.keywords.trim());\nconst query = queryParts.join(' ');\n\nreturn [{\n  json: {\n    ...item,\n    apify_body: JSON.stringify({\n      searchStringsArray: [query],\n      maxCrawledPlacesPerSearch: item.count,\n      language: 'en',\n      maxImages: 0,\n      maxReviews: 0,\n      includeHistograms: false,\n      includeOpeningHours: false,\n      scrapeContacts: true\n    })\n  }\n}];"
+      },
+      "id": "sf000001-0000-4000-8000-000000000004",
+      "name": "Build B2B Apify Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 260]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build Apify Yelp Scraper request body for B2C\n// Docs: https://apify.com/yin/yelp-scraper\nconst item = $input.first().json;\nconst searchTerm = [item.industry, item.keywords].filter(Boolean).join(' ').trim() || item.industry;\n\nreturn [{\n  json: {\n    ...item,\n    apify_body: JSON.stringify({\n      search: searchTerm,\n      location: item.location,\n      searchLimit: item.count,\n      reviewLimit: 0,\n      scrapeReviews: false\n    })\n  }\n}];"
+      },
+      "id": "sf000001-0000-4000-8000-000000000005",
+      "name": "Build B2C Apify Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 660]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.apify.com/v2/acts/apify~google-maps-scraper/run-sync-get-dataset-items?token={{ $env.APIFY_TOKEN }}&timeout=180&memory=512",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.apify_body }}",
+        "options": {
+          "timeout": 200000,
+          "response": {
+            "response": { "neverError": true, "responseFormat": "json" }
+          }
+        }
+      },
+      "id": "sf000001-0000-4000-8000-000000000006",
+      "name": "Scrape B2B — Google Maps",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 260]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.apify.com/v2/acts/yin~yelp-scraper/run-sync-get-dataset-items?token={{ $env.APIFY_TOKEN }}&timeout=180&memory=512",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.apify_body }}",
+        "options": {
+          "timeout": 200000,
+          "response": {
+            "response": { "neverError": true, "responseFormat": "json" }
+          }
+        }
+      },
+      "id": "sf000001-0000-4000-8000-000000000007",
+      "name": "Scrape B2C — Yelp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 660]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize Google Maps B2B results into SignafyAI lead schema\nconst rawInput = $input.all();\nconst meta = $('Parse Input').first().json;\n\n// Handle both: single item with array body, OR multiple items\nlet rawLeads;\nif (rawInput.length === 1 && Array.isArray(rawInput[0].json)) {\n  rawLeads = rawInput[0].json;\n} else if (rawInput.length === 1 && rawInput[0].json && Array.isArray(rawInput[0].json.items)) {\n  rawLeads = rawInput[0].json.items;\n} else {\n  rawLeads = rawInput.map(i => i.json).filter(Boolean);\n}\n\nrawLeads = rawLeads.slice(0, meta.count || 25);\n\nfunction extractZip(str) {\n  if (!str) return '';\n  const m = str.match(/\\b\\d{5}(?:-\\d{4})?\\b/);\n  return m ? m[0] : '';\n}\n\nfunction formatPhone(phone) {\n  if (!phone) return '';\n  const d = phone.replace(/\\D/g, '');\n  if (d.length === 10) return '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6);\n  if (d.length === 11 && d[0] === '1') return '(' + d.slice(1,4) + ') ' + d.slice(4,7) + '-' + d.slice(7);\n  return phone;\n}\n\nfunction extractDomain(website) {\n  if (!website) return '';\n  return website.replace(/^https?:\\/\\//, '').split('/')[0].replace(/^www\\./, '');\n}\n\nconst now = new Date().toISOString();\n\nreturn rawLeads.map((d, idx) => {\n  const businessName = d.title || d.name || '';\n  const zip = d.postalCode || extractZip(d.address || '');\n  const phone = formatPhone(d.phone || d.phoneUnformatted || '');\n  const website = d.website || '';\n\n  // Extract owner name if present\n  let firstName = '', lastName = '';\n  const ownerRaw = d.ownerName || d.people?.[0]?.name || '';\n  if (ownerRaw && ownerRaw.trim()) {\n    const parts = ownerRaw.trim().split(/\\s+/);\n    if (parts.length >= 2) {\n      firstName = parts[0];\n      lastName = parts.slice(1).join(' ');\n    }\n  }\n\n  // Emails sometimes returned by Google Maps scraper\n  const emailRaw = (d.emails && d.emails[0]) || '';\n\n  const score = Math.min(90, 50\n    + Math.floor((d.reviewsCount || 0) / 10)\n    + (phone ? 10 : 0)\n    + (website ? 5 : 0)\n    + (emailRaw ? 15 : 0)\n  );\n\n  return {\n    json: {\n      id: 'apify-gmaps-' + Date.now() + '-' + idx,\n      first_name: firstName,\n      last_name: lastName,\n      name: (firstName && lastName) ? firstName + ' ' + lastName : businessName,\n      company: businessName,\n      email: emailRaw,\n      phone: phone,\n      zip: zip,\n      website: website,\n      domain: extractDomain(website),\n      source: 'Google Maps',\n      full_address: d.address || '',\n      platform: 'google',\n      lead_type: meta.lead_type || 'b2b',\n      industry: meta.industry,\n      location: meta.location,\n      score: score,\n      status: 'new',\n      tags: ['b2b', 'scraped', 'google-maps'],\n      notes: d.categoryName ? 'Category: ' + d.categoryName : null,\n      // Carry metadata through\n      run_id: meta.run_id,\n      org_id: meta.org_id,\n      user_email: meta.user_email,\n      callback_url: meta.callback_url,\n      last_activity: now,\n      created_at: now,\n      updated_at: now\n    }\n  };\n});"
+      },
+      "id": "sf000001-0000-4000-8000-000000000008",
+      "name": "Normalize B2B Leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 260]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize Yelp B2C results into SignafyAI lead schema\nconst rawInput = $input.all();\nconst meta = $('Parse Input').first().json;\n\nlet rawLeads;\nif (rawInput.length === 1 && Array.isArray(rawInput[0].json)) {\n  rawLeads = rawInput[0].json;\n} else if (rawInput.length === 1 && rawInput[0].json && Array.isArray(rawInput[0].json.items)) {\n  rawLeads = rawInput[0].json.items;\n} else {\n  rawLeads = rawInput.map(i => i.json).filter(Boolean);\n}\n\nrawLeads = rawLeads.slice(0, meta.count || 25);\n\nfunction extractZip(str) {\n  if (!str) return '';\n  const m = str.match(/\\b\\d{5}(?:-\\d{4})?\\b/);\n  return m ? m[0] : '';\n}\n\nfunction formatPhone(phone) {\n  if (!phone) return '';\n  const d = phone.replace(/\\D/g, '');\n  if (d.length === 10) return '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6);\n  if (d.length === 11 && d[0] === '1') return '(' + d.slice(1,4) + ') ' + d.slice(4,7) + '-' + d.slice(7);\n  return phone;\n}\n\nconst now = new Date().toISOString();\n\nreturn rawLeads.map((d, idx) => {\n  const businessName = d.name || d.title || '';\n  const zip = d.postalCode || d.zip || extractZip(d.fullAddress || d.address || '');\n  const phone = formatPhone(d.phone || '');\n  const website = d.website || d.url || '';\n\n  // Owner name (Yelp sometimes exposes this)\n  let firstName = '', lastName = '';\n  const ownerRaw = d.ownerName || (d.businessOwner && d.businessOwner.name) || '';\n  if (ownerRaw && ownerRaw.trim()) {\n    const parts = ownerRaw.trim().split(/\\s+/);\n    if (parts.length >= 2) {\n      firstName = parts[0];\n      lastName = parts.slice(1).join(' ');\n    }\n  }\n\n  const categories = Array.isArray(d.categories)\n    ? d.categories.map(c => (typeof c === 'string' ? c : c.title || c.alias || '')).filter(Boolean).join(', ')\n    : (typeof d.categories === 'string' ? d.categories : '');\n\n  const score = Math.min(90, 50\n    + Math.floor((d.reviewCount || d.reviewsCount || 0) / 20)\n    + (phone ? 10 : 0)\n  );\n\n  const notes = [];\n  if (d.rating) notes.push('Yelp: ' + d.rating + '★ (' + (d.reviewCount || 0) + ' reviews)');\n  if (categories) notes.push('Categories: ' + categories);\n\n  return {\n    json: {\n      id: 'apify-yelp-' + Date.now() + '-' + idx,\n      first_name: firstName,\n      last_name: lastName,\n      name: (firstName && lastName) ? firstName + ' ' + lastName : businessName,\n      company: businessName,\n      email: '',\n      phone: phone,\n      zip: zip,\n      website: website,\n      domain: website.replace(/^https?:\\/\\//, '').split('/')[0].replace(/^www\\./, ''),\n      source: 'Yelp',\n      full_address: d.fullAddress || d.address || '',\n      platform: 'google',\n      lead_type: meta.lead_type || 'b2c',\n      industry: categories || meta.industry,\n      location: meta.location,\n      score: score,\n      status: 'new',\n      tags: ['b2c', 'scraped', 'yelp'],\n      notes: notes.length ? notes.join(' | ') : null,\n      // Carry metadata through\n      run_id: meta.run_id,\n      org_id: meta.org_id,\n      user_email: meta.user_email,\n      callback_url: meta.callback_url,\n      last_activity: now,\n      created_at: now,\n      updated_at: now\n    }\n  };\n});"
+      },
+      "id": "sf000001-0000-4000-8000-000000000009",
+      "name": "Normalize B2C Leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 660]
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "sf000001-0000-4000-8000-000000000010",
+      "name": "Merge Leads",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1680, 460]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Build Airtable create-record body for this single lead item\nconst l = $input.item.json;\nreturn {\n  json: {\n    ...l,\n    airtable_body: JSON.stringify({\n      records: [{\n        fields: {\n          'First Name': l.first_name || '',\n          'Last Name': l.last_name || '',\n          'Full Name': l.name || '',\n          'Company': l.company || '',\n          'Email': l.email || '',\n          'Phone': l.phone || '',\n          'Zip Code': l.zip || '',\n          'Website': l.website || '',\n          'Full Address': l.full_address || '',\n          'Source': l.source || '',\n          'Lead Type': (l.lead_type || '').toUpperCase(),\n          'Industry': l.industry || '',\n          'Location': l.location || '',\n          'Status': 'New',\n          'Score': l.score || 50,\n          'Notes': l.notes || '',\n          'Date Added': new Date().toISOString().split('T')[0],\n          'Tags': (l.tags || []).join(', ')\n        }\n      }]\n    })\n  }\n};"
+      },
+      "id": "sf000001-0000-4000-8000-000000000011",
+      "name": "Build Airtable Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1920, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.airtable.com/v0/{{ $env.AIRTABLE_BASE_ID }}/{{ $env.AIRTABLE_TABLE_NAME ?? 'Leads' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.AIRTABLE_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.airtable_body }}",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": { "neverError": true, "responseFormat": "json" }
+          }
+        }
+      },
+      "id": "sf000001-0000-4000-8000-000000000012",
+      "name": "Create Airtable Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2160, 460]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Aggregate all leads, compute HMAC, build email HTML, prepare callback payload\nconst crypto = require('crypto');\nconst secret = process.env.N8N_HMAC_SECRET || 'dev-secret';\n\nconst all = $input.all();\nconst leads = all.map(i => i.json);\n\nif (leads.length === 0) {\n  throw new Error('No leads were scraped. Verify Apify actor IDs, API token, and search criteria.');\n}\n\nconst meta = leads[0];\nconst callbackUrl = meta.callback_url || '';\nconst runId = meta.run_id || '';\nconst orgId = meta.org_id || '';\nconst userEmail = meta.user_email || '';\nconst leadType = (meta.lead_type || 'b2b').toUpperCase();\n\n// Build SignafyAI-compatible lead objects\nconst signafyLeads = leads.map(l => ({\n  id: l.id,\n  org_id: orgId,\n  name: l.name,\n  company: l.company || null,\n  email: l.email || null,\n  phone: l.phone || null,\n  platform: l.platform || 'google',\n  source_url: null,\n  industry: l.industry || null,\n  location: l.location || null,\n  notes: l.notes || null,\n  tags: l.tags || [],\n  score: l.score || 50,\n  status: 'new',\n  last_activity: new Date().toISOString(),\n  created_at: new Date().toISOString(),\n  updated_at: new Date().toISOString()\n}));\n\n// Callback payload\nconst callbackPayload = JSON.stringify({\n  run_id: runId,\n  workflow_type: 'lead_discovery',\n  status: 'complete',\n  org_id: orgId,\n  leads: signafyLeads,\n  output: { leads_found: signafyLeads.length, source: 'apify' }\n});\n\nconst signature = crypto.createHmac('sha256', secret).update(callbackPayload).digest('hex');\n\n// Build email HTML\nconst tableRows = leads.map(l => {\n  const name = [l.first_name, l.last_name].filter(Boolean).join(' ') || l.name || '—';\n  const emailLink = l.email\n    ? '<a href=\"mailto:' + l.email + '\" style=\"color:#7c3aed;text-decoration:none;\">' + l.email + '</a>'\n    : '—';\n  return '<tr style=\"border-bottom:1px solid #f3f4f6;\">' +\n    '<td style=\"padding:10px 14px;color:#111827;font-size:13px;\">' + name + '</td>' +\n    '<td style=\"padding:10px 14px;color:#374151;font-size:13px;\">' + (l.company || '—') + '</td>' +\n    '<td style=\"padding:10px 14px;font-size:13px;\">' + emailLink + '</td>' +\n    '<td style=\"padding:10px 14px;color:#374151;font-size:13px;\">' + (l.phone || '—') + '</td>' +\n    '<td style=\"padding:10px 14px;color:#374151;font-size:13px;\">' + (l.zip || '—') + '</td>' +\n    '<td style=\"padding:10px 14px;color:#374151;font-size:13px;\">' + (l.source || '—') + '</td>' +\n    '</tr>';\n}).join('');\n\nconst emailHtml = '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"></head>' +\n  '<body style=\"font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica Neue,Arial,sans-serif;background:#f3f4f6;padding:32px 16px;margin:0;\">' +\n  '<div style=\"max-width:900px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);\">' +\n  '<div style=\"background:linear-gradient(135deg,#7c3aed 0%,#4f46e5 100%);padding:32px 40px;\">' +\n  '<img src=\"https://signafy-ai.vercel.app/logo.png\" alt=\"SignafyAI\" style=\"height:32px;margin-bottom:20px;\" onerror=\"this.style.display=\\'none\\'\"/>' +\n  '<h1 style=\"margin:0;font-size:24px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;\">Your Leads Are Ready</h1>' +\n  '<p style=\"margin:8px 0 0;font-size:14px;color:rgba(255,255,255,.8);\">' + leads.length + ' ' + leadType + ' leads scraped and imported to your dashboard</p>' +\n  '</div>' +\n  '<div style=\"padding:32px 40px;overflow-x:auto;\">' +\n  '<table style=\"width:100%;border-collapse:collapse;\">' +\n  '<thead><tr style=\"background:#f9fafb;\">' +\n  '<th style=\"text-align:left;padding:10px 14px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #e5e7eb;\">Name</th>' +\n  '<th style=\"text-align:left;padding:10px 14px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #e5e7eb;\">Company</th>' +\n  '<th style=\"text-align:left;padding:10px 14px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #e5e7eb;\">Email</th>' +\n  '<th style=\"text-align:left;padding:10px 14px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #e5e7eb;\">Phone</th>' +\n  '<th style=\"text-align:left;padding:10px 14px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #e5e7eb;\">Zip</th>' +\n  '<th style=\"text-align:left;padding:10px 14px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #e5e7eb;\">Source</th>' +\n  '</tr></thead>' +\n  '<tbody>' + tableRows + '</tbody>' +\n  '</table>' +\n  '</div>' +\n  '<div style=\"padding:24px 40px;background:#f9fafb;border-top:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;\">' +\n  '<p style=\"margin:0;font-size:12px;color:#9ca3af;\">Generated by <strong style=\"color:#374151;\">SignafyAI</strong></p>' +\n  '<a href=\"https://signafy-ai.vercel.app/leads\" style=\"display:inline-block;padding:10px 20px;background:#7c3aed;color:#fff;text-decoration:none;border-radius:8px;font-size:13px;font-weight:600;\">View in Dashboard →</a>' +\n  '</div>' +\n  '</div></body></html>';\n\nreturn [{\n  json: {\n    callback_url: callbackUrl,\n    callback_payload: callbackPayload,\n    signature: signature,\n    to_email: userEmail,\n    subject: '[SignafyAI] ' + leads.length + ' New ' + leadType + ' Leads Ready',\n    html: emailHtml,\n    run_id: runId,\n    leads_count: leads.length\n  }\n}];"
+      },
+      "id": "sf000001-0000-4000-8000-000000000013",
+      "name": "Aggregate + Build Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2400, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "X-Signature", "value": "={{ $json.signature }}" },
+            { "name": "X-API-Key", "value": "={{ $env.N8N_API_KEY ?? '' }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.callback_payload }}",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": { "neverError": true }
+          }
+        }
+      },
+      "id": "sf000001-0000-4000-8000-000000000014",
+      "name": "Post Callback to SignafyAI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2640, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.RESEND_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ from: $env.SIGNAFY_FROM_EMAIL ?? 'leads@signafy.ai', to: [$json.to_email], subject: $json.subject, html: $json.html }) }}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": { "neverError": true }
+          }
+        }
+      },
+      "id": "sf000001-0000-4000-8000-000000000015",
+      "name": "Send Email via Resend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2880, 460]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, run_id: $json.run_id, leads_found: $json.leads_count }) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [{ "name": "Content-Type", "value": "application/json" }]
+          }
+        }
+      },
+      "id": "sf000001-0000-4000-8000-000000000016",
+      "name": "Respond — Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [3120, 460]
+    },
+    {
+      "parameters": {},
+      "id": "sf000001-0000-4000-8000-000000000017",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 800]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build error callback payload for SignafyAI\nconst crypto = require('crypto');\nconst secret = process.env.N8N_HMAC_SECRET || 'dev-secret';\n\nconst errData = $input.first().json;\nconst runId = errData.execution?.customData?.run_id || '';\nconst orgId = errData.execution?.customData?.org_id || '';\nconst callbackUrl = errData.execution?.customData?.callback_url || process.env.SIGNAFY_CALLBACK_URL || '';\n\nconst payload = JSON.stringify({\n  run_id: runId,\n  workflow_type: 'lead_discovery',\n  status: 'failed',\n  org_id: orgId,\n  error_message: errData.error?.message || 'n8n workflow execution failed'\n});\n\nconst signature = crypto.createHmac('sha256', secret).update(payload).digest('hex');\n\nreturn [{ json: { callback_url: callbackUrl, payload, signature } }];"
+      },
+      "id": "sf000001-0000-4000-8000-000000000018",
+      "name": "Build Error Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 800]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "X-Signature", "value": "={{ $json.signature }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.payload }}",
+        "options": {
+          "timeout": 10000,
+          "response": { "response": { "neverError": true } }
+        }
+      },
+      "id": "sf000001-0000-4000-8000-000000000019",
+      "name": "Callback — Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 800]
+    }
+  ],
+  "connections": {
+    "Receive Lead Request": {
+      "main": [[{ "node": "Parse Input", "type": "main", "index": 0 }]]
+    },
+    "Parse Input": {
+      "main": [[{ "node": "Route by Lead Type", "type": "main", "index": 0 }]]
+    },
+    "Route by Lead Type": {
+      "main": [
+        [{ "node": "Build B2B Apify Body", "type": "main", "index": 0 }],
+        [{ "node": "Build B2C Apify Body", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build B2B Apify Body": {
+      "main": [[{ "node": "Scrape B2B — Google Maps", "type": "main", "index": 0 }]]
+    },
+    "Build B2C Apify Body": {
+      "main": [[{ "node": "Scrape B2C — Yelp", "type": "main", "index": 0 }]]
+    },
+    "Scrape B2B — Google Maps": {
+      "main": [[{ "node": "Normalize B2B Leads", "type": "main", "index": 0 }]]
+    },
+    "Scrape B2C — Yelp": {
+      "main": [[{ "node": "Normalize B2C Leads", "type": "main", "index": 0 }]]
+    },
+    "Normalize B2B Leads": {
+      "main": [[{ "node": "Merge Leads", "type": "main", "index": 0 }]]
+    },
+    "Normalize B2C Leads": {
+      "main": [[{ "node": "Merge Leads", "type": "main", "index": 1 }]]
+    },
+    "Merge Leads": {
+      "main": [[{ "node": "Build Airtable Record", "type": "main", "index": 0 }]]
+    },
+    "Build Airtable Record": {
+      "main": [[{ "node": "Create Airtable Record", "type": "main", "index": 0 }]]
+    },
+    "Create Airtable Record": {
+      "main": [[{ "node": "Aggregate + Build Payload", "type": "main", "index": 0 }]]
+    },
+    "Aggregate + Build Payload": {
+      "main": [[{ "node": "Post Callback to SignafyAI", "type": "main", "index": 0 }]]
+    },
+    "Post Callback to SignafyAI": {
+      "main": [[{ "node": "Send Email via Resend", "type": "main", "index": 0 }]]
+    },
+    "Send Email via Resend": {
+      "main": [[{ "node": "Respond — Success", "type": "main", "index": 0 }]]
+    },
+    "Error Trigger": {
+      "main": [[{ "node": "Build Error Payload", "type": "main", "index": 0 }]]
+    },
+    "Build Error Payload": {
+      "main": [[{ "node": "Callback — Failed", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "Error Trigger"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "signafy-lead-gen-v1"
+  }
+}

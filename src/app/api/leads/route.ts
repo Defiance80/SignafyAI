@@ -220,6 +220,18 @@ async function handleDiscover(ctx: Awaited<ReturnType<typeof requireOrgContext>>
 
   const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/n8n`;
 
+  // Fetch user email so n8n can send the lead list directly
+  let userEmail = "";
+  if (db && ctx.userId) {
+    const { data: userRow } = await db
+      .from("users")
+      .select("email")
+      .eq("clerk_id", ctx.userId)
+      .maybeSingle();
+    userEmail = userRow?.email ?? "";
+  }
+
+  const keywordsFlat = parsed.data.keywords ?? [];
   const n8nResult = await triggerLeadDiscovery({
     run_id: runId,
     org_id: ctx.org.id,
@@ -230,8 +242,10 @@ async function handleDiscover(ctx: Awaited<ReturnType<typeof requireOrgContext>>
     industry: parsed.data.industry,
     location: parsed.data.location,
     platforms: parsed.data.platforms,
-    keywords: parsed.data.keywords,
+    keywords: keywordsFlat,
     min_score: parsed.data.min_score,
+    count: 25,
+    user_email: userEmail,
   });
 
   if (!n8nResult.ok && db) {
