@@ -265,7 +265,7 @@ async function handleDiscover(ctx: Awaited<ReturnType<typeof requireOrgContext>>
     platforms: parsed.data.platforms,
     keywords: keywordsFlat,
     min_score: parsed.data.min_score,
-    count: 25,
+    count: 50,  // request 50 raw from Apify; score filter trims to quality results
     user_email: userEmail,
     // Agency mode
     client_service: parsed.data.client_service,
