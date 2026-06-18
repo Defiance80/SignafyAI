@@ -396,7 +396,7 @@ function AssetDrawer({ asset, onClose }: { asset: GeneratedAsset; onClose: () =>
 
 // ─── Discovery Modal ──────────────────────────────────────────────────────────
 
-function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunched: (runId: string, market: string) => void }) {
+function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunched: (runId: string, market: string, n8nTriggered: boolean) => void }) {
   const discover = useDiscoverLeads();
   const [targetMarket, setTargetMarket] = useState<"b2b" | "b2c" | "both">("b2b");
   const [targetDescription, setTargetDescription] = useState("");
@@ -427,7 +427,7 @@ function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunch
         for_client: forClient || undefined,
         save_config_name: saveName.trim() || undefined,
       });
-      onLaunched(result.run_id, result.target_market ?? targetMarket);
+      onLaunched(result.run_id, result.target_market ?? targetMarket, result.n8n_triggered ?? false);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Discovery failed");
@@ -1088,6 +1088,7 @@ export default function LeadsPage() {
   const [selectedAsset, setSelectedAsset] = useState<GeneratedAsset | null>(null);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [activeRunMarket, setActiveRunMarket] = useState<string>("");
+  const [discoveryWarning, setDiscoveryWarning] = useState<string | null>(null);
   const runPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Supabase Realtime: invalidate queries when new rows arrive ──────────────
@@ -1140,13 +1141,20 @@ export default function LeadsPage() {
     };
   }, [activeRunId, qc]);
 
-  function handleLaunched(runId: string, market: string) {
-    setActiveRunId(runId);
-    setActiveRunMarket(market);
+  function handleLaunched(runId: string, market: string, n8nTriggered: boolean) {
     // Auto-switch to the relevant tab
     if (market === "b2b") setActiveTab("prospects");
     else if (market === "b2c") setActiveTab("intent");
     else setActiveTab("prospects"); // "both" — start at prospects
+
+    if (!n8nTriggered) {
+      // n8n not reachable — show a one-time warning instead of an infinite spinner
+      setDiscoveryWarning("n8n automation is not connected — configure N8N_WEBHOOK_BASE_URL in Vercel to enable live discovery. Any AI-generated leads have been added.");
+      setTimeout(() => setDiscoveryWarning(null), 12_000);
+      return;
+    }
+    setActiveRunId(runId);
+    setActiveRunMarket(market);
   }
 
   // Stat summaries per tab
@@ -1203,6 +1211,17 @@ export default function LeadsPage() {
 
   return (
     <div className="p-5 sm:p-8 max-w-[1500px] mx-auto space-y-6">
+
+      {/* n8n not configured warning */}
+      {discoveryWarning && (
+        <div className="rounded-2xl px-5 py-4 animate-fade-up" style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.25)" }}>
+          <div className="flex items-center gap-3">
+            <span className="text-xl flex-shrink-0">⚠️</span>
+            <p className="text-sm flex-1" style={{ color: "#fbbf24" }}>{discoveryWarning}</p>
+            <button onClick={() => setDiscoveryWarning(null)} className="text-xs px-2 py-1 rounded-lg flex-shrink-0" style={{ color: "var(--color-text-muted)", background: "var(--color-surface)" }}>✕</button>
+          </div>
+        </div>
+      )}
 
       {/* Discovery running banner */}
       {activeRunId && (

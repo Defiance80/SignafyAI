@@ -676,6 +676,12 @@ BEGIN
   WHERE id = p_org_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+-- ─── 008: Businesses — add unique index on (org_id, name) ────────────────────
+-- Required for WF1 Supabase upsert using matchingColumns: ["org_id","name"]
+CREATE UNIQUE INDEX IF NOT EXISTS idx_businesses_org_name
+  ON businesses(org_id, name)
+  WHERE org_id IS NOT NULL;
+
 -- Allow free tier (used by Signafy onboarding)
 ALTER TABLE organizations DROP CONSTRAINT IF EXISTS organizations_plan_check;
 ALTER TABLE organizations ADD CONSTRAINT organizations_plan_check

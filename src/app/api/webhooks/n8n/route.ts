@@ -92,7 +92,7 @@ export async function POST(request: Request) {
           // Upsert on org_id + website to prevent dupes across runs
           await db
             .from("businesses")
-            .upsert(rows, { onConflict: "org_id,website", ignoreDuplicates: true });
+            .upsert(rows, { onConflict: "org_id,name", ignoreDuplicates: true });
 
           await db.rpc("increment_leads_usage", {
             p_org_id: body.org_id,

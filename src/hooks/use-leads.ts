@@ -113,7 +113,7 @@ export function useDiscoverLeads() {
         const err = await res.json();
         throw new Error(err.error ?? "Discovery failed");
       }
-      return res.json() as Promise<{ run_id: string; status: string; target_market: string; message: string }>;
+      return res.json() as Promise<{ run_id: string; status: string; n8n_triggered: boolean; target_market: string; message: string }>;
     },
     onSuccess: () => {
       // Refresh all panels after a short delay to pick up immediate results
