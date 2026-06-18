@@ -31,21 +31,21 @@
       "parameters": {
         "assignments": {
           "assignments": [
-            { "id": "s-run",       "name": "run_id",               "type": "string",  "value": "={{ $json.body.run_id }}" },
-            { "id": "s-org",       "name": "org_id",               "type": "string",  "value": "={{ $json.body.org_id }}" },
-            { "id": "s-cb",        "name": "callback_url",         "type": "string",  "value": "={{ $json.body.callback_url }}" },
-            { "id": "s-desc",      "name": "target_description",   "type": "string",  "value": "={{ $json.body.target_description || '' }}" },
-            { "id": "s-vertical",  "name": "b2b_vertical",         "type": "string",  "value": "={{ $json.body.b2b_vertical || '' }}" },
-            { "id": "s-sub",       "name": "insurance_sub_targets", "type": "string", "value": "={{ JSON.stringify($json.body.insurance_sub_targets || []) }}" },
-            { "id": "s-industry",  "name": "industry",             "type": "string",  "value": "={{ $json.body.industry || '' }}" },
-            { "id": "s-location",  "name": "location",             "type": "string",  "value": "={{ $json.body.location || '' }}" },
-            { "id": "s-keywords",  "name": "keywords",             "type": "string",  "value": "={{ JSON.stringify($json.body.keywords || []) }}" },
-            { "id": "s-min",       "name": "min_score",            "type": "number",  "value": "={{ $json.body.min_score || 40 }}" },
-            { "id": "s-count",     "name": "count",                "type": "number",  "value": "={{ $json.body.count || 50 }}" },
-            { "id": "s-email",     "name": "user_email",           "type": "string",  "value": "={{ $json.body.user_email || '' }}" },
-            { "id": "s-service",   "name": "client_service",       "type": "string",  "value": "={{ $json.body.client_service || '' }}" },
-            { "id": "s-agent",     "name": "for_client",           "type": "boolean", "value": "={{ $json.body.for_client === true }}" },
-            { "id": "s-lp",        "name": "generate_landing_page","type": "boolean", "value": "={{ $json.body.generate_landing_page === true }}" }
+            { "id": "s-run",       "name": "run_id",                "type": "string",  "value": "={{ $json.body.run_id }}" },
+            { "id": "s-org",       "name": "org_id",                "type": "string",  "value": "={{ $json.body.org_id }}" },
+            { "id": "s-cb",        "name": "callback_url",          "type": "string",  "value": "={{ $json.body.callback_url }}" },
+            { "id": "s-desc",      "name": "target_description",    "type": "string",  "value": "={{ $json.body.target_description || '' }}" },
+            { "id": "s-vertical",  "name": "b2b_vertical",          "type": "string",  "value": "={{ $json.body.b2b_vertical || '' }}" },
+            { "id": "s-sub",       "name": "insurance_sub_targets", "type": "string",  "value": "={{ JSON.stringify($json.body.insurance_sub_targets || []) }}" },
+            { "id": "s-industry",  "name": "industry",              "type": "string",  "value": "={{ $json.body.industry || '' }}" },
+            { "id": "s-location",  "name": "location",              "type": "string",  "value": "={{ $json.body.location || '' }}" },
+            { "id": "s-keywords",  "name": "keywords",              "type": "string",  "value": "={{ JSON.stringify($json.body.keywords || []) }}" },
+            { "id": "s-min",       "name": "min_score",             "type": "number",  "value": "={{ $json.body.min_score || 40 }}" },
+            { "id": "s-count",     "name": "count",                 "type": "number",  "value": "={{ $json.body.count || 50 }}" },
+            { "id": "s-email",     "name": "user_email",            "type": "string",  "value": "={{ $json.body.user_email || '' }}" },
+            { "id": "s-service",   "name": "client_service",        "type": "string",  "value": "={{ $json.body.client_service || '' }}" },
+            { "id": "s-agent",     "name": "for_client",            "type": "boolean", "value": "={{ $json.body.for_client === true }}" },
+            { "id": "s-lp",        "name": "generate_landing_page", "type": "boolean", "value": "={{ $json.body.generate_landing_page === true }}" }
           ]
         },
         "options": {}
@@ -58,12 +58,52 @@
     },
     {
       "parameters": {
-        "jsCode": "// Smart query builder — uses target_description as primary source,\n// vertical map as fallback. Outputs per_query_limit for Apify.\nconst data = $input.first().json;\nconst desc = (data.target_description || '').trim();\nconst vertical = data.b2b_vertical || '';\nconst explicitLocation = (data.location || '').trim();\nconst industry = (data.industry || '').trim();\nconst sub = JSON.parse(data.insurance_sub_targets || '[]');\nconst extraKeywords = JSON.parse(data.keywords || '[]');\nconst totalCount = data.count || 50;\n\n// ── TYPE_VARIATIONS: known business types → search term expansions ──────────\nconst TYPE_VARIATIONS = {\n  'medspa':           ['medspa', 'med spa', 'medical spa', 'aesthetic clinic', 'laser spa', 'beauty clinic'],\n  'med spa':          ['med spa', 'medspa', 'medical spa', 'aesthetic clinic', 'laser spa'],\n  'medical spa':      ['medical spa', 'medspa', 'med spa', 'aesthetic clinic', 'laser clinic'],\n  'medspa':           ['medspa', 'med spa', 'medical spa', 'aesthetic clinic', 'laser spa'],\n  'botox':            ['botox clinic', 'botox injections', 'cosmetic injections', 'medical aesthetics', 'medspa'],\n  'coolsculpting':    ['coolsculpting', 'body contouring', 'fat reduction clinic', 'medspa', 'aesthetic clinic'],\n  'chiropractor':     ['chiropractor', 'chiropractic clinic', 'chiropractic office', 'spine clinic', 'back pain clinic'],\n  'dentist':          ['dentist', 'dental office', 'dental clinic', 'cosmetic dentist', 'family dentist'],\n  'dental':           ['dental office', 'dentist', 'dental clinic', 'orthodontist', 'dental practice'],\n  'hvac':             ['HVAC contractor', 'air conditioning repair', 'heating and cooling', 'AC repair', 'HVAC company'],\n  'plumber':          ['plumber', 'plumbing company', 'plumbing contractor', 'drain service', 'emergency plumber'],\n  'plumbing':         ['plumbing company', 'plumber', 'plumbing contractor', 'drain cleaning'],\n  'roofing':          ['roofing contractor', 'roofer', 'roofing company', 'roof repair', 'roof replacement'],\n  'landscaping':      ['landscaping company', 'lawn care', 'landscape contractor', 'garden services'],\n  'marketing agency': ['marketing agency', 'digital marketing agency', 'social media agency', 'advertising agency', 'SEO agency'],\n  'marketing':        ['marketing agency', 'digital marketing agency', 'social media marketing', 'advertising agency'],\n  'real estate':      ['real estate agent', 'real estate broker', 'realtor', 'property management', 'real estate agency'],\n  'gym':              ['gym', 'fitness center', 'fitness studio', 'health club', 'crossfit gym'],\n  'fitness':          ['fitness center', 'gym', 'personal trainer', 'fitness studio', 'health club'],\n  'salon':            ['hair salon', 'beauty salon', 'nail salon', 'barbershop', 'hair studio'],\n  'spa':              ['day spa', 'spa', 'wellness spa', 'massage therapy', 'relaxation spa'],\n  'lawyer':           ['attorney', 'law firm', 'legal services', 'lawyer', 'law office'],\n  'attorney':         ['attorney', 'law firm', 'legal services', 'lawyer'],\n  'accountant':       ['accountant', 'CPA', 'accounting firm', 'tax preparation', 'bookkeeping'],\n  'insurance':        ['insurance agency', 'insurance broker', 'insurance agent', 'commercial insurance'],\n  'contractor':       ['general contractor', 'construction company', 'remodeling contractor', 'home contractor'],\n  'construction':     ['general contractor', 'construction company', 'building contractor', 'commercial construction'],\n  'cleaning':         ['cleaning service', 'house cleaning', 'commercial cleaning', 'janitorial service', 'maid service'],\n  'restaurant':       ['restaurant', 'dining', 'cafe', 'eatery', 'bistro'],\n  'staffing':         ['staffing agency', 'temp agency', 'recruiting firm', 'employment agency'],\n  'recruiting':       ['recruiting firm', 'staffing agency', 'executive search', 'headhunter', 'talent agency'],\n  'software':         ['software company', 'SaaS company', 'tech startup', 'software development', 'IT company'],\n  'saas':             ['SaaS company', 'software company', 'cloud software', 'B2B software'],\n  'physical therapy': ['physical therapy', 'PT clinic', 'rehabilitation center', 'sports medicine clinic'],\n  'chiropractic':     ['chiropractic clinic', 'chiropractor', 'chiropractic office', 'back pain specialist'],\n  'mortgage':         ['mortgage broker', 'mortgage lender', 'home loan', 'mortgage company'],\n  'financial':        ['financial advisor', 'financial planner', 'wealth management', 'investment advisor'],\n  'photography':      ['photographer', 'photography studio', 'wedding photographer', 'commercial photography'],\n  'trucking':         ['trucking company', 'freight company', 'logistics company', 'transportation company'],\n  'pest control':     ['pest control', 'exterminator', 'pest management', 'termite control']\n};\n\nlet queries = null;\nlet searchLocation = explicitLocation || 'United States';\n\n// ── PRIMARY: use target_description ─────────────────────────────────────────\nif (desc.length > 0) {\n  const d = desc.toLowerCase();\n\n  // Try to match a known business type from the description\n  const sortedKeys = Object.keys(TYPE_VARIATIONS).sort((a, b) => b.length - a.length);\n  for (const key of sortedKeys) {\n    if (d.includes(key)) {\n      queries = [...TYPE_VARIATIONS[key]];\n      break;\n    }\n  }\n\n  // If no known type matched, extract the core business phrase\n  // Strip location phrases like \"in Temecula\", \"near Phoenix\", \"around Austin\"\n  if (!queries) {\n    const stripped = desc\n      .replace(/\\b(in|near|around|at|within|close to)\\s+[A-Za-z\\s,]+?(\\.|,|$|\\s+(?:who|that|with|needing|looking|for))/gi, ' ')\n      .replace(/\\s+/g, ' ')\n      .trim();\n    const primaryTerm = stripped.split(/[,.]|\\s+(?:who|that|with|needing|looking|wanting|for their|to get)/i)[0].trim();\n    queries = [primaryTerm];\n    // Add industry as extra variation if it's different and short\n    if (industry && industry.toLowerCase() !== d && industry.length < 60) {\n      queries.push(industry);\n    }\n  }\n\n  // Extract location from description if no explicit location given\n  if (!explicitLocation) {\n    const locMatch = desc.match(/\\bin\\s+([A-Z][A-Za-z\\s]+?)(?:\\s*,\\s*[A-Z]{2})?(?=\\s*(?:who|that|with|needing|$))/i);\n    if (locMatch && locMatch[1]) {\n      const candidate = locMatch[1].trim();\n      if (candidate.length < 50) searchLocation = candidate;\n    }\n  }\n}\n\n// ── FALLBACK: vertical-based queries ────────────────────────────────────────\nif (!queries || queries.length === 0) {\n  const VERTICAL_QUERIES = {\n    marketing_agency:    ['marketing agency', 'digital marketing agency', 'social media agency', 'advertising agency', 'SEO agency', 'PPC agency'],\n    saas_software:       ['SaaS company', 'software company', 'tech startup', 'software development company', 'B2B software'],\n    business_consultant: ['business consultant', 'management consultant', 'business coach', 'strategy consultant'],\n    commercial_support:  ['commercial cleaning', 'janitorial services', 'facility management', 'commercial landscaping'],\n    recruiting_firm:     ['staffing agency', 'recruiting firm', 'executive search firm', 'talent acquisition'],\n    insurance_agency:    ['insurance agency', 'insurance broker', 'commercial insurance', 'business insurance']\n  };\n  queries = VERTICAL_QUERIES[vertical] || [industry || 'local business'];\n\n  if (vertical === 'insurance_agency' && sub.length > 0) {\n    queries = [];\n    if (sub.includes('construction'))  queries.push('general contractor', 'construction company', 'roofing contractor', 'electrical contractor');\n    if (sub.includes('medical'))       queries.push('medical office', 'dental office', 'healthcare clinic', 'physical therapy clinic');\n    if (sub.includes('manufacturing')) queries.push('manufacturing company', 'industrial manufacturer', 'metal fabrication');\n  }\n}\n\n// ── Mix in extra keywords and cap at 6 queries ───────────────────────────────\nif (extraKeywords.length > 0) {\n  queries = [...new Set([...queries, ...extraKeywords])];\n}\nqueries = queries.slice(0, 6);\n\n// ── Calculate per-query limit to hit the target count ─────────────────────\n// maxCrawledPlacesPerSearch is per search string — we want at least 20 per term\nconst perQueryLimit = Math.max(20, Math.ceil(totalCount / queries.length));\n\nreturn [{\n  json: {\n    ...data,\n    apify_queries: queries,\n    apify_location: searchLocation,\n    per_query_limit: perQueryLimit,\n    search_label: `${desc || vertical || industry} | ${searchLocation}`\n  }\n}];"
+        "text": "={{ $('Store Inputs').first().json.target_description || $('Store Inputs').first().json.industry || $('Store Inputs').first().json.b2b_vertical || '' }}",
+        "systemPromptTemplate": "You are an expert at understanding business targeting descriptions and converting them into effective Google Maps search terms. Be specific and practical. Return exactly the fields requested with no extra text.",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "search_terms",
+              "description": "A comma-separated list of 4-6 specific Google Maps search terms to find this business type. Use the most common names people search for on Google Maps. Examples — 'MedSpas in Temecula looking to grow patients': medspa,med spa,medical spa,aesthetic clinic,laser spa,beauty clinic | 'HVAC companies Phoenix': HVAC contractor,air conditioning company,heating and cooling,AC repair service | 'hair salons San Diego': hair salon,beauty salon,hair studio,barbershop,salon | 'law firms Chicago that need SEO': attorney,law firm,legal services,lawyer,law office",
+              "required": true
+            },
+            {
+              "name": "search_location",
+              "description": "The specific city, neighborhood, metro area, or region to search in. Extract directly from the description (e.g. 'Temecula CA', 'San Diego', 'Phoenix AZ', 'Austin Texas', 'Chicago IL'). If no specific location is mentioned, return 'United States'.",
+              "required": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ai-parse-description-wf1",
+      "name": "AI - Parse Target Description",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "position": [720, 300],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "model": { "__rl": true, "mode": "list", "value": "gpt-4.1-mini" },
+        "options": {}
+      },
+      "id": "gpt-query-builder-wf1",
+      "name": "GPT-4.1-mini (Query Builder)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [816, 460],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": { "id": "pcRo0Ru13Y38GX4e", "name": "Defiance OpenAi" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build Apify Queries v3 — AI-first, keyword-table fallback\n// AI - Parse Target Description runs first and extracts search_terms + search_location\nconst data = $('Store Inputs').first().json;\nconst totalCount = data.count || 50;\nconst explicitLocation = (data.location || '').trim();\nconst desc = (data.target_description || '').trim();\n\n// ── READ AI OUTPUT ────────────────────────────────────────────────────────────\nlet aiTerms = [];\nlet aiLocation = '';\ntry {\n  const aiOutput = $input.first().json.output || {};\n  if (aiOutput.search_terms) {\n    aiTerms = String(aiOutput.search_terms).split(',').map(s => s.trim()).filter(Boolean);\n  }\n  if (aiOutput.search_location) {\n    aiLocation = String(aiOutput.search_location).trim();\n  }\n} catch(e) { /* AI output unavailable, use fallback */ }\n\nlet queries = null;\nlet searchLocation = explicitLocation || aiLocation || 'United States';\n\n// ── PRIMARY: AI-extracted search terms (when user wrote a description) ────────\nif (desc.length > 0 && aiTerms.length > 0) {\n  queries = aiTerms;\n}\n\n// ── FALLBACK: TYPE_VARIATIONS keyword table ───────────────────────────────────\nif (!queries || queries.length === 0) {\n  const vertical = data.b2b_vertical || '';\n  const industry = (data.industry || '').trim();\n  const sub = JSON.parse(data.insurance_sub_targets || '[]');\n  const extraKeywords = JSON.parse(data.keywords || '[]');\n  const d = (desc || industry).toLowerCase();\n\n  const TYPE_VARIATIONS = {\n    'medspa':           ['medspa', 'med spa', 'medical spa', 'aesthetic clinic', 'laser spa', 'beauty clinic'],\n    'med spa':          ['med spa', 'medspa', 'medical spa', 'aesthetic clinic', 'laser spa'],\n    'medical spa':      ['medical spa', 'medspa', 'med spa', 'aesthetic clinic', 'laser clinic'],\n    'botox':            ['botox clinic', 'cosmetic injections', 'medical aesthetics', 'medspa'],\n    'coolsculpting':    ['coolsculpting', 'body contouring', 'fat reduction clinic', 'medspa'],\n    'chiropractor':     ['chiropractor', 'chiropractic clinic', 'chiropractic office', 'back pain clinic'],\n    'dentist':          ['dentist', 'dental office', 'dental clinic', 'cosmetic dentist', 'family dentist'],\n    'dental':           ['dental office', 'dentist', 'dental clinic', 'orthodontist', 'dental practice'],\n    'hvac':             ['HVAC contractor', 'air conditioning repair', 'heating and cooling', 'AC repair', 'HVAC company'],\n    'plumber':          ['plumber', 'plumbing company', 'plumbing contractor', 'drain service'],\n    'plumbing':         ['plumbing company', 'plumber', 'plumbing contractor', 'drain cleaning'],\n    'roofing':          ['roofing contractor', 'roofer', 'roofing company', 'roof repair'],\n    'landscaping':      ['landscaping company', 'lawn care', 'landscape contractor', 'garden services'],\n    'marketing agency': ['marketing agency', 'digital marketing agency', 'social media agency', 'advertising agency', 'SEO agency'],\n    'marketing':        ['marketing agency', 'digital marketing agency', 'social media marketing', 'advertising agency'],\n    'real estate':      ['real estate agent', 'real estate broker', 'realtor', 'property management'],\n    'gym':              ['gym', 'fitness center', 'fitness studio', 'health club', 'crossfit gym'],\n    'fitness':          ['fitness center', 'gym', 'personal trainer', 'fitness studio', 'health club'],\n    'salon':            ['hair salon', 'beauty salon', 'nail salon', 'barbershop', 'hair studio'],\n    'spa':              ['day spa', 'spa', 'wellness spa', 'massage therapy', 'relaxation spa'],\n    'lawyer':           ['attorney', 'law firm', 'legal services', 'lawyer', 'law office'],\n    'attorney':         ['attorney', 'law firm', 'legal services', 'lawyer'],\n    'accountant':       ['accountant', 'CPA', 'accounting firm', 'tax preparation', 'bookkeeping'],\n    'insurance':        ['insurance agency', 'insurance broker', 'insurance agent', 'commercial insurance'],\n    'contractor':       ['general contractor', 'construction company', 'remodeling contractor', 'home contractor'],\n    'construction':     ['general contractor', 'construction company', 'building contractor', 'commercial construction'],\n    'cleaning':         ['cleaning service', 'house cleaning', 'commercial cleaning', 'janitorial service'],\n    'restaurant':       ['restaurant', 'dining', 'cafe', 'eatery', 'bistro'],\n    'staffing':         ['staffing agency', 'temp agency', 'recruiting firm', 'employment agency'],\n    'recruiting':       ['recruiting firm', 'staffing agency', 'executive search', 'headhunter'],\n    'software':         ['software company', 'SaaS company', 'tech startup', 'software development'],\n    'saas':             ['SaaS company', 'software company', 'cloud software', 'B2B software'],\n    'physical therapy': ['physical therapy', 'PT clinic', 'rehabilitation center', 'sports medicine clinic'],\n    'chiropractic':     ['chiropractic clinic', 'chiropractor', 'chiropractic office', 'back pain specialist'],\n    'mortgage':         ['mortgage broker', 'mortgage lender', 'home loan', 'mortgage company'],\n    'financial':        ['financial advisor', 'financial planner', 'wealth management', 'investment advisor'],\n    'photography':      ['photographer', 'photography studio', 'wedding photographer', 'commercial photography'],\n    'trucking':         ['trucking company', 'freight company', 'logistics company', 'transportation company'],\n    'pest control':     ['pest control', 'exterminator', 'pest management', 'termite control']\n  };\n\n  const sortedKeys = Object.keys(TYPE_VARIATIONS).sort((a, b) => b.length - a.length);\n  for (const key of sortedKeys) {\n    if (d.includes(key)) {\n      queries = [...TYPE_VARIATIONS[key]];\n      break;\n    }\n  }\n\n  if (!queries || queries.length === 0) {\n    const VERTICAL_QUERIES = {\n      marketing_agency:    ['marketing agency', 'digital marketing agency', 'social media agency', 'advertising agency', 'SEO agency', 'PPC agency'],\n      saas_software:       ['SaaS company', 'software company', 'tech startup', 'software development company', 'B2B software'],\n      business_consultant: ['business consultant', 'management consultant', 'business coach', 'strategy consultant'],\n      commercial_support:  ['commercial cleaning', 'janitorial services', 'facility management', 'commercial landscaping'],\n      recruiting_firm:     ['staffing agency', 'recruiting firm', 'executive search firm', 'talent acquisition'],\n      insurance_agency:    ['insurance agency', 'insurance broker', 'commercial insurance', 'business insurance']\n    };\n    queries = VERTICAL_QUERIES[vertical] || [industry || 'local business'];\n\n    if (vertical === 'insurance_agency' && sub.length > 0) {\n      queries = [];\n      if (sub.includes('construction'))  queries.push('general contractor', 'construction company', 'roofing contractor', 'electrical contractor');\n      if (sub.includes('medical'))       queries.push('medical office', 'dental office', 'healthcare clinic', 'physical therapy clinic');\n      if (sub.includes('manufacturing')) queries.push('manufacturing company', 'industrial manufacturer', 'metal fabrication');\n    }\n  }\n\n  if (extraKeywords.length > 0) {\n    queries = [...new Set([...queries, ...extraKeywords])];\n  }\n\n  // Extract location from description text if AI didn't catch it\n  if (!searchLocation || searchLocation === 'United States') {\n    const locMatch = desc.match(/\\bin\\s+([A-Z][A-Za-z\\s]+?)(?:\\s*,\\s*[A-Z]{2})?(?=\\s*(?:who|that|with|needing|$))/i);\n    if (locMatch && locMatch[1] && locMatch[1].trim().length < 50) {\n      searchLocation = locMatch[1].trim();\n    }\n  }\n}\n\nqueries = (queries || ['local business']).slice(0, 6);\nconst perQueryLimit = Math.max(20, Math.ceil(totalCount / queries.length));\n\nreturn [{\n  json: {\n    ...data,\n    apify_queries: queries,\n    apify_location: searchLocation,\n    per_query_limit: perQueryLimit,\n    search_label: `${desc || data.b2b_vertical || data.industry} | ${searchLocation}`,\n    query_source: (desc.length > 0 && aiTerms.length > 0) ? 'ai' : 'keyword_table'\n  }\n}];"
       },
       "id": "build-queries-wf1",
       "name": "Build Apify Queries",
       "type": "n8n-nodes-base.code",
-      "position": [720, 300],
+      "position": [960, 300],
       "typeVersion": 2
     },
     {
@@ -77,17 +117,17 @@
       "id": "apify-places-wf1",
       "name": "Apify - Google Places",
       "type": "n8n-nodes-base.httpRequest",
-      "position": [960, 300],
+      "position": [1200, 300],
       "typeVersion": 4.2
     },
     {
       "parameters": {
-        "jsCode": "// Normalize Apify Google Places results into consistent business objects\nconst items = $input.all();\nconst inputs = $('Store Inputs').first().json;\n\nconst businesses = [];\n\nfor (const item of items) {\n  const place = item.json;\n  \n  // Skip if no name or not a real business\n  if (!place.title && !place.name) continue;\n  \n  const name = place.title || place.name || 'Unknown Business';\n  const website = place.website || place.url || null;\n  const email = place.emailAddress || place.email || null;\n  const phone = place.phoneNumber || place.phone || null;\n  const address = place.address || place.location?.address || null;\n  const rating = place.totalScore || place.rating || null;\n  const reviews = place.reviewsCount || place.reviewCount || place.userRatingsTotal || 0;\n  const category = (place.categories && place.categories[0]) || place.primaryType || inputs.b2b_vertical || null;\n  \n  businesses.push({\n    name,\n    website,\n    email,\n    phone,\n    address,\n    rating: rating ? parseFloat(rating) : null,\n    reviews: parseInt(reviews) || 0,\n    category,\n    industry: inputs.industry || inputs.b2b_vertical,\n    service: inputs.client_service || inputs.industry || inputs.b2b_vertical,\n    location: inputs.location,\n    raw_data: JSON.stringify(place).substring(0, 500)\n  });\n}\n\nif (businesses.length === 0) {\n  // Return a placeholder so workflow doesn't die empty\n  return [{ json: { __empty: true, reason: 'No businesses found in Apify response' } }];\n}\n\nreturn businesses.map(b => ({ json: b }));"
+        "jsCode": "// Normalize Apify Google Places results into consistent business objects\nconst items = $input.all();\nconst inputs = $('Store Inputs').first().json;\n\nconst businesses = [];\n\nfor (const item of items) {\n  const place = item.json;\n  \n  if (!place.title && !place.name) continue;\n  \n  const name = place.title || place.name || 'Unknown Business';\n  const website = place.website || place.url || null;\n  const email = place.emailAddress || place.email || null;\n  const phone = place.phoneNumber || place.phone || null;\n  const address = place.address || place.location?.address || null;\n  const rating = place.totalScore || place.rating || null;\n  const reviews = place.reviewsCount || place.reviewCount || place.userRatingsTotal || 0;\n  const category = (place.categories && place.categories[0]) || place.primaryType || inputs.b2b_vertical || null;\n  \n  businesses.push({\n    name,\n    website,\n    email,\n    phone,\n    address,\n    rating: rating ? parseFloat(rating) : null,\n    reviews: parseInt(reviews) || 0,\n    category,\n    industry: inputs.industry || inputs.b2b_vertical,\n    service: inputs.client_service || inputs.industry || inputs.b2b_vertical,\n    location: inputs.location,\n    raw_data: JSON.stringify(place).substring(0, 500)\n  });\n}\n\nif (businesses.length === 0) {\n  return [{ json: { __empty: true, reason: 'No businesses found in Apify response' } }];\n}\n\nreturn businesses.map(b => ({ json: b }));"
       },
       "id": "map-businesses-wf1",
       "name": "Map Business Fields",
       "type": "n8n-nodes-base.code",
-      "position": [1200, 300],
+      "position": [1440, 300],
       "typeVersion": 2
     },
     {
@@ -109,12 +149,12 @@
       "id": "filter-not-empty-wf1",
       "name": "Filter - Has Results",
       "type": "n8n-nodes-base.filter",
-      "position": [1440, 300],
+      "position": [1680, 300],
       "typeVersion": 2.2
     },
     {
       "parameters": {
-        "text": "=You are a B2B prospect intelligence analyst for Blue Wolf Solutions, a Customer Acquisition Agency.\n\nScore this business as a prospect for {{ $('Store Inputs').first().json.client_service || $('Store Inputs').first().json.b2b_vertical || 'our services' }}:\n\nBusiness: {{ $json.name }}\nCategory: {{ $json.category }}\nIndustry: {{ $json.industry }}\nLocation: {{ $json.location }}\nWebsite: {{ $json.website || 'No website' }}\nRating: {{ $json.rating || 'N/A' }} ({{ $json.reviews }} reviews)\n\nB2B Vertical Target: {{ $('Store Inputs').first().json.b2b_vertical }}\nFor Client? {{ $('Store Inputs').first().json.for_client }}\n\nAnalyze and provide:\n\n1. OPPORTUNITY_SCORE (0-100):\n   - 80-100: Premium prospect (ideal fit, likely to convert, active business)\n   - 60-79: Good prospect (reasonable fit, worth outreach)\n   - 40-59: Marginal (some fit, lower priority)\n   - 0-39: Poor fit (skip)\n\n2. WEAKNESSES: 2-3 key business weaknesses or gaps visible from their online presence (no website, low reviews, inconsistent branding, missing social proof, etc.)\n\n3. RECOMMENDED_OFFER: Specific service offer tailored to their weaknesses\n\n4. PITCH_ANGLE: One-sentence unique angle for cold outreach\n\n5. EMAIL_SUBJECT: Subject line for cold email (under 50 chars, avoid spam triggers)\n\n6. EMAIL_BODY: 4-sentence cold email body (personalized, value-first, not pushy)\n\nReturn ONLY valid JSON:\n{\n  \"opportunity_score\": 75,\n  \"weaknesses\": \"No website detected; only 12 reviews vs competitors with 200+; no social media presence\",\n  \"recommended_offer\": \"Done-for-you Google review generation + website audit\",\n  \"pitch_angle\": \"Your competitors are winning on Google with 10x the reviews — we can fix that in 30 days\",\n  \"email_subject\": \"Quick question about [Business Name]'s online visibility\",\n  \"email_body\": \"Hi [Name], I noticed [Business Name] has a strong category presence but only [X] Google reviews while competitors average [Y]. We help [vertical] businesses in [location] build credibility and attract more inbound clients through AI-powered reputation systems. Would a 15-minute call this week make sense? — [Your Name]\"\n}",
+        "text": "=You are a B2B prospect intelligence analyst for Blue Wolf Solutions, a Customer Acquisition Agency.\n\nScore this business as a prospect for {{ $('Store Inputs').first().json.client_service || $('Store Inputs').first().json.b2b_vertical || 'our services' }}:\n\nBusiness: {{ $json.name }}\nCategory: {{ $json.category }}\nIndustry: {{ $json.industry }}\nLocation: {{ $json.location }}\nWebsite: {{ $json.website || 'No website' }}\nRating: {{ $json.rating || 'N/A' }} ({{ $json.reviews }} reviews)\n\nTarget Description: {{ $('Store Inputs').first().json.target_description }}\nB2B Vertical Target: {{ $('Store Inputs').first().json.b2b_vertical }}\nFor Client? {{ $('Store Inputs').first().json.for_client }}\n\nAnalyze and provide:\n\n1. OPPORTUNITY_SCORE (0-100):\n   - 80-100: Premium prospect (ideal fit, likely to convert, active business)\n   - 60-79: Good prospect (reasonable fit, worth outreach)\n   - 40-59: Marginal (some fit, lower priority)\n   - 0-39: Poor fit (skip)\n\n2. WEAKNESSES: 2-3 key business weaknesses or gaps visible from their online presence\n\n3. RECOMMENDED_OFFER: Specific service offer tailored to their weaknesses\n\n4. PITCH_ANGLE: One-sentence unique angle for cold outreach\n\n5. EMAIL_SUBJECT: Subject line for cold email (under 50 chars, avoid spam triggers)\n\n6. EMAIL_BODY: 4-sentence cold email body (personalized, value-first, not pushy)\n\nReturn ONLY valid JSON:\n{\n  \"opportunity_score\": 75,\n  \"weaknesses\": \"No website detected; only 12 reviews vs competitors with 200+; no social media presence\",\n  \"recommended_offer\": \"Done-for-you Google review generation + website audit\",\n  \"pitch_angle\": \"Your competitors are winning on Google with 10x the reviews — we can fix that in 30 days\",\n  \"email_subject\": \"Quick question about [Business Name]'s online visibility\",\n  \"email_body\": \"Hi [Name], I noticed [Business Name] has a strong category presence but only [X] Google reviews while competitors average [Y]. We help [vertical] businesses in [location] build credibility and attract more inbound clients through AI-powered reputation systems. Would a 15-minute call this week make sense? — [Your Name]\"\n}",
         "attributes": {
           "attributes": [
             { "name": "opportunity_score",  "description": "0-100 score for this prospect", "required": true },
@@ -130,7 +170,7 @@
       "id": "ai-scorer-wf1",
       "name": "AI Opportunity Scorer",
       "type": "@n8n/n8n-nodes-langchain.informationExtractor",
-      "position": [1680, 300],
+      "position": [1920, 300],
       "typeVersion": 1.2
     },
     {
@@ -141,7 +181,7 @@
       "id": "openai-wf1",
       "name": "GPT-4.1-mini",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "position": [1776, 460],
+      "position": [2016, 460],
       "typeVersion": 1.2,
       "credentials": {
         "openAiApi": { "id": "pcRo0Ru13Y38GX4e", "name": "Defiance OpenAi" }
@@ -178,7 +218,7 @@
       "id": "merge-fields-wf1",
       "name": "Merge All Fields",
       "type": "n8n-nodes-base.set",
-      "position": [1920, 300],
+      "position": [2160, 300],
       "typeVersion": 3.4
     },
     {
@@ -200,7 +240,7 @@
       "id": "filter-score-wf1",
       "name": "Filter - Score >= Min",
       "type": "n8n-nodes-base.filter",
-      "position": [2160, 300],
+      "position": [2400, 300],
       "typeVersion": 2.2
     },
     {
@@ -232,7 +272,7 @@
             "email_body":        "={{ $json.email_body }}",
             "scraped_at":        "={{ $json.scraped_at }}"
           },
-          "matchingColumns": ["org_id", "website"],
+          "matchingColumns": ["org_id", "name"],
           "schema": []
         },
         "options": {}
@@ -240,7 +280,7 @@
       "id": "supabase-insert-wf1",
       "name": "Supabase - Upsert Business",
       "type": "n8n-nodes-base.supabase",
-      "position": [2400, 300],
+      "position": [2640, 300],
       "typeVersion": 1,
       "credentials": {
         "supabaseApi": { "id": "REPLACE_WITH_YOUR_SUPABASE_CREDENTIAL_ID", "name": "Blue Wolf Supabase" }
@@ -254,7 +294,7 @@
       "id": "aggregate-wf1",
       "name": "Aggregate Results",
       "type": "n8n-nodes-base.aggregate",
-      "position": [2640, 300],
+      "position": [2880, 300],
       "typeVersion": 1
     },
     {
@@ -264,7 +304,7 @@
       "id": "build-callback-wf1",
       "name": "Build HMAC Callback",
       "type": "n8n-nodes-base.code",
-      "position": [2880, 300],
+      "position": [3120, 300],
       "typeVersion": 2
     },
     {
@@ -285,13 +325,13 @@
       "id": "callback-signafy-wf1",
       "name": "Callback - Signafy",
       "type": "n8n-nodes-base.httpRequest",
-      "position": [3120, 300],
+      "position": [3360, 300],
       "typeVersion": 4.2
     },
     {
       "parameters": {
-        "content": "## 🏢 WF1 - Enhanced B2B Prospect Finder v2\n\n**Webhook path:** POST /webhook/bw-wf1\n\n**B2B Verticals supported:**\n- marketing_agency → Marketing, Digital, Social Media, SEO, PPC agencies\n- saas_software → SaaS, software companies, tech startups\n- business_consultant → Consultants, coaches, strategists\n- commercial_support → Cleaning, janitorial, facility management\n- recruiting_firm → Staffing, search, talent agencies\n- insurance_agency → Commercial insurance brokers\n  - Sub-targets: construction, medical, manufacturing (finds THEIR clients)\n\n**Flow:**\n1. Respond 202 immediately\n2. Store inputs\n3. Build smart Apify queries per vertical\n4. Scrape Google Places via Apify\n5. AI score each business (opportunity_score, weaknesses, offer, pitch, email)\n6. Filter by min_score\n7. Upsert to Supabase businesses table\n8. HMAC callback to Signafy\n\n**ENV Required:**\n- APIFY_TOKEN\n- N8N_HMAC_SECRET\n\n**Supabase:** Replace credential ID",
-        "height": 420,
+        "content": "## 🏢 WF1 - Enhanced B2B Prospect Finder v3\n\n**Webhook path:** POST /webhook/bw-wf1\n\n**Flow:**\n1. Respond 202 immediately\n2. Store inputs\n3. **AI - Parse Target Description** (GPT-4.1-mini)\n   — Reads free-text description → extracts search_terms + search_location\n4. Build Apify Queries\n   — Uses AI output first, falls back to TYPE_VARIATIONS table, then vertical map\n5. Apify - Google Places (maxCrawledPlacesPerSearch per query term)\n6. Map Business Fields\n7. Filter empty\n8. **AI Opportunity Scorer** (GPT-4.1-mini) — scores each business\n9. Merge All Fields\n10. Filter by min_score\n11. Supabase upsert (businesses table)\n12. Aggregate + HMAC callback to Signafy\n\n**ENV Required:**\n- APIFY_TOKEN (set in /root/.env on VPS)\n- N8N_HMAC_SECRET\n\n**Credentials Required:**\n- Defiance OpenAi (openAiApi) — already configured\n- Blue Wolf Supabase (supabaseApi) — map on import",
+        "height": 460,
         "width": 560,
         "color": 3
       },
@@ -306,15 +346,29 @@
     "Webhook - WF1": {
       "main": [
         [
-          { "node": "Respond 202",   "type": "main", "index": 0 },
-          { "node": "Store Inputs",  "type": "main", "index": 0 }
+          { "node": "Respond 202",  "type": "main", "index": 0 },
+          { "node": "Store Inputs", "type": "main", "index": 0 }
         ]
       ]
     },
     "Store Inputs": {
       "main": [
         [
+          { "node": "AI - Parse Target Description", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "AI - Parse Target Description": {
+      "main": [
+        [
           { "node": "Build Apify Queries", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "GPT-4.1-mini (Query Builder)": {
+      "ai_languageModel": [
+        [
+          { "node": "AI - Parse Target Description", "type": "ai_languageModel", "index": 0 }
         ]
       ]
     },
@@ -401,6 +455,6 @@
   "staticData": null,
   "tags": ["blue-wolf", "prospect-finder"],
   "triggerCount": 1,
-  "updatedAt": "2026-06-17T00:00:00.000Z",
-  "versionId": "bw-wf1-v2"
+  "updatedAt": "2026-06-18T00:00:00.000Z",
+  "versionId": "bw-wf1-v3"
 }
