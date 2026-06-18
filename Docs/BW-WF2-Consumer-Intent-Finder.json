@@ -1,10 +1,10 @@
-﻿{
+{
   "name": "BW - WF2 - Consumer Intent Finder",
   "nodes": [
     {
       "parameters": { "httpMethod": "POST", "path": "bw-wf2", "responseMode": "responseNode", "options": {} },
       "id": "webhook-wf2", "name": "Webhook - WF2",
-      "type": "n8n-nodes-base.webhook", "position": [240, 300], "webhookId": "bw-wf2", "typeVersion": 2
+      "type": "n8n-nodes-base.webhook", "position": [240, 370], "webhookId": "bw-wf2", "typeVersion": 2
     },
     {
       "parameters": { "respondWith": "json", "responseBody": "{\"accepted\": true}", "options": { "responseCode": 202 } },
@@ -14,21 +14,56 @@
     {
       "parameters": {
         "assignments": { "assignments": [
-          { "id": "s-run",     "name": "run_id",                "type": "string",  "value": "={{ $json.body.run_id }}" },
-          { "id": "s-org",     "name": "org_id",                "type": "string",  "value": "={{ $json.body.org_id }}" },
-          { "id": "s-cb",      "name": "callback_url",          "type": "string",  "value": "={{ $json.body.callback_url }}" },
-          { "id": "s-sources", "name": "b2c_sources",           "type": "string",  "value": "={{ JSON.stringify($json.body.b2c_sources || ['reddit','yelp','twitter','youtube']) }}" },
-          { "id": "s-ind",     "name": "industry",              "type": "string",  "value": "={{ $json.body.industry || '' }}" },
-          { "id": "s-loc",     "name": "location",              "type": "string",  "value": "={{ $json.body.location || '' }}" },
-          { "id": "s-svc",     "name": "client_service",        "type": "string",  "value": "={{ $json.body.client_service || $json.body.industry || '' }}" },
-          { "id": "s-kw",      "name": "keywords",              "type": "string",  "value": "={{ JSON.stringify($json.body.keywords || []) }}" },
-          { "id": "s-min",     "name": "min_score",             "type": "number",  "value": "={{ $json.body.min_score || 50 }}" },
-          { "id": "s-lp",      "name": "generate_landing_page", "type": "boolean", "value": "={{ $json.body.generate_landing_page === true }}" }
+          { "id": "s-run",   "name": "run_id",                "type": "string",  "value": "={{ $json.body.run_id }}" },
+          { "id": "s-org",   "name": "org_id",                "type": "string",  "value": "={{ $json.body.org_id }}" },
+          { "id": "s-cb",    "name": "callback_url",          "type": "string",  "value": "={{ $json.body.callback_url }}" },
+          { "id": "s-desc",  "name": "target_description",    "type": "string",  "value": "={{ $json.body.target_description || '' }}" },
+          { "id": "s-src",   "name": "b2c_sources",           "type": "string",  "value": "={{ JSON.stringify($json.body.b2c_sources || ['reddit','yelp','twitter','youtube']) }}" },
+          { "id": "s-ind",   "name": "industry",              "type": "string",  "value": "={{ $json.body.industry || '' }}" },
+          { "id": "s-loc",   "name": "location",              "type": "string",  "value": "={{ $json.body.location || '' }}" },
+          { "id": "s-svc",   "name": "client_service",        "type": "string",  "value": "={{ $json.body.client_service || $json.body.industry || '' }}" },
+          { "id": "s-kw",    "name": "keywords",              "type": "string",  "value": "={{ JSON.stringify($json.body.keywords || []) }}" },
+          { "id": "s-min",   "name": "min_score",             "type": "number",  "value": "={{ $json.body.min_score || 40 }}" },
+          { "id": "s-count", "name": "count",                 "type": "number",  "value": "={{ $json.body.count || 50 }}" },
+          { "id": "s-email", "name": "user_email",            "type": "string",  "value": "={{ $json.body.user_email || '' }}" },
+          { "id": "s-lp",    "name": "generate_landing_page", "type": "boolean", "value": "={{ $json.body.generate_landing_page === true }}" }
         ]},
         "options": {}
       },
       "id": "store-inputs-wf2", "name": "Store Inputs",
-      "type": "n8n-nodes-base.set", "position": [480, 300], "typeVersion": 3.4
+      "type": "n8n-nodes-base.set", "position": [480, 370], "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "text": "={{ $('Store Inputs').first().json.target_description || $('Store Inputs').first().json.client_service || $('Store Inputs').first().json.industry || '' }}",
+        "systemPromptTemplate": "You extract consumer-facing search terms from a business targeting description. The goal is to find what CONSUMERS (buyers, customers) would post or search on Reddit, Twitter, Yelp, and YouTube when looking for this type of service or product. Think from the customer's perspective, not the business's. Be concise and practical.",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "search_terms",
+              "description": "Comma-separated list of 3-5 search terms that a consumer/customer would type on Reddit, Twitter, Yelp, or YouTube when looking for this service. Use natural, conversational phrasing. Examples — 'MedSpas in Temecula': best medspa near me,botox near me,laser treatment review,aesthetic clinic recommendation,medspa | 'HVAC Phoenix': AC repair near me,air conditioning broken,HVAC help,best HVAC company,cooling repair | 'Hair salons San Diego': best hair salon near me,hair color salon,haircut recommendation,salon near me",
+              "required": true
+            },
+            {
+              "name": "search_location",
+              "description": "The city or region to scope results to. Extract from the description (e.g. 'Temecula', 'San Diego', 'Phoenix AZ'). If none mentioned, return empty string.",
+              "required": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ai-parse-wf2", "name": "AI - Parse Target Description",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor", "position": [720, 370], "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "model": { "__rl": true, "mode": "list", "value": "gpt-4.1-mini" },
+        "options": {}
+      },
+      "id": "gpt-query-wf2", "name": "GPT-4.1-mini (Query Builder)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi", "position": [816, 530], "typeVersion": 1.2,
+      "credentials": { "openAiApi": { "id": "pcRo0Ru13Y38GX4e", "name": "Defiance OpenAi" } }
     },
     {
       "parameters": {
@@ -37,7 +72,7 @@
         }, "options": {}
       },
       "id": "gate-reddit-wf2", "name": "Gate - Reddit?",
-      "type": "n8n-nodes-base.filter", "position": [720, 160], "typeVersion": 2.2
+      "type": "n8n-nodes-base.filter", "position": [960, 160], "typeVersion": 2.2
     },
     {
       "parameters": {
@@ -46,7 +81,7 @@
         }, "options": {}
       },
       "id": "gate-yelp-wf2", "name": "Gate - Yelp?",
-      "type": "n8n-nodes-base.filter", "position": [720, 300], "typeVersion": 2.2
+      "type": "n8n-nodes-base.filter", "position": [960, 320], "typeVersion": 2.2
     },
     {
       "parameters": {
@@ -55,7 +90,7 @@
         }, "options": {}
       },
       "id": "gate-twitter-wf2", "name": "Gate - Twitter?",
-      "type": "n8n-nodes-base.filter", "position": [720, 440], "typeVersion": 2.2
+      "type": "n8n-nodes-base.filter", "position": [960, 480], "typeVersion": 2.2
     },
     {
       "parameters": {
@@ -64,87 +99,87 @@
         }, "options": {}
       },
       "id": "gate-youtube-wf2", "name": "Gate - YouTube?",
-      "type": "n8n-nodes-base.filter", "position": [720, 580], "typeVersion": 2.2
+      "type": "n8n-nodes-base.filter", "position": [960, 640], "typeVersion": 2.2
     },
     {
       "parameters": {
-        "url": "=https://www.reddit.com/search.json?q={{ encodeURIComponent($('Store Inputs').first().json.client_service + ' ' + $('Store Inputs').first().json.location) }}&sort=new&limit=30&type=link,comment",
+        "url": "=https://www.reddit.com/search.json?q={{ encodeURIComponent(($('AI - Parse Target Description').first().json.output.search_terms || '').split(',')[0].trim() + ' ' + ($('AI - Parse Target Description').first().json.output.search_location || $('Store Inputs').first().json.location || '')) }}&sort=new&limit=30&type=link,comment",
         "options": { "response": { "response": { "responseFormat": "json" } } }
       },
       "id": "reddit-search-wf2", "name": "Reddit Search",
-      "type": "n8n-nodes-base.httpRequest", "position": [960, 160], "typeVersion": 4.2
+      "type": "n8n-nodes-base.httpRequest", "position": [1200, 160], "typeVersion": 4.2
     },
     {
       "parameters": {
         "url": "=https://api.apify.com/v2/acts/apify~yelp-scraper/run-sync-get-dataset-items?token={{ $env.APIFY_TOKEN }}",
         "sendBody": true, "specifyBody": "json",
-        "jsonBody": "={\"searchTerms\":[\"{{ $('Store Inputs').first().json.client_service }}\"],\"locations\":[\"{{ $('Store Inputs').first().json.location }}\"],\"maxRequestsPerCrawl\":20,\"scrapeReviews\":true,\"maxReviews\":10}",
+        "jsonBody": "={\n  \"searchTerms\": [{{ JSON.stringify(($('AI - Parse Target Description').first().json.output.search_terms || $('Store Inputs').first().json.client_service || 'services').split(',')[0].trim()) }}],\n  \"locations\": [{{ JSON.stringify($('AI - Parse Target Description').first().json.output.search_location || $('Store Inputs').first().json.location || 'United States') }}],\n  \"maxRequestsPerCrawl\": 20,\n  \"scrapeReviews\": true,\n  \"maxReviews\": 10\n}",
         "options": { "timeout": 120000 }
       },
       "id": "yelp-scraper-wf2", "name": "Yelp Reviews Scraper",
-      "type": "n8n-nodes-base.httpRequest", "position": [960, 300], "typeVersion": 4.2
+      "type": "n8n-nodes-base.httpRequest", "position": [1200, 320], "typeVersion": 4.2
     },
     {
       "parameters": {
         "url": "=https://api.apify.com/v2/acts/quacker~twitter-scraper/run-sync-get-dataset-items?token={{ $env.APIFY_TOKEN }}",
         "sendBody": true, "specifyBody": "json",
-        "jsonBody": "={\"searchTerms\":[\"{{ $('Store Inputs').first().json.client_service }} {{ $('Store Inputs').first().json.location }}\",\"{{ $('Store Inputs').first().json.client_service }} recommendation\"],\"maxItems\":30,\"addUserInfo\":true,\"tweetLanguage\":\"en\"}",
+        "jsonBody": "={\n  \"searchTerms\": [\n    {{ JSON.stringify((($('AI - Parse Target Description').first().json.output.search_terms || $('Store Inputs').first().json.client_service || 'services').split(',')[0].trim()) + ' ' + ($('AI - Parse Target Description').first().json.output.search_location || $('Store Inputs').first().json.location || '')) }},\n    {{ JSON.stringify((($('AI - Parse Target Description').first().json.output.search_terms || $('Store Inputs').first().json.client_service || 'services').split(',')[0].trim()) + ' recommendation') }}\n  ],\n  \"maxItems\": 30,\n  \"addUserInfo\": true,\n  \"tweetLanguage\": \"en\"\n}",
         "options": { "timeout": 120000 }
       },
       "id": "twitter-scraper-wf2", "name": "Twitter - Intent Scraper",
-      "type": "n8n-nodes-base.httpRequest", "position": [960, 440], "typeVersion": 4.2
+      "type": "n8n-nodes-base.httpRequest", "position": [1200, 480], "typeVersion": 4.2
     },
     {
       "parameters": {
         "url": "=https://api.apify.com/v2/acts/streamers~youtube-scraper/run-sync-get-dataset-items?token={{ $env.APIFY_TOKEN }}",
         "sendBody": true, "specifyBody": "json",
-        "jsonBody": "={\"searchKeywords\":\"{{ $('Store Inputs').first().json.client_service }} {{ $('Store Inputs').first().json.location }} review\",\"maxResults\":20,\"scrapeComments\":true,\"maxComments\":15}",
+        "jsonBody": "={\n  \"searchKeywords\": {{ JSON.stringify((($('AI - Parse Target Description').first().json.output.search_terms || $('Store Inputs').first().json.client_service || 'services').split(',')[0].trim()) + ' ' + ($('AI - Parse Target Description').first().json.output.search_location || $('Store Inputs').first().json.location || '') + ' review') }},\n  \"maxResults\": 20,\n  \"scrapeComments\": true,\n  \"maxComments\": 15\n}",
         "options": { "timeout": 120000 }
       },
       "id": "youtube-scraper-wf2", "name": "YouTube - Comment Scraper",
-      "type": "n8n-nodes-base.httpRequest", "position": [960, 580], "typeVersion": 4.2
+      "type": "n8n-nodes-base.httpRequest", "position": [1200, 640], "typeVersion": 4.2
     },
     {
       "parameters": { "mode": "combine", "combinationMode": "multiplex", "options": {} },
       "id": "merge-sources-wf2", "name": "Merge All Sources",
-      "type": "n8n-nodes-base.merge", "position": [1200, 370], "typeVersion": 3
+      "type": "n8n-nodes-base.merge", "position": [1440, 400], "typeVersion": 3
     },
     {
       "parameters": {
-        "jsCode": "const items=$input.all();const inputs=$('Store Inputs').first().json;const service=inputs.client_service||inputs.industry||'service';const location=inputs.location||'';const industry=inputs.industry||'';const signals=[];for(const item of items){const data=item.json;if(data.data&&data.data.children){for(const post of data.data.children){const p=post.data;if(p&&p.title)signals.push({source:'Reddit',text:(p.title+' '+(p.selftext||'')).substring(0,500),url:p.permalink?'https://reddit.com'+p.permalink:'',upvotes:p.score||0,author:p.author||null,service,location,industry});}}if(data.name&&data.reviews&&Array.isArray(data.reviews)){for(const review of data.reviews){if(review.text)signals.push({source:'Yelp',text:review.text.substring(0,500),url:data.url||'',upvotes:0,author:review.user?.name||null,service,location,industry});}}if(data.full_text||data.text){signals.push({source:'Twitter',text:(data.full_text||data.text||'').substring(0,500),url:data.url||'',upvotes:(data.favorite_count||0)+(data.retweet_count||0),author:data.user?.screen_name||null,service,location,industry});}if(data.text&&data.videoUrl)signals.push({source:'YouTube',text:data.text.substring(0,500),url:data.videoUrl||'',upvotes:data.likes||0,author:data.authorText||null,service,location,industry});if(data.title&&data.channelName&&!data.text)signals.push({source:'YouTube',text:(data.title+' '+(data.description||'')).substring(0,400),url:data.url||'',upvotes:data.viewCount||0,author:data.channelName||null,service,location,industry});}if(signals.length===0)return[{json:{source:'No signals',text:'No signals found for '+service+' in '+location,url:'',upvotes:0,author:null,service,location,industry,__empty:true}}];return signals.map(s=>({json:s}));"
+        "jsCode": "const items = $input.all();\nconst inputs = $('Store Inputs').first().json;\n\n// Prefer AI-extracted terms over raw client_service\nlet aiOutput = {};\ntry { aiOutput = $('AI - Parse Target Description').first().json.output || {}; } catch(e) {}\nconst aiTerms = (aiOutput.search_terms || '').split(',').map(s => s.trim()).filter(Boolean);\nconst aiLocation = aiOutput.search_location || '';\n\nconst service = aiTerms[0] || inputs.client_service || inputs.industry || 'service';\nconst location = aiLocation || inputs.location || '';\nconst industry = inputs.industry || '';\n\nconst signals = [];\n\nfor (const item of items) {\n  const data = item.json;\n\n  // Reddit posts\n  if (data.data && data.data.children) {\n    for (const post of data.data.children) {\n      const p = post.data;\n      if (p && p.title) signals.push({\n        source: 'Reddit',\n        text: (p.title + ' ' + (p.selftext || '')).substring(0, 500),\n        url: p.permalink ? 'https://reddit.com' + p.permalink : '',\n        upvotes: p.score || 0,\n        author: p.author || null,\n        service, location, industry\n      });\n    }\n  }\n\n  // Yelp reviews\n  if (data.name && data.reviews && Array.isArray(data.reviews)) {\n    for (const review of data.reviews) {\n      if (review.text) signals.push({\n        source: 'Yelp',\n        text: review.text.substring(0, 500),\n        url: data.url || '',\n        upvotes: 0,\n        author: review.user?.name || null,\n        service, location, industry\n      });\n    }\n  }\n\n  // Twitter\n  if (data.full_text || data.text) {\n    signals.push({\n      source: 'Twitter',\n      text: (data.full_text || data.text || '').substring(0, 500),\n      url: data.url || '',\n      upvotes: (data.favorite_count || 0) + (data.retweet_count || 0),\n      author: data.user?.screen_name || null,\n      service, location, industry\n    });\n  }\n\n  // YouTube comments\n  if (data.text && data.videoUrl) signals.push({\n    source: 'YouTube',\n    text: data.text.substring(0, 500),\n    url: data.videoUrl || '',\n    upvotes: data.likes || 0,\n    author: data.authorText || null,\n    service, location, industry\n  });\n\n  // YouTube video titles\n  if (data.title && data.channelName && !data.text) signals.push({\n    source: 'YouTube',\n    text: (data.title + ' ' + (data.description || '')).substring(0, 400),\n    url: data.url || '',\n    upvotes: data.viewCount || 0,\n    author: data.channelName || null,\n    service, location, industry\n  });\n}\n\nif (signals.length === 0) {\n  return [{ json: { source: 'No signals', text: 'No signals found for ' + service + ' in ' + location, url: '', upvotes: 0, author: null, service, location, industry, __empty: true } }];\n}\n\nreturn signals.map(s => ({ json: s }));"
       },
       "id": "extract-signals-wf2", "name": "Extract Signals",
-      "type": "n8n-nodes-base.code", "position": [1440, 370], "typeVersion": 2
+      "type": "n8n-nodes-base.code", "position": [1680, 400], "typeVersion": 2
     },
     {
       "parameters": {
         "conditions": { "options": { "version": 2, "caseSensitive": false, "typeValidation": "strict" }, "combinator": "and", "conditions": [
-          { "id": "f-text",  "operator": { "type": "string",  "operation": "isNotEmpty"  }, "leftValue": "={{ $json.text }}", "rightValue": "" },
-          { "id": "f-empty", "operator": { "type": "boolean", "operation": "notEquals" }, "leftValue": "={{ $json.__empty }}", "rightValue": true }
+          { "id": "f-text",  "operator": { "type": "string",  "operation": "isNotEmpty" }, "leftValue": "={{ $json.text }}", "rightValue": "" },
+          { "id": "f-empty", "operator": { "type": "boolean", "operation": "notEquals"  }, "leftValue": "={{ $json.__empty }}", "rightValue": true }
         ]}, "options": {}
       },
       "id": "filter-content-wf2", "name": "Filter - Has Content",
-      "type": "n8n-nodes-base.filter", "position": [1680, 370], "typeVersion": 2.2
+      "type": "n8n-nodes-base.filter", "position": [1920, 400], "typeVersion": 2.2
     },
     {
       "parameters": {
         "text": "=Analyze this public signal for buying intent.\n\nSource: {{ $json.source }}\nText: {{ $json.text }}\nService: {{ $json.service }}\nLocation: {{ $json.location }}\n\nReturn ONLY valid JSON:\n{\n  \"intent_score\": 72,\n  \"buying_stage\": \"Vendor Selection\",\n  \"urgency\": \"High\",\n  \"question\": \"Best botox in Murrieta under $500?\",\n  \"is_relevant\": true,\n  \"can_contact\": true\n}\n\nScores: 80-100=ready to buy, 50-79=researching, 20-49=curious, 0-19=not relevant.\nBuying stage: Research | Comparison | Vendor Selection | Ready To Buy\nUrgency: High | Medium | Low",
         "attributes": { "attributes": [
-          { "name": "intent_score",  "description": "0-100 buying intent",                "required": true },
-          { "name": "buying_stage",  "description": "Research|Comparison|Vendor Selection|Ready To Buy", "required": true },
-          { "name": "urgency",       "description": "High|Medium|Low",                    "required": true },
-          { "name": "question",      "description": "Core intent question max 120 chars", "required": true },
-          { "name": "is_relevant",   "description": "Boolean relevance",                  "required": true },
-          { "name": "can_contact",   "description": "Boolean contactable profile",         "required": true }
+          { "name": "intent_score",  "description": "0-100 buying intent score",                          "required": true },
+          { "name": "buying_stage",  "description": "Research|Comparison|Vendor Selection|Ready To Buy",  "required": true },
+          { "name": "urgency",       "description": "High|Medium|Low",                                    "required": true },
+          { "name": "question",      "description": "Core intent question max 120 chars",                 "required": true },
+          { "name": "is_relevant",   "description": "Boolean — is this signal relevant to the service",   "required": true },
+          { "name": "can_contact",   "description": "Boolean — is there a contactable profile",           "required": true }
         ]}, "options": {}
       },
       "id": "ai-intent-wf2", "name": "AI Intent Classifier",
-      "type": "@n8n/n8n-nodes-langchain.informationExtractor", "position": [1920, 370], "typeVersion": 1.2
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor", "position": [2160, 400], "typeVersion": 1.2
     },
     {
       "parameters": { "model": { "__rl": true, "mode": "list", "value": "gpt-4.1-mini" }, "options": {} },
       "id": "openai-wf2", "name": "GPT-4.1-mini",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi", "position": [2016, 520], "typeVersion": 1.2,
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi", "position": [2256, 560], "typeVersion": 1.2,
       "credentials": { "openAiApi": { "id": "pcRo0Ru13Y38GX4e", "name": "Defiance OpenAi" } }
     },
     {
@@ -166,7 +201,7 @@
         ]}, "options": {}
       },
       "id": "merge-intent-wf2", "name": "Merge Intent Data",
-      "type": "n8n-nodes-base.set", "position": [2160, 370], "typeVersion": 3.4
+      "type": "n8n-nodes-base.set", "position": [2400, 400], "typeVersion": 3.4
     },
     {
       "parameters": {
@@ -176,7 +211,7 @@
         ]}, "options": {}
       },
       "id": "filter-relevant-wf2", "name": "Filter - Relevant + Score",
-      "type": "n8n-nodes-base.filter", "position": [2400, 370], "typeVersion": 2.2
+      "type": "n8n-nodes-base.filter", "position": [2640, 400], "typeVersion": 2.2
     },
     {
       "parameters": {
@@ -186,41 +221,47 @@
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "org_id": "={{ $json.org_id }}", "run_id": "={{ $json.run_id }}",
-            "source": "={{ $json.source }}", "service": "={{ $json.service }}",
-            "industry": "={{ $json.industry }}", "question": "={{ $json.question }}",
-            "location": "={{ $json.location }}", "source_url": "={{ $json.source_url }}",
-            "intent_score": "={{ $json.intent_score }}", "buying_stage": "={{ $json.buying_stage }}",
-            "urgency": "={{ $json.urgency }}", "date_found": "={{ $json.date_found }}"
+            "org_id":       "={{ $json.org_id }}",
+            "run_id":       "={{ $json.run_id }}",
+            "source":       "={{ $json.source }}",
+            "service":      "={{ $json.service }}",
+            "industry":     "={{ $json.industry }}",
+            "question":     "={{ $json.question }}",
+            "location":     "={{ $json.location }}",
+            "source_url":   "={{ $json.source_url }}",
+            "intent_score": "={{ $json.intent_score }}",
+            "buying_stage": "={{ $json.buying_stage }}",
+            "urgency":      "={{ $json.urgency }}",
+            "date_found":   "={{ $json.date_found }}"
           },
           "matchingColumns": [], "schema": []
         }, "options": {}
       },
       "id": "supabase-intent-wf2", "name": "Supabase - Save Intent Signal",
-      "type": "n8n-nodes-base.supabase", "position": [2640, 370], "typeVersion": 1,
+      "type": "n8n-nodes-base.supabase", "position": [2880, 400], "typeVersion": 1,
       "credentials": { "supabaseApi": { "id": "REPLACE_WITH_YOUR_SUPABASE_CREDENTIAL_ID", "name": "Blue Wolf Supabase" } }
     },
     {
       "parameters": { "aggregate": "aggregateAllItemData", "options": {} },
       "id": "aggregate-wf2", "name": "Aggregate Signals",
-      "type": "n8n-nodes-base.aggregate", "position": [2880, 370], "typeVersion": 1
+      "type": "n8n-nodes-base.aggregate", "position": [3120, 400], "typeVersion": 1
     },
     {
       "parameters": {
-        "jsCode": "const crypto=require('crypto');const secret=$env.N8N_HMAC_SECRET||'dev-secret';const inputs=$('Store Inputs').first().json;const signalItems=$input.first().json.data||[];const topSignals=signalItems.sort((a,b)=>(b.intent_score||0)-(a.intent_score||0)).slice(0,10);const callbackBody={run_id:inputs.run_id,workflow_type:'intent_discovery',status:'complete',org_id:inputs.org_id,output:{signals_found:signalItems.length,sources_used:JSON.parse(inputs.b2c_sources||'[]'),min_score_applied:inputs.min_score}};const payload=JSON.stringify(callbackBody);const signature=crypto.createHmac('sha256',secret).update(payload).digest('hex');const wf3Payload=JSON.stringify({run_id:inputs.run_id,org_id:inputs.org_id,callback_url:inputs.callback_url,signals:topSignals.slice(0,3),service:inputs.client_service||inputs.industry,location:inputs.location,industry:inputs.industry});return[{json:{callback_url:inputs.callback_url,payload,signature,generate_landing_page:inputs.generate_landing_page,wf3_payload:wf3Payload}}];"
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.N8N_HMAC_SECRET || 'dev-secret';\nconst inputs = $('Store Inputs').first().json;\nconst signalItems = $input.first().json.data || [];\n\nconst topSignals = signalItems\n  .sort((a, b) => (b.intent_score || 0) - (a.intent_score || 0))\n  .slice(0, 10);\n\nconst callbackBody = {\n  run_id: inputs.run_id,\n  workflow_type: 'intent_discovery',\n  status: 'complete',\n  org_id: inputs.org_id,\n  output: {\n    signals_found: signalItems.length,\n    sources_used: JSON.parse(inputs.b2c_sources || '[]'),\n    min_score_applied: inputs.min_score\n  }\n};\n\nconst payload = JSON.stringify(callbackBody);\nconst signature = crypto.createHmac('sha256', secret).update(payload).digest('hex');\n\nconst wf3Payload = JSON.stringify({\n  run_id: inputs.run_id,\n  org_id: inputs.org_id,\n  callback_url: inputs.callback_url,\n  signals: topSignals.slice(0, 3),\n  service: inputs.client_service || inputs.industry,\n  location: inputs.location,\n  industry: inputs.industry\n});\n\nreturn [{ json: { callback_url: inputs.callback_url, payload, signature, generate_landing_page: inputs.generate_landing_page, wf3_payload: wf3Payload } }];"
       },
       "id": "build-callback-wf2", "name": "Build HMAC Callback",
-      "type": "n8n-nodes-base.code", "position": [3120, 370], "typeVersion": 2
+      "type": "n8n-nodes-base.code", "position": [3360, 400], "typeVersion": 2
     },
     {
       "parameters": {
         "url": "={{ $json.callback_url }}",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" },{ "name": "X-Signature", "value": "={{ $json.signature }}" }] },
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }, { "name": "X-Signature", "value": "={{ $json.signature }}" }] },
         "sendBody": true, "specifyBody": "string", "body": "={{ $json.payload }}", "options": {}
       },
       "id": "callback-signafy-wf2", "name": "Callback - Signafy",
-      "type": "n8n-nodes-base.httpRequest", "position": [3360, 300], "typeVersion": 4.2
+      "type": "n8n-nodes-base.httpRequest", "position": [3600, 300], "typeVersion": 4.2
     },
     {
       "parameters": {
@@ -229,7 +270,7 @@
         }, "options": {}
       },
       "id": "gate-wf3-wf2", "name": "Gate - Generate Assets?",
-      "type": "n8n-nodes-base.filter", "position": [3360, 460], "typeVersion": 2.2
+      "type": "n8n-nodes-base.filter", "position": [3600, 500], "typeVersion": 2.2
     },
     {
       "parameters": {
@@ -241,38 +282,48 @@
         "options": { "timeout": 8000 }
       },
       "id": "trigger-wf3-wf2", "name": "Trigger WF3 - Assets",
-      "type": "n8n-nodes-base.httpRequest", "position": [3600, 460], "typeVersion": 4.2
+      "type": "n8n-nodes-base.httpRequest", "position": [3840, 500], "typeVersion": 4.2
     },
     {
-      "parameters": { "content": "## WF2 v2\nSources: Reddit, Yelp, Twitter/X, YouTube\nGated by b2c_sources. HMAC callback. Triggers WF3 if generate_landing_page.", "height": 180, "width": 360, "color": 4 },
+      "parameters": {
+        "content": "## 🌐 WF2 - Consumer Intent Finder v3\n\n**Webhook path:** POST /webhook/bw-wf2\n\n**Flow:**\n1. Respond 202 immediately\n2. Store inputs (now includes target_description)\n3. **AI - Parse Target Description** (GPT-4.1-mini)\n   — Converts free-text to consumer search terms + location\n4. Gate → Reddit / Yelp / Twitter / YouTube (based on b2c_sources)\n5. Scrape each platform with AI-extracted terms\n6. Merge All Sources\n7. Extract Signals (normalise)\n8. Filter empty\n9. **AI Intent Classifier** (GPT-4.1-mini) — scores each signal\n10. Merge Intent Data\n11. Filter: is_relevant=true AND intent_score >= min_score\n12. Supabase insert (intent_signals table)\n13. Aggregate + HMAC callback to Signafy\n14. If generate_landing_page → trigger WF3\n\n**ENV Required:**\n- APIFY_TOKEN\n- N8N_HMAC_SECRET\n- N8N_BASE_URL\n\n**Credentials Required:**\n- Defiance OpenAi — already configured\n- Blue Wolf Supabase — map on import",
+        "height": 500, "width": 580, "color": 4
+      },
       "id": "sticky-wf2", "name": "WF2 Notes",
-      "type": "n8n-nodes-base.stickyNote", "position": [240, 700], "typeVersion": 1
+      "type": "n8n-nodes-base.stickyNote", "position": [240, 800], "typeVersion": 1
     }
   ],
   "connections": {
-    "Webhook - WF2": { "main": [[{ "node": "Respond 202", "type": "main", "index": 0 },{ "node": "Store Inputs", "type": "main", "index": 0 }]] },
-    "Store Inputs": { "main": [[{ "node": "Gate - Reddit?", "type": "main", "index": 0 },{ "node": "Gate - Yelp?", "type": "main", "index": 0 },{ "node": "Gate - Twitter?", "type": "main", "index": 0 },{ "node": "Gate - YouTube?", "type": "main", "index": 0 }]] },
-    "Gate - Reddit?": { "main": [[{ "node": "Reddit Search", "type": "main", "index": 0 }]] },
-    "Gate - Yelp?": { "main": [[{ "node": "Yelp Reviews Scraper", "type": "main", "index": 0 }]] },
-    "Gate - Twitter?": { "main": [[{ "node": "Twitter - Intent Scraper", "type": "main", "index": 0 }]] },
+    "Webhook - WF2": { "main": [[{ "node": "Respond 202", "type": "main", "index": 0 }, { "node": "Store Inputs", "type": "main", "index": 0 }]] },
+    "Store Inputs": { "main": [[{ "node": "AI - Parse Target Description", "type": "main", "index": 0 }]] },
+    "AI - Parse Target Description": { "main": [[
+      { "node": "Gate - Reddit?",   "type": "main", "index": 0 },
+      { "node": "Gate - Yelp?",     "type": "main", "index": 0 },
+      { "node": "Gate - Twitter?",  "type": "main", "index": 0 },
+      { "node": "Gate - YouTube?",  "type": "main", "index": 0 }
+    ]] },
+    "GPT-4.1-mini (Query Builder)": { "ai_languageModel": [[{ "node": "AI - Parse Target Description", "type": "ai_languageModel", "index": 0 }]] },
+    "Gate - Reddit?":  { "main": [[{ "node": "Reddit Search",             "type": "main", "index": 0 }]] },
+    "Gate - Yelp?":    { "main": [[{ "node": "Yelp Reviews Scraper",      "type": "main", "index": 0 }]] },
+    "Gate - Twitter?": { "main": [[{ "node": "Twitter - Intent Scraper",  "type": "main", "index": 0 }]] },
     "Gate - YouTube?": { "main": [[{ "node": "YouTube - Comment Scraper", "type": "main", "index": 0 }]] },
-    "Reddit Search": { "main": [[{ "node": "Merge All Sources", "type": "main", "index": 0 }]] },
-    "Yelp Reviews Scraper": { "main": [[{ "node": "Merge All Sources", "type": "main", "index": 1 }]] },
-    "Twitter - Intent Scraper": { "main": [[{ "node": "Merge All Sources", "type": "main", "index": 2 }]] },
+    "Reddit Search":             { "main": [[{ "node": "Merge All Sources", "type": "main", "index": 0 }]] },
+    "Yelp Reviews Scraper":      { "main": [[{ "node": "Merge All Sources", "type": "main", "index": 1 }]] },
+    "Twitter - Intent Scraper":  { "main": [[{ "node": "Merge All Sources", "type": "main", "index": 2 }]] },
     "YouTube - Comment Scraper": { "main": [[{ "node": "Merge All Sources", "type": "main", "index": 3 }]] },
-    "Merge All Sources": { "main": [[{ "node": "Extract Signals", "type": "main", "index": 0 }]] },
-    "Extract Signals": { "main": [[{ "node": "Filter - Has Content", "type": "main", "index": 0 }]] },
-    "Filter - Has Content": { "main": [[{ "node": "AI Intent Classifier", "type": "main", "index": 0 }]] },
-    "AI Intent Classifier": { "main": [[{ "node": "Merge Intent Data", "type": "main", "index": 0 }]] },
+    "Merge All Sources":    { "main": [[{ "node": "Extract Signals",         "type": "main", "index": 0 }]] },
+    "Extract Signals":      { "main": [[{ "node": "Filter - Has Content",    "type": "main", "index": 0 }]] },
+    "Filter - Has Content": { "main": [[{ "node": "AI Intent Classifier",    "type": "main", "index": 0 }]] },
+    "AI Intent Classifier": { "main": [[{ "node": "Merge Intent Data",       "type": "main", "index": 0 }]] },
     "GPT-4.1-mini": { "ai_languageModel": [[{ "node": "AI Intent Classifier", "type": "ai_languageModel", "index": 0 }]] },
-    "Merge Intent Data": { "main": [[{ "node": "Filter - Relevant + Score", "type": "main", "index": 0 }]] },
-    "Filter - Relevant + Score": { "main": [[{ "node": "Supabase - Save Intent Signal", "type": "main", "index": 0 }]] },
+    "Merge Intent Data":          { "main": [[{ "node": "Filter - Relevant + Score",  "type": "main", "index": 0 }]] },
+    "Filter - Relevant + Score":  { "main": [[{ "node": "Supabase - Save Intent Signal", "type": "main", "index": 0 }]] },
     "Supabase - Save Intent Signal": { "main": [[{ "node": "Aggregate Signals", "type": "main", "index": 0 }]] },
-    "Aggregate Signals": { "main": [[{ "node": "Build HMAC Callback", "type": "main", "index": 0 }]] },
-    "Build HMAC Callback": { "main": [[{ "node": "Callback - Signafy", "type": "main", "index": 0 },{ "node": "Gate - Generate Assets?", "type": "main", "index": 0 }]] },
+    "Aggregate Signals":    { "main": [[{ "node": "Build HMAC Callback", "type": "main", "index": 0 }]] },
+    "Build HMAC Callback":  { "main": [[{ "node": "Callback - Signafy", "type": "main", "index": 0 }, { "node": "Gate - Generate Assets?", "type": "main", "index": 0 }]] },
     "Gate - Generate Assets?": { "main": [[{ "node": "Trigger WF3 - Assets", "type": "main", "index": 0 }]] }
   },
   "pinData": {}, "settings": { "executionOrder": "v1" }, "staticData": null,
-  "tags": ["blue-wolf","intent-finder"], "triggerCount": 1,
-  "updatedAt": "2026-06-17T00:00:00.000Z", "versionId": "bw-wf2-v2"
+  "tags": ["blue-wolf", "intent-finder"], "triggerCount": 1,
+  "updatedAt": "2026-06-18T00:00:00.000Z", "versionId": "bw-wf2-v3"
 }
