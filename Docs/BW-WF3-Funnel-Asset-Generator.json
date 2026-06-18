@@ -1,0 +1,154 @@
+﻿{
+  "name": "BW - WF3 - Funnel Asset Generator",
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "bw-wf3", "responseMode": "responseNode", "options": {} },
+      "id": "webhook-wf3", "name": "Webhook - WF3",
+      "type": "n8n-nodes-base.webhook", "position": [240, 300], "webhookId": "bw-wf3", "typeVersion": 2
+    },
+    {
+      "parameters": { "respondWith": "json", "responseBody": "{\"accepted\": true}", "options": { "responseCode": 202 } },
+      "id": "respond-wf3", "name": "Respond 202",
+      "type": "n8n-nodes-base.respondToWebhook", "position": [480, 100], "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "assignments": { "assignments": [
+          { "id": "s-run",    "name": "run_id",        "type": "string", "value": "={{ $json.body.run_id }}" },
+          { "id": "s-org",    "name": "org_id",        "type": "string", "value": "={{ $json.body.org_id }}" },
+          { "id": "s-cb",     "name": "callback_url",  "type": "string", "value": "={{ $json.body.callback_url }}" },
+          { "id": "s-sigs",   "name": "signals",       "type": "string", "value": "={{ JSON.stringify($json.body.signals || []) }}" },
+          { "id": "s-svc",    "name": "service",       "type": "string", "value": "={{ $json.body.service || '' }}" },
+          { "id": "s-loc",    "name": "location",      "type": "string", "value": "={{ $json.body.location || '' }}" },
+          { "id": "s-ind",    "name": "industry",      "type": "string", "value": "={{ $json.body.industry || '' }}" },
+          { "id": "s-biz",    "name": "business_name", "type": "string", "value": "={{ $json.body.business_name || 'Your Business' }}" },
+          { "id": "s-signal", "name": "intent_signal", "type": "string", "value": "={{ ($json.body.signals && $json.body.signals[0]) ? $json.body.signals[0].question : ($json.body.intent_signal || '') }}" },
+          { "id": "s-sid",    "name": "signal_id",     "type": "string", "value": "={{ ($json.body.signals && $json.body.signals[0]) ? $json.body.signals[0].id : ($json.body.signal_id || '') }}" }
+        ]}, "options": {}
+      },
+      "id": "store-inputs-wf3", "name": "Store Inputs",
+      "type": "n8n-nodes-base.set", "position": [480, 300], "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "text": "=You are a world-class conversion copywriter for Blue Wolf Solutions.\n\nCreate a complete marketing funnel:\n\nIntent Signal: {{ $json.intent_signal }}\nService: {{ $json.service }}\nLocation: {{ $json.location }}\nIndustry: {{ $json.industry }}\nBusiness Name: {{ $json.business_name }}\n\nReturn ONLY valid JSON:\n{\n  \"landing_page_title\": \"SEO H1 title here\",\n  \"landing_page_subheadline\": \"Trust subheadline here\",\n  \"cta_button\": \"Action CTA here\",\n  \"faq\": [{\"q\":\"Question?\",\"a\":\"Answer.\"}],\n  \"ai_setter_script\": \"Hi! I saw you were researching...\",\n  \"email_sequence\": [{\"email_number\":1,\"subject\":\"Subject\",\"body\":\"Body\"}],\n  \"blog_outline\": {\"title\":\"Blog title\",\"sections\":[\"Section 1\"]},\n  \"social_posts\": [{\"type\":\"educational\",\"text\":\"Post text\"},{\"type\":\"testimonial\",\"text\":\"Post text\"},{\"type\":\"offer\",\"text\":\"Post text\"}],\n  \"video_script\": \"60-second VSL script here\",\n  \"schema_suggestion\": \"FAQPage + LocalBusiness schema\"\n}",
+        "attributes": { "attributes": [
+          { "name": "landing_page_title",       "description": "SEO H1 title",                  "required": true },
+          { "name": "landing_page_subheadline",  "description": "Trust subheadline",              "required": true },
+          { "name": "cta_button",               "description": "Action CTA button text",         "required": true },
+          { "name": "faq",                      "description": "Array of 5 FAQ objects",         "required": true },
+          { "name": "ai_setter_script",         "description": "AI chatbot opener",              "required": true },
+          { "name": "email_sequence",           "description": "Array of 3 email objects",       "required": true },
+          { "name": "blog_outline",             "description": "Blog title and sections array",  "required": true },
+          { "name": "social_posts",             "description": "Array of 3 social post objects", "required": true },
+          { "name": "video_script",             "description": "60-second VSL script",           "required": true },
+          { "name": "schema_suggestion",        "description": "Recommended schema type",        "required": true }
+        ]}, "options": {}
+      },
+      "id": "ai-asset-gen-wf3", "name": "AI Funnel Asset Generator",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor", "position": [720, 300], "typeVersion": 1.2
+    },
+    {
+      "parameters": { "model": { "__rl": true, "mode": "list", "value": "gpt-4.1-mini" }, "options": {} },
+      "id": "openai-wf3", "name": "GPT-4.1-mini",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi", "position": [816, 460], "typeVersion": 1.2,
+      "credentials": { "openAiApi": { "id": "pcRo0Ru13Y38GX4e", "name": "Defiance OpenAi" } }
+    },
+    {
+      "parameters": {
+        "assignments": { "assignments": [
+          { "id": "m-lp",    "name": "landing_page",            "type": "string", "value": "={{ $json.output.landing_page_title }}" },
+          { "id": "m-sub",   "name": "landing_page_subheadline","type": "string", "value": "={{ $json.output.landing_page_subheadline }}" },
+          { "id": "m-cta",   "name": "cta",                     "type": "string", "value": "={{ $json.output.cta_button }}" },
+          { "id": "m-faq",   "name": "faq",                     "type": "string", "value": "={{ JSON.stringify($json.output.faq) }}" },
+          { "id": "m-ai",    "name": "ai_script",               "type": "string", "value": "={{ $json.output.ai_setter_script }}" },
+          { "id": "m-email", "name": "email_sequence",          "type": "string", "value": "={{ JSON.stringify($json.output.email_sequence) }}" },
+          { "id": "m-blog",  "name": "blog_outline",            "type": "string", "value": "={{ JSON.stringify($json.output.blog_outline) }}" },
+          { "id": "m-social","name": "social_posts",            "type": "string", "value": "={{ JSON.stringify($json.output.social_posts) }}" },
+          { "id": "m-video", "name": "video_script",            "type": "string", "value": "={{ $json.output.video_script }}" },
+          { "id": "m-schema","name": "schema_suggestion",       "type": "string", "value": "={{ $json.output.schema_suggestion }}" },
+          { "id": "m-sig",   "name": "intent_signal",           "type": "string", "value": "={{ $('Store Inputs').first().json.intent_signal }}" },
+          { "id": "m-sid",   "name": "signal_id",               "type": "string", "value": "={{ $('Store Inputs').first().json.signal_id }}" },
+          { "id": "m-svc",   "name": "service",                 "type": "string", "value": "={{ $('Store Inputs').first().json.service }}" },
+          { "id": "m-loc",   "name": "location",                "type": "string", "value": "={{ $('Store Inputs').first().json.location }}" },
+          { "id": "m-ind",   "name": "industry",                "type": "string", "value": "={{ $('Store Inputs').first().json.industry }}" },
+          { "id": "m-biz",   "name": "business_name",           "type": "string", "value": "={{ $('Store Inputs').first().json.business_name }}" },
+          { "id": "m-org",   "name": "org_id",                  "type": "string", "value": "={{ $('Store Inputs').first().json.org_id }}" },
+          { "id": "m-run",   "name": "run_id",                  "type": "string", "value": "={{ $('Store Inputs').first().json.run_id }}" }
+        ]}, "options": {}
+      },
+      "id": "map-assets-wf3", "name": "Map Generated Assets",
+      "type": "n8n-nodes-base.set", "position": [960, 300], "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": { "__rl": true, "mode": "list", "value": "public" },
+        "table": { "__rl": true, "mode": "list", "value": "generated_assets" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "org_id": "={{ $json.org_id }}", "run_id": "={{ $json.run_id }}",
+            "signal_id": "={{ $json.signal_id }}", "intent_signal": "={{ $json.intent_signal }}",
+            "service": "={{ $json.service }}", "location": "={{ $json.location }}",
+            "industry": "={{ $json.industry }}", "business_name": "={{ $json.business_name }}",
+            "landing_page": "={{ $json.landing_page }}", "landing_page_subheadline": "={{ $json.landing_page_subheadline }}",
+            "faq": "={{ $json.faq }}", "cta": "={{ $json.cta }}", "ai_script": "={{ $json.ai_script }}",
+            "email_sequence": "={{ $json.email_sequence }}", "blog_outline": "={{ $json.blog_outline }}",
+            "social_posts": "={{ $json.social_posts }}", "video_script": "={{ $json.video_script }}",
+            "schema_suggestion": "={{ $json.schema_suggestion }}"
+          },
+          "matchingColumns": [], "schema": []
+        }, "options": {}
+      },
+      "id": "supabase-assets-wf3", "name": "Supabase - Save Assets",
+      "type": "n8n-nodes-base.supabase", "position": [1200, 200], "typeVersion": 1,
+      "credentials": { "supabaseApi": { "id": "REPLACE_WITH_YOUR_SUPABASE_CREDENTIAL_ID", "name": "Blue Wolf Supabase" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto=require('crypto');const secret=$env.N8N_HMAC_SECRET||'dev-secret';const inputs=$('Store Inputs').first().json;const asset=$('Map Generated Assets').first().json;const callbackBody={run_id:inputs.run_id,workflow_type:'asset_generation',status:'complete',org_id:inputs.org_id,output:{landing_page:asset.landing_page,service:asset.service,location:asset.location}};const payload=JSON.stringify(callbackBody);const signature=crypto.createHmac('sha256',secret).update(payload).digest('hex');return[{json:{callback_url:inputs.callback_url,payload,signature}}];"
+      },
+      "id": "build-callback-wf3", "name": "Build HMAC Callback",
+      "type": "n8n-nodes-base.code", "position": [1200, 400], "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" },{ "name": "X-Signature", "value": "={{ $json.signature }}" }] },
+        "sendBody": true, "specifyBody": "string", "body": "={{ $json.payload }}", "options": {}
+      },
+      "id": "callback-signafy-wf3", "name": "Callback - Signafy",
+      "type": "n8n-nodes-base.httpRequest", "position": [1440, 400], "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ 'Funnel Assets: ' + $('Map Generated Assets').first().json.service + ' in ' + $('Map Generated Assets').first().json.location }}",
+        "message": "=New assets generated for {{ $('Map Generated Assets').first().json.service }} in {{ $('Map Generated Assets').first().json.location }}.\n\nLanding Page: {{ $('Map Generated Assets').first().json.landing_page }}\nCTA: {{ $('Map Generated Assets').first().json.cta }}\nAI Script: {{ $('Map Generated Assets').first().json.ai_script }}",
+        "options": {}
+      },
+      "id": "gmail-draft-wf3", "name": "Email - Deliver Assets",
+      "type": "n8n-nodes-base.gmail", "position": [1440, 200], "typeVersion": 2.1,
+      "credentials": { "gmailOAuth2": { "id": "f5alzy0mz3G1NFbs", "name": "Gmail account" } }
+    },
+    {
+      "parameters": { "content": "## WF3 v2\nWebhook: POST /webhook/bw-wf3\nGenerates all funnel assets. Saves to generated_assets. HMAC callback. Gmail draft.", "height": 180, "width": 360, "color": 5 },
+      "id": "sticky-wf3", "name": "WF3 Notes",
+      "type": "n8n-nodes-base.stickyNote", "position": [240, 600], "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Webhook - WF3": { "main": [[{ "node": "Respond 202", "type": "main", "index": 0 },{ "node": "Store Inputs", "type": "main", "index": 0 }]] },
+    "Store Inputs": { "main": [[{ "node": "AI Funnel Asset Generator", "type": "main", "index": 0 }]] },
+    "AI Funnel Asset Generator": { "main": [[{ "node": "Map Generated Assets", "type": "main", "index": 0 }]] },
+    "GPT-4.1-mini": { "ai_languageModel": [[{ "node": "AI Funnel Asset Generator", "type": "ai_languageModel", "index": 0 }]] },
+    "Map Generated Assets": { "main": [[{ "node": "Supabase - Save Assets", "type": "main", "index": 0 },{ "node": "Build HMAC Callback", "type": "main", "index": 0 }]] },
+    "Supabase - Save Assets": { "main": [[{ "node": "Email - Deliver Assets", "type": "main", "index": 0 }]] },
+    "Build HMAC Callback": { "main": [[{ "node": "Callback - Signafy", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {}, "settings": { "executionOrder": "v1" }, "staticData": null,
+  "tags": ["blue-wolf","funnel-assets"], "triggerCount": 1,
+  "updatedAt": "2026-06-17T00:00:00.000Z", "versionId": "bw-wf3-v2"
+}

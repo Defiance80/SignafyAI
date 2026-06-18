@@ -1,0 +1,198 @@
+{
+  "name": "BW - WF0 - Router",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bw-router",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger-wf0",
+      "name": "Webhook - BW Router",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "webhookId": "bw-router",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "s-run-id",    "name": "run_id",               "type": "string",  "value": "={{ $json.body.run_id }}" },
+            { "id": "s-org-id",    "name": "org_id",               "type": "string",  "value": "={{ $json.body.org_id }}" },
+            { "id": "s-cb",        "name": "callback_url",         "type": "string",  "value": "={{ $json.body.callback_url }}" },
+            { "id": "s-market",    "name": "target_market",        "type": "string",  "value": "={{ $json.body.target_market || 'b2b' }}" },
+            { "id": "s-vertical",  "name": "b2b_vertical",         "type": "string",  "value": "={{ $json.body.b2b_vertical || '' }}" },
+            { "id": "s-sub",       "name": "insurance_sub_targets", "type": "string", "value": "={{ JSON.stringify($json.body.insurance_sub_targets || []) }}" },
+            { "id": "s-b2c-src",   "name": "b2c_sources",          "type": "string",  "value": "={{ JSON.stringify($json.body.b2c_sources || ['reddit','yelp','twitter','youtube']) }}" },
+            { "id": "s-b2b-src",   "name": "b2b_sources",          "type": "string",  "value": "={{ JSON.stringify($json.body.b2b_sources || ['linkedin','directories']) }}" },
+            { "id": "s-industry",  "name": "industry",             "type": "string",  "value": "={{ $json.body.industry || '' }}" },
+            { "id": "s-location",  "name": "location",             "type": "string",  "value": "={{ $json.body.location || '' }}" },
+            { "id": "s-keywords",  "name": "keywords",             "type": "string",  "value": "={{ JSON.stringify($json.body.keywords || []) }}" },
+            { "id": "s-min-score", "name": "min_score",            "type": "number",  "value": "={{ $json.body.min_score || 50 }}" },
+            { "id": "s-count",     "name": "count",                "type": "number",  "value": "={{ $json.body.count || 25 }}" },
+            { "id": "s-email",     "name": "user_email",           "type": "string",  "value": "={{ $json.body.user_email || '' }}" },
+            { "id": "s-service",   "name": "client_service",       "type": "string",  "value": "={{ $json.body.client_service || '' }}" },
+            { "id": "s-lp",        "name": "generate_landing_page","type": "boolean", "value": "={{ $json.body.generate_landing_page === true }}" },
+            { "id": "s-agent",     "name": "for_client",           "type": "boolean", "value": "={{ $json.body.for_client === true }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "store-inputs-wf0",
+      "name": "Store Inputs",
+      "type": "n8n-nodes-base.set",
+      "position": [480, 300],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ accepted: true, run_id: $('Store Inputs').first().json.run_id, message: 'Blue Wolf discovery started' }) }}",
+        "options": { "responseCode": 202 }
+      },
+      "id": "respond-wf0",
+      "name": "Respond 202 Accepted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [720, 100],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "version": 2, "caseSensitive": false, "typeValidation": "strict" },
+          "combinator": "or",
+          "conditions": [
+            {
+              "id": "gate-b2b-eq",
+              "operator": { "type": "string", "operation": "equals" },
+              "leftValue": "={{ $('Store Inputs').first().json.target_market }}",
+              "rightValue": "b2b"
+            },
+            {
+              "id": "gate-both-eq",
+              "operator": { "type": "string", "operation": "equals" },
+              "leftValue": "={{ $('Store Inputs').first().json.target_market }}",
+              "rightValue": "both"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "gate-b2b-wf0",
+      "name": "Gate - B2B?",
+      "type": "n8n-nodes-base.filter",
+      "position": [720, 300],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "version": 2, "caseSensitive": false, "typeValidation": "strict" },
+          "combinator": "or",
+          "conditions": [
+            {
+              "id": "gate-b2c-eq",
+              "operator": { "type": "string", "operation": "equals" },
+              "leftValue": "={{ $('Store Inputs').first().json.target_market }}",
+              "rightValue": "b2c"
+            },
+            {
+              "id": "gate-both-b2c",
+              "operator": { "type": "string", "operation": "equals" },
+              "leftValue": "={{ $('Store Inputs').first().json.target_market }}",
+              "rightValue": "both"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "gate-b2c-wf0",
+      "name": "Gate - B2C?",
+      "type": "n8n-nodes-base.filter",
+      "position": [720, 500],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.N8N_BASE_URL }}/webhook/bw-wf1",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"run_id\": \"{{ $('Store Inputs').first().json.run_id }}\",\n  \"org_id\": \"{{ $('Store Inputs').first().json.org_id }}\",\n  \"callback_url\": \"{{ $('Store Inputs').first().json.callback_url }}\",\n  \"b2b_vertical\": \"{{ $('Store Inputs').first().json.b2b_vertical }}\",\n  \"insurance_sub_targets\": {{ $('Store Inputs').first().json.insurance_sub_targets }},\n  \"b2b_sources\": {{ $('Store Inputs').first().json.b2b_sources }},\n  \"industry\": \"{{ $('Store Inputs').first().json.industry }}\",\n  \"location\": \"{{ $('Store Inputs').first().json.location }}\",\n  \"keywords\": {{ $('Store Inputs').first().json.keywords }},\n  \"min_score\": {{ $('Store Inputs').first().json.min_score }},\n  \"count\": {{ $('Store Inputs').first().json.count }},\n  \"user_email\": \"{{ $('Store Inputs').first().json.user_email }}\",\n  \"client_service\": \"{{ $('Store Inputs').first().json.client_service }}\",\n  \"for_client\": {{ $('Store Inputs').first().json.for_client }},\n  \"generate_landing_page\": {{ $('Store Inputs').first().json.generate_landing_page }}\n}",
+        "options": { "timeout": 8000 }
+      },
+      "id": "trigger-wf1",
+      "name": "Trigger WF1 - Prospects",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [960, 300],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.N8N_BASE_URL }}/webhook/bw-wf2",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"run_id\": \"{{ $('Store Inputs').first().json.run_id }}\",\n  \"org_id\": \"{{ $('Store Inputs').first().json.org_id }}\",\n  \"callback_url\": \"{{ $('Store Inputs').first().json.callback_url }}\",\n  \"b2c_sources\": {{ $('Store Inputs').first().json.b2c_sources }},\n  \"industry\": \"{{ $('Store Inputs').first().json.industry }}\",\n  \"location\": \"{{ $('Store Inputs').first().json.location }}\",\n  \"keywords\": {{ $('Store Inputs').first().json.keywords }},\n  \"min_score\": {{ $('Store Inputs').first().json.min_score }},\n  \"client_service\": \"{{ $('Store Inputs').first().json.client_service }}\",\n  \"generate_landing_page\": {{ $('Store Inputs').first().json.generate_landing_page }}\n}",
+        "options": { "timeout": 8000 }
+      },
+      "id": "trigger-wf2",
+      "name": "Trigger WF2 - Intent",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [960, 500],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "content": "## 🔀 WF0 - Blue Wolf Router v2\n\n**Webhook path:** POST /webhook/bw-router\n\n**Receives from Signafy:**\n- run_id, org_id, callback_url\n- target_market: b2b | b2c | both\n- b2b_vertical: marketing_agency | saas_software | business_consultant | commercial_support | recruiting_firm | insurance_agency\n- insurance_sub_targets: [construction, medical, manufacturing]\n- b2c_sources: [reddit, twitter, yelp, youtube]\n- industry, location, keywords, min_score, count\n- client_service, generate_landing_page, for_client\n\n**Flow:**\n1. Webhook receives POST from Signafy\n2. Store all inputs\n3. Respond 202 immediately (non-blocking)\n4. Gate B2B → Trigger WF1 async\n5. Gate B2C → Trigger WF2 async\n\n**WF1 + WF2 each call back to Signafy directly when done.**\n\n**ENV Required:**\n- N8N_BASE_URL (e.g. https://n8n.yourdomain.com)\n- N8N_HMAC_SECRET (same value as NEXT_PUBLIC/HMAC on Signafy side)",
+        "height": 420,
+        "width": 580,
+        "color": 6
+      },
+      "id": "sticky-wf0",
+      "name": "WF0 Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [240, 640],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Webhook - BW Router": {
+      "main": [
+        [
+          { "node": "Store Inputs", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Store Inputs": {
+      "main": [
+        [
+          { "node": "Respond 202 Accepted", "type": "main", "index": 0 },
+          { "node": "Gate - B2B?", "type": "main", "index": 0 },
+          { "node": "Gate - B2C?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Gate - B2B?": {
+      "main": [
+        [
+          { "node": "Trigger WF1 - Prospects", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Gate - B2C?": {
+      "main": [
+        [
+          { "node": "Trigger WF2 - Intent", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": ["blue-wolf", "router"],
+  "triggerCount": 1,
+  "updatedAt": "2026-06-17T00:00:00.000Z",
+  "versionId": "bw-wf0-v2"
+}

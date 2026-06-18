@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:migrate": "node scripts/apply-supabase-migrations.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.2.3",

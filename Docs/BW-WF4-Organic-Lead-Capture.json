@@ -1,0 +1,162 @@
+﻿{
+  "name": "BW - WF4 - Organic Lead Capture",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bw-wf4-lead-capture",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-wf4", "name": "Webhook - Lead Capture",
+      "type": "n8n-nodes-base.webhook", "position": [240, 300], "webhookId": "bw-wf4-lead-capture", "typeVersion": 2
+    },
+    {
+      "parameters": { "respondWith": "json", "responseBody": "{\"accepted\": true, \"message\": \"Thank you! We will be in touch shortly.\"}", "options": { "responseCode": 200 } },
+      "id": "respond-wf4", "name": "Respond 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook", "position": [480, 100], "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "assignments": { "assignments": [
+          { "id": "s-org",     "name": "org_id",        "type": "string", "value": "={{ $json.body.org_id || $json.body.organizationId || '' }}" },
+          { "id": "s-cb",     "name": "callback_url",  "type": "string", "value": "={{ $json.body.callback_url || '' }}" },
+          { "id": "s-name",   "name": "name",          "type": "string", "value": "={{ $json.body.name || $json.body.firstName + ' ' + $json.body.lastName || 'Unknown' }}" },
+          { "id": "s-email",  "name": "email",         "type": "string", "value": "={{ $json.body.email || '' }}" },
+          { "id": "s-phone",  "name": "phone",         "type": "string", "value": "={{ $json.body.phone || $json.body.phoneNumber || '' }}" },
+          { "id": "s-svc",    "name": "service",       "type": "string", "value": "={{ $json.body.service || $json.body.serviceInterest || '' }}" },
+          { "id": "s-loc",    "name": "location",      "type": "string", "value": "={{ $json.body.location || $json.body.city || '' }}" },
+          { "id": "s-notes",  "name": "notes",         "type": "string", "value": "={{ JSON.stringify($json.body) }}" },
+          { "id": "s-src",    "name": "source",        "type": "string", "value": "={{ $json.body.source || 'landing_page' }}" },
+          { "id": "s-url",    "name": "source_url",    "type": "string", "value": "={{ $json.headers?.referer || $json.body.page_url || '' }}" }
+        ]}, "options": {}
+      },
+      "id": "store-inputs-wf4", "name": "Store Form Data",
+      "type": "n8n-nodes-base.set", "position": [480, 300], "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "text": "=You are a lead qualification AI for Blue Wolf Solutions.\n\nSomeone submitted a lead capture form. Qualify them:\n\nName: {{ $json.name }}\nEmail: {{ $json.email }}\nPhone: {{ $json.phone }}\nService Interest: {{ $json.service }}\nLocation: {{ $json.location }}\nForm Data: {{ $json.notes }}\n\nReturn ONLY valid JSON:\n{\n  \"quality_score\": 75,\n  \"is_qualified\": true,\n  \"reason\": \"Provided email and phone, clear service interest\",\n  \"buying_stage\": \"Vendor Selection\",\n  \"urgency\": \"High\",\n  \"recommended_action\": \"Call within 2 hours\",\n  \"tags\": [\"organic\", \"landing-page\", \"high-intent\"]\n}\n\nQuality score: 80-100=hot lead, 60-79=warm, 40-59=nurture, 0-39=disqualify.\nis_qualified: true if score >= 50.",
+        "attributes": { "attributes": [
+          { "name": "quality_score",       "description": "0-100 lead quality score",           "required": true },
+          { "name": "is_qualified",        "description": "Boolean - qualify or discard",        "required": true },
+          { "name": "reason",              "description": "Brief reason for score",               "required": true },
+          { "name": "buying_stage",        "description": "Research|Comparison|Vendor Selection|Ready To Buy", "required": true },
+          { "name": "urgency",             "description": "High|Medium|Low",                     "required": true },
+          { "name": "recommended_action",  "description": "Next action for sales team",          "required": true },
+          { "name": "tags",                "description": "Array of relevant tag strings",       "required": true }
+        ]}, "options": {}
+      },
+      "id": "ai-qualify-wf4", "name": "AI Qualify Lead",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor", "position": [720, 300], "typeVersion": 1.2
+    },
+    {
+      "parameters": { "model": { "__rl": true, "mode": "list", "value": "gpt-4.1-mini" }, "options": {} },
+      "id": "openai-wf4", "name": "GPT-4.1-mini",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi", "position": [816, 460], "typeVersion": 1.2,
+      "credentials": { "openAiApi": { "id": "pcRo0Ru13Y38GX4e", "name": "Defiance OpenAi" } }
+    },
+    {
+      "parameters": {
+        "assignments": { "assignments": [
+          { "id": "m-name",    "name": "name",            "type": "string",  "value": "={{ $('Store Form Data').first().json.name }}" },
+          { "id": "m-email",   "name": "email",           "type": "string",  "value": "={{ $('Store Form Data').first().json.email }}" },
+          { "id": "m-phone",   "name": "phone",           "type": "string",  "value": "={{ $('Store Form Data').first().json.phone }}" },
+          { "id": "m-svc",     "name": "service",         "type": "string",  "value": "={{ $('Store Form Data').first().json.service }}" },
+          { "id": "m-loc",     "name": "location",        "type": "string",  "value": "={{ $('Store Form Data').first().json.location }}" },
+          { "id": "m-src",     "name": "source",          "type": "string",  "value": "={{ $('Store Form Data').first().json.source }}" },
+          { "id": "m-url",     "name": "source_url",      "type": "string",  "value": "={{ $('Store Form Data').first().json.source_url }}" },
+          { "id": "m-score",   "name": "quality_score",   "type": "number",  "value": "={{ $json.output.quality_score }}" },
+          { "id": "m-qual",    "name": "is_qualified",    "type": "boolean", "value": "={{ $json.output.is_qualified }}" },
+          { "id": "m-stage",   "name": "buying_stage",    "type": "string",  "value": "={{ $json.output.buying_stage }}" },
+          { "id": "m-urgency", "name": "urgency",         "type": "string",  "value": "={{ $json.output.urgency }}" },
+          { "id": "m-action",  "name": "next_action",     "type": "string",  "value": "={{ $json.output.recommended_action }}" },
+          { "id": "m-tags",    "name": "tags",            "type": "string",  "value": "={{ JSON.stringify($json.output.tags) }}" },
+          { "id": "m-notes",   "name": "notes",           "type": "string",  "value": "={{ 'Organic lead via ' + $('Store Form Data').first().json.source + '. Urgency: ' + $json.output.urgency + '. Action: ' + $json.output.recommended_action }}" },
+          { "id": "m-org",     "name": "org_id",          "type": "string",  "value": "={{ $('Store Form Data').first().json.org_id }}" },
+          { "id": "m-cb",      "name": "callback_url",    "type": "string",  "value": "={{ $('Store Form Data').first().json.callback_url }}" }
+        ]}, "options": {}
+      },
+      "id": "merge-lead-wf4", "name": "Merge Lead Data",
+      "type": "n8n-nodes-base.set", "position": [960, 300], "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "conditions": { "options": { "version": 2, "caseSensitive": true, "typeValidation": "strict" }, "combinator": "and",
+          "conditions": [{ "id": "f-qual", "operator": { "type": "boolean", "operation": "true" }, "leftValue": "={{ $json.is_qualified }}", "rightValue": "" }]
+        }, "options": {}
+      },
+      "id": "filter-qualified-wf4", "name": "Filter - Qualified?",
+      "type": "n8n-nodes-base.filter", "position": [1200, 300], "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": { "__rl": true, "mode": "list", "value": "public" },
+        "table": { "__rl": true, "mode": "list", "value": "leads" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "org_id": "={{ $json.org_id }}", "name": "={{ $json.name }}", "email": "={{ $json.email }}",
+            "phone": "={{ $json.phone }}", "industry": "={{ $json.service }}", "location": "={{ $json.location }}",
+            "platform": "manual", "source_url": "={{ $json.source_url }}", "notes": "={{ $json.notes }}",
+            "score": "={{ $json.quality_score }}", "status": "new",
+            "tags": "={{ $json.tags }}", "last_activity": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [], "schema": []
+        }, "options": {}
+      },
+      "id": "supabase-lead-wf4", "name": "Supabase - Save Lead",
+      "type": "n8n-nodes-base.supabase", "position": [1440, 300], "typeVersion": 1,
+      "credentials": { "supabaseApi": { "id": "REPLACE_WITH_YOUR_SUPABASE_CREDENTIAL_ID", "name": "Blue Wolf Supabase" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto=require('crypto');const secret=$env.N8N_HMAC_SECRET||'dev-secret';const lead=$('Merge Lead Data').first().json;if(!lead.callback_url)return[{json:{skip:true}}];const callbackBody={workflow_type:'lead_discovery',status:'complete',org_id:lead.org_id,run_id:'organic-'+Date.now(),leads:[{name:lead.name,email:lead.email,phone:lead.phone,industry:lead.service,location:lead.location,source_url:lead.source_url,score:lead.quality_score,status:'new',tags:JSON.parse(lead.tags||'[]'),platform:'manual',last_activity:new Date().toISOString()}]};const payload=JSON.stringify(callbackBody);const signature=crypto.createHmac('sha256',secret).update(payload).digest('hex');return[{json:{callback_url:lead.callback_url,payload,signature,skip:false}}];"
+      },
+      "id": "build-callback-wf4", "name": "Build HMAC Callback",
+      "type": "n8n-nodes-base.code", "position": [1680, 300], "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": { "options": { "version": 2, "caseSensitive": true, "typeValidation": "strict" }, "combinator": "and",
+          "conditions": [{ "id": "f-skip", "operator": { "type": "boolean", "operation": "notEquals" }, "leftValue": "={{ $json.skip }}", "rightValue": true }]
+        }, "options": {}
+      },
+      "id": "filter-has-cb-wf4", "name": "Filter - Has Callback?",
+      "type": "n8n-nodes-base.filter", "position": [1920, 300], "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" },{ "name": "X-Signature", "value": "={{ $json.signature }}" }] },
+        "sendBody": true, "specifyBody": "string", "body": "={{ $json.payload }}", "options": {}
+      },
+      "id": "callback-signafy-wf4", "name": "Callback - Signafy",
+      "type": "n8n-nodes-base.httpRequest", "position": [2160, 300], "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "content": "## WF4 - Organic Lead Capture\n\nWebhook: POST /webhook/bw-wf4-lead-capture\n\nFor use with Tally, Typeform, or any landing page form.\n\nEmbed in your landing pages as form submission webhook.\nInclude org_id and callback_url in hidden form fields.\n\nFlow:\n1. Receive form submission\n2. Respond 200 OK immediately\n3. AI qualifies lead (score 0-100)\n4. Filter: score >= 50 = qualified\n5. Save to Supabase leads table\n6. HMAC callback to Signafy (if callback_url provided)\n\nPayload fields:\n- name, email, phone\n- service (what they want)\n- location (city/state)\n- source (landing_page, social, etc)\n- org_id, callback_url (hidden fields)",
+        "height": 380, "width": 460, "color": 7
+      },
+      "id": "sticky-wf4", "name": "WF4 Notes",
+      "type": "n8n-nodes-base.stickyNote", "position": [240, 600], "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Webhook - Lead Capture": { "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 },{ "node": "Store Form Data", "type": "main", "index": 0 }]] },
+    "Store Form Data": { "main": [[{ "node": "AI Qualify Lead", "type": "main", "index": 0 }]] },
+    "AI Qualify Lead": { "main": [[{ "node": "Merge Lead Data", "type": "main", "index": 0 }]] },
+    "GPT-4.1-mini": { "ai_languageModel": [[{ "node": "AI Qualify Lead", "type": "ai_languageModel", "index": 0 }]] },
+    "Merge Lead Data": { "main": [[{ "node": "Filter - Qualified?", "type": "main", "index": 0 }]] },
+    "Filter - Qualified?": { "main": [[{ "node": "Supabase - Save Lead", "type": "main", "index": 0 }]] },
+    "Supabase - Save Lead": { "main": [[{ "node": "Build HMAC Callback", "type": "main", "index": 0 }]] },
+    "Build HMAC Callback": { "main": [[{ "node": "Filter - Has Callback?", "type": "main", "index": 0 }]] },
+    "Filter - Has Callback?": { "main": [[{ "node": "Callback - Signafy", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {}, "settings": { "executionOrder": "v1" }, "staticData": null,
+  "tags": ["blue-wolf","lead-capture"], "triggerCount": 1,
+  "updatedAt": "2026-06-17T00:00:00.000Z", "versionId": "bw-wf4-v1"
+}

@@ -1,0 +1,405 @@
+{
+  "name": "BW - WF1 - Enhanced Prospect Finder",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bw-wf1",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-wf1",
+      "name": "Webhook - WF1",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "webhookId": "bw-wf1",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"accepted\": true }",
+        "options": { "responseCode": 202 }
+      },
+      "id": "respond-wf1",
+      "name": "Respond 202",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [480, 100],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "s-run",       "name": "run_id",               "type": "string",  "value": "={{ $json.body.run_id }}" },
+            { "id": "s-org",       "name": "org_id",               "type": "string",  "value": "={{ $json.body.org_id }}" },
+            { "id": "s-cb",        "name": "callback_url",         "type": "string",  "value": "={{ $json.body.callback_url }}" },
+            { "id": "s-vertical",  "name": "b2b_vertical",         "type": "string",  "value": "={{ $json.body.b2b_vertical || 'marketing_agency' }}" },
+            { "id": "s-sub",       "name": "insurance_sub_targets", "type": "string", "value": "={{ JSON.stringify($json.body.insurance_sub_targets || []) }}" },
+            { "id": "s-industry",  "name": "industry",             "type": "string",  "value": "={{ $json.body.industry || '' }}" },
+            { "id": "s-location",  "name": "location",             "type": "string",  "value": "={{ $json.body.location || 'United States' }}" },
+            { "id": "s-keywords",  "name": "keywords",             "type": "string",  "value": "={{ JSON.stringify($json.body.keywords || []) }}" },
+            { "id": "s-min",       "name": "min_score",            "type": "number",  "value": "={{ $json.body.min_score || 50 }}" },
+            { "id": "s-count",     "name": "count",                "type": "number",  "value": "={{ $json.body.count || 25 }}" },
+            { "id": "s-email",     "name": "user_email",           "type": "string",  "value": "={{ $json.body.user_email || '' }}" },
+            { "id": "s-service",   "name": "client_service",       "type": "string",  "value": "={{ $json.body.client_service || '' }}" },
+            { "id": "s-agent",     "name": "for_client",           "type": "boolean", "value": "={{ $json.body.for_client === true }}" },
+            { "id": "s-lp",        "name": "generate_landing_page","type": "boolean", "value": "={{ $json.body.generate_landing_page === true }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "store-inputs-wf1",
+      "name": "Store Inputs",
+      "type": "n8n-nodes-base.set",
+      "position": [480, 300],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build industry-specific Apify search queries based on b2b_vertical\nconst data = $input.first().json;\nconst vertical = data.b2b_vertical;\nconst location = data.location || 'United States';\nconst industry = data.industry || '';\nconst sub = JSON.parse(data.insurance_sub_targets || '[]');\nconst extraKeywords = JSON.parse(data.keywords || '[]');\n\nconst VERTICAL_QUERIES = {\n  marketing_agency: [\n    'marketing agency',\n    'digital marketing agency',\n    'social media marketing agency',\n    'advertising agency',\n    'content marketing agency',\n    'SEO agency',\n    'PPC agency'\n  ],\n  saas_software: [\n    'SaaS company',\n    'software company',\n    'tech startup',\n    'software development company',\n    'cloud software',\n    'B2B software'\n  ],\n  business_consultant: [\n    'business consultant',\n    'management consultant',\n    'business coach',\n    'strategy consultant',\n    'growth consultant'\n  ],\n  commercial_support: [\n    'commercial cleaning',\n    'janitorial services',\n    'facility management',\n    'commercial landscaping',\n    'office maintenance'\n  ],\n  recruiting_firm: [\n    'staffing agency',\n    'recruiting firm',\n    'executive search firm',\n    'talent acquisition',\n    'headhunter agency'\n  ],\n  insurance_agency: [\n    'insurance agency',\n    'insurance broker',\n    'commercial insurance',\n    'business insurance'\n  ]\n};\n\nlet queries = VERTICAL_QUERIES[vertical] || [industry || 'business'];\n\n// For insurance agencies, optionally target their B2B clients instead\nif (vertical === 'insurance_agency' && sub.length > 0) {\n  queries = [];\n  if (sub.includes('construction')) {\n    queries.push('general contractor', 'construction company', 'roofing contractor', 'electrical contractor', 'plumbing company');\n  }\n  if (sub.includes('medical')) {\n    queries.push('medical office', 'dental office', 'healthcare clinic', 'physical therapy clinic', 'chiropractic office');\n  }\n  if (sub.includes('manufacturing')) {\n    queries.push('manufacturing company', 'industrial manufacturer', 'metal fabrication', 'plastics manufacturer', 'food manufacturer');\n  }\n}\n\n// Mix in custom keywords if provided\nif (extraKeywords.length > 0) {\n  queries = [...new Set([...queries, ...extraKeywords])];\n}\n\n// Limit to 8 search terms max for Apify\nqueries = queries.slice(0, 8);\n\nreturn [{\n  json: {\n    ...data,\n    apify_queries: queries,\n    apify_location: location,\n    search_label: `${vertical} in ${location}`\n  }\n}];"
+      },
+      "id": "build-queries-wf1",
+      "name": "Build Apify Queries",
+      "type": "n8n-nodes-base.code",
+      "position": [720, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "url": "=https://api.apify.com/v2/acts/compass~crawler-google-places/run-sync-get-dataset-items?token={{ $env.APIFY_TOKEN }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"searchStringsArray\": {{ JSON.stringify($json.apify_queries) }},\n  \"locationQuery\": \"{{ $json.apify_location }}\",\n  \"maxCrawledPlaces\": {{ $json.count || 25 }},\n  \"language\": \"en\",\n  \"maxImages\": 0,\n  \"exportPlaceUrls\": false,\n  \"additionalInfo\": false,\n  \"scrapeReviews\": false\n}",
+        "options": { "timeout": 300000 }
+      },
+      "id": "apify-places-wf1",
+      "name": "Apify - Google Places",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [960, 300],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize Apify Google Places results into consistent business objects\nconst items = $input.all();\nconst inputs = $('Store Inputs').first().json;\n\nconst businesses = [];\n\nfor (const item of items) {\n  const place = item.json;\n  \n  // Skip if no name or not a real business\n  if (!place.title && !place.name) continue;\n  \n  const name = place.title || place.name || 'Unknown Business';\n  const website = place.website || place.url || null;\n  const email = place.emailAddress || place.email || null;\n  const phone = place.phoneNumber || place.phone || null;\n  const address = place.address || place.location?.address || null;\n  const rating = place.totalScore || place.rating || null;\n  const reviews = place.reviewsCount || place.reviewCount || place.userRatingsTotal || 0;\n  const category = (place.categories && place.categories[0]) || place.primaryType || inputs.b2b_vertical || null;\n  \n  businesses.push({\n    name,\n    website,\n    email,\n    phone,\n    address,\n    rating: rating ? parseFloat(rating) : null,\n    reviews: parseInt(reviews) || 0,\n    category,\n    industry: inputs.industry || inputs.b2b_vertical,\n    service: inputs.client_service || inputs.industry || inputs.b2b_vertical,\n    location: inputs.location,\n    raw_data: JSON.stringify(place).substring(0, 500)\n  });\n}\n\nif (businesses.length === 0) {\n  // Return a placeholder so workflow doesn't die empty\n  return [{ json: { __empty: true, reason: 'No businesses found in Apify response' } }];\n}\n\nreturn businesses.map(b => ({ json: b }));"
+      },
+      "id": "map-businesses-wf1",
+      "name": "Map Business Fields",
+      "type": "n8n-nodes-base.code",
+      "position": [1200, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "version": 2, "caseSensitive": false, "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "filter-not-empty",
+              "operator": { "type": "boolean", "operation": "false" },
+              "leftValue": "={{ $json.__empty === true }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "filter-not-empty-wf1",
+      "name": "Filter - Has Results",
+      "type": "n8n-nodes-base.filter",
+      "position": [1440, 300],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "text": "=You are a B2B prospect intelligence analyst for Blue Wolf Solutions, a Customer Acquisition Agency.\n\nScore this business as a prospect for {{ $('Store Inputs').first().json.client_service || $('Store Inputs').first().json.b2b_vertical || 'our services' }}:\n\nBusiness: {{ $json.name }}\nCategory: {{ $json.category }}\nIndustry: {{ $json.industry }}\nLocation: {{ $json.location }}\nWebsite: {{ $json.website || 'No website' }}\nRating: {{ $json.rating || 'N/A' }} ({{ $json.reviews }} reviews)\n\nB2B Vertical Target: {{ $('Store Inputs').first().json.b2b_vertical }}\nFor Client? {{ $('Store Inputs').first().json.for_client }}\n\nAnalyze and provide:\n\n1. OPPORTUNITY_SCORE (0-100):\n   - 80-100: Premium prospect (ideal fit, likely to convert, active business)\n   - 60-79: Good prospect (reasonable fit, worth outreach)\n   - 40-59: Marginal (some fit, lower priority)\n   - 0-39: Poor fit (skip)\n\n2. WEAKNESSES: 2-3 key business weaknesses or gaps visible from their online presence (no website, low reviews, inconsistent branding, missing social proof, etc.)\n\n3. RECOMMENDED_OFFER: Specific service offer tailored to their weaknesses\n\n4. PITCH_ANGLE: One-sentence unique angle for cold outreach\n\n5. EMAIL_SUBJECT: Subject line for cold email (under 50 chars, avoid spam triggers)\n\n6. EMAIL_BODY: 4-sentence cold email body (personalized, value-first, not pushy)\n\nReturn ONLY valid JSON:\n{\n  \"opportunity_score\": 75,\n  \"weaknesses\": \"No website detected; only 12 reviews vs competitors with 200+; no social media presence\",\n  \"recommended_offer\": \"Done-for-you Google review generation + website audit\",\n  \"pitch_angle\": \"Your competitors are winning on Google with 10x the reviews — we can fix that in 30 days\",\n  \"email_subject\": \"Quick question about [Business Name]'s online visibility\",\n  \"email_body\": \"Hi [Name], I noticed [Business Name] has a strong category presence but only [X] Google reviews while competitors average [Y]. We help [vertical] businesses in [location] build credibility and attract more inbound clients through AI-powered reputation systems. Would a 15-minute call this week make sense? — [Your Name]\"\n}",
+        "attributes": {
+          "attributes": [
+            { "name": "opportunity_score",  "description": "0-100 score for this prospect", "required": true },
+            { "name": "weaknesses",         "description": "Key weaknesses or gaps in their business", "required": true },
+            { "name": "recommended_offer",  "description": "Specific service offer for this prospect", "required": true },
+            { "name": "pitch_angle",        "description": "One-sentence unique outreach angle", "required": true },
+            { "name": "email_subject",      "description": "Cold email subject line under 50 chars", "required": true },
+            { "name": "email_body",         "description": "4-sentence personalized cold email body", "required": true }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ai-scorer-wf1",
+      "name": "AI Opportunity Scorer",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "position": [1680, 300],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "model": { "__rl": true, "mode": "list", "value": "gpt-4.1-mini" },
+        "options": {}
+      },
+      "id": "openai-wf1",
+      "name": "GPT-4.1-mini",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [1776, 460],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": { "id": "pcRo0Ru13Y38GX4e", "name": "Defiance OpenAi" }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "m-name",    "name": "name",              "type": "string", "value": "={{ $('Map Business Fields').item.json.name }}" },
+            { "id": "m-ind",     "name": "industry",          "type": "string", "value": "={{ $('Map Business Fields').item.json.industry }}" },
+            { "id": "m-svc",     "name": "service",           "type": "string", "value": "={{ $('Map Business Fields').item.json.service }}" },
+            { "id": "m-loc",     "name": "location",          "type": "string", "value": "={{ $('Map Business Fields').item.json.location }}" },
+            { "id": "m-web",     "name": "website",           "type": "string", "value": "={{ $('Map Business Fields').item.json.website }}" },
+            { "id": "m-email",   "name": "email",             "type": "string", "value": "={{ $('Map Business Fields').item.json.email }}" },
+            { "id": "m-phone",   "name": "phone",             "type": "string", "value": "={{ $('Map Business Fields').item.json.phone }}" },
+            { "id": "m-addr",    "name": "address",           "type": "string", "value": "={{ $('Map Business Fields').item.json.address }}" },
+            { "id": "m-cat",     "name": "category",          "type": "string", "value": "={{ $('Map Business Fields').item.json.category }}" },
+            { "id": "m-rating",  "name": "rating",            "type": "number", "value": "={{ $('Map Business Fields').item.json.rating }}" },
+            { "id": "m-reviews", "name": "reviews",           "type": "number", "value": "={{ $('Map Business Fields').item.json.reviews }}" },
+            { "id": "m-score",   "name": "opportunity_score", "type": "number", "value": "={{ $json.output.opportunity_score }}" },
+            { "id": "m-weak",    "name": "weaknesses",        "type": "string", "value": "={{ $json.output.weaknesses }}" },
+            { "id": "m-offer",   "name": "recommended_offer", "type": "string", "value": "={{ $json.output.recommended_offer }}" },
+            { "id": "m-pitch",   "name": "pitch_angle",       "type": "string", "value": "={{ $json.output.pitch_angle }}" },
+            { "id": "m-subj",    "name": "email_subject",     "type": "string", "value": "={{ $json.output.email_subject }}" },
+            { "id": "m-body",    "name": "email_body",        "type": "string", "value": "={{ $json.output.email_body }}" },
+            { "id": "m-org",     "name": "org_id",            "type": "string", "value": "={{ $('Store Inputs').first().json.org_id }}" },
+            { "id": "m-run",     "name": "run_id",            "type": "string", "value": "={{ $('Store Inputs').first().json.run_id }}" },
+            { "id": "m-scraped", "name": "scraped_at",        "type": "string", "value": "={{ $now.toISO() }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "merge-fields-wf1",
+      "name": "Merge All Fields",
+      "type": "n8n-nodes-base.set",
+      "position": [1920, 300],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "version": 2, "caseSensitive": true, "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "filter-score",
+              "operator": { "type": "number", "operation": "gte" },
+              "leftValue": "={{ $json.opportunity_score }}",
+              "rightValue": "={{ $('Store Inputs').first().json.min_score }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "filter-score-wf1",
+      "name": "Filter - Score >= Min",
+      "type": "n8n-nodes-base.filter",
+      "position": [2160, 300],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": { "__rl": true, "mode": "list", "value": "public" },
+        "table": { "__rl": true, "mode": "list", "value": "businesses" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "org_id":            "={{ $json.org_id }}",
+            "run_id":            "={{ $json.run_id }}",
+            "name":              "={{ $json.name }}",
+            "industry":          "={{ $json.industry }}",
+            "service":           "={{ $json.service }}",
+            "location":          "={{ $json.location }}",
+            "website":           "={{ $json.website }}",
+            "email":             "={{ $json.email }}",
+            "phone":             "={{ $json.phone }}",
+            "address":           "={{ $json.address }}",
+            "category":          "={{ $json.category }}",
+            "rating":            "={{ $json.rating }}",
+            "reviews":           "={{ $json.reviews }}",
+            "opportunity_score": "={{ $json.opportunity_score }}",
+            "weaknesses":        "={{ $json.weaknesses }}",
+            "recommended_offer": "={{ $json.recommended_offer }}",
+            "pitch_angle":       "={{ $json.pitch_angle }}",
+            "email_subject":     "={{ $json.email_subject }}",
+            "email_body":        "={{ $json.email_body }}",
+            "scraped_at":        "={{ $json.scraped_at }}"
+          },
+          "matchingColumns": ["org_id", "website"],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "supabase-insert-wf1",
+      "name": "Supabase - Upsert Business",
+      "type": "n8n-nodes-base.supabase",
+      "position": [2400, 300],
+      "typeVersion": 1,
+      "credentials": {
+        "supabaseApi": { "id": "REPLACE_WITH_YOUR_SUPABASE_CREDENTIAL_ID", "name": "Blue Wolf Supabase" }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "aggregate-wf1",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.aggregate",
+      "position": [2640, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.N8N_HMAC_SECRET || 'dev-secret';\nconst inputs = $('Store Inputs').first().json;\n\nconst businesses = $input.first().json.data || [];\n\nconst callbackBody = {\n  run_id: inputs.run_id,\n  workflow_type: 'prospect_discovery',\n  status: 'complete',\n  org_id: inputs.org_id,\n  output: {\n    businesses_found: businesses.length,\n    vertical: inputs.b2b_vertical,\n    location: inputs.location,\n    min_score_applied: inputs.min_score\n  }\n};\n\nconst payload = JSON.stringify(callbackBody);\nconst signature = crypto.createHmac('sha256', secret).update(payload).digest('hex');\n\nreturn [{ json: {\n  callback_url: inputs.callback_url,\n  payload,\n  signature\n} }];"
+      },
+      "id": "build-callback-wf1",
+      "name": "Build HMAC Callback",
+      "type": "n8n-nodes-base.code",
+      "position": [2880, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "X-Signature",  "value": "={{ $json.signature }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.payload }}",
+        "options": {}
+      },
+      "id": "callback-signafy-wf1",
+      "name": "Callback - Signafy",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [3120, 300],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "content": "## 🏢 WF1 - Enhanced B2B Prospect Finder v2\n\n**Webhook path:** POST /webhook/bw-wf1\n\n**B2B Verticals supported:**\n- marketing_agency → Marketing, Digital, Social Media, SEO, PPC agencies\n- saas_software → SaaS, software companies, tech startups\n- business_consultant → Consultants, coaches, strategists\n- commercial_support → Cleaning, janitorial, facility management\n- recruiting_firm → Staffing, search, talent agencies\n- insurance_agency → Commercial insurance brokers\n  - Sub-targets: construction, medical, manufacturing (finds THEIR clients)\n\n**Flow:**\n1. Respond 202 immediately\n2. Store inputs\n3. Build smart Apify queries per vertical\n4. Scrape Google Places via Apify\n5. AI score each business (opportunity_score, weaknesses, offer, pitch, email)\n6. Filter by min_score\n7. Upsert to Supabase businesses table\n8. HMAC callback to Signafy\n\n**ENV Required:**\n- APIFY_TOKEN\n- N8N_HMAC_SECRET\n\n**Supabase:** Replace credential ID",
+        "height": 420,
+        "width": 560,
+        "color": 3
+      },
+      "id": "sticky-wf1",
+      "name": "WF1 Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [240, 620],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Webhook - WF1": {
+      "main": [
+        [
+          { "node": "Respond 202",   "type": "main", "index": 0 },
+          { "node": "Store Inputs",  "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Store Inputs": {
+      "main": [
+        [
+          { "node": "Build Apify Queries", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Build Apify Queries": {
+      "main": [
+        [
+          { "node": "Apify - Google Places", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Apify - Google Places": {
+      "main": [
+        [
+          { "node": "Map Business Fields", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Map Business Fields": {
+      "main": [
+        [
+          { "node": "Filter - Has Results", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Filter - Has Results": {
+      "main": [
+        [
+          { "node": "AI Opportunity Scorer", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "AI Opportunity Scorer": {
+      "main": [
+        [
+          { "node": "Merge All Fields", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "GPT-4.1-mini": {
+      "ai_languageModel": [
+        [
+          { "node": "AI Opportunity Scorer", "type": "ai_languageModel", "index": 0 }
+        ]
+      ]
+    },
+    "Merge All Fields": {
+      "main": [
+        [
+          { "node": "Filter - Score >= Min", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Filter - Score >= Min": {
+      "main": [
+        [
+          { "node": "Supabase - Upsert Business", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Supabase - Upsert Business": {
+      "main": [
+        [
+          { "node": "Aggregate Results", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          { "node": "Build HMAC Callback", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Build HMAC Callback": {
+      "main": [
+        [
+          { "node": "Callback - Signafy", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": ["blue-wolf", "prospect-finder"],
+  "triggerCount": 1,
+  "updatedAt": "2026-06-17T00:00:00.000Z",
+  "versionId": "bw-wf1-v2"
+}

@@ -1,0 +1,278 @@
+﻿{
+  "name": "BW - WF2 - Consumer Intent Finder",
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "bw-wf2", "responseMode": "responseNode", "options": {} },
+      "id": "webhook-wf2", "name": "Webhook - WF2",
+      "type": "n8n-nodes-base.webhook", "position": [240, 300], "webhookId": "bw-wf2", "typeVersion": 2
+    },
+    {
+      "parameters": { "respondWith": "json", "responseBody": "{\"accepted\": true}", "options": { "responseCode": 202 } },
+      "id": "respond-wf2", "name": "Respond 202",
+      "type": "n8n-nodes-base.respondToWebhook", "position": [480, 100], "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "assignments": { "assignments": [
+          { "id": "s-run",     "name": "run_id",                "type": "string",  "value": "={{ $json.body.run_id }}" },
+          { "id": "s-org",     "name": "org_id",                "type": "string",  "value": "={{ $json.body.org_id }}" },
+          { "id": "s-cb",      "name": "callback_url",          "type": "string",  "value": "={{ $json.body.callback_url }}" },
+          { "id": "s-sources", "name": "b2c_sources",           "type": "string",  "value": "={{ JSON.stringify($json.body.b2c_sources || ['reddit','yelp','twitter','youtube']) }}" },
+          { "id": "s-ind",     "name": "industry",              "type": "string",  "value": "={{ $json.body.industry || '' }}" },
+          { "id": "s-loc",     "name": "location",              "type": "string",  "value": "={{ $json.body.location || '' }}" },
+          { "id": "s-svc",     "name": "client_service",        "type": "string",  "value": "={{ $json.body.client_service || $json.body.industry || '' }}" },
+          { "id": "s-kw",      "name": "keywords",              "type": "string",  "value": "={{ JSON.stringify($json.body.keywords || []) }}" },
+          { "id": "s-min",     "name": "min_score",             "type": "number",  "value": "={{ $json.body.min_score || 50 }}" },
+          { "id": "s-lp",      "name": "generate_landing_page", "type": "boolean", "value": "={{ $json.body.generate_landing_page === true }}" }
+        ]},
+        "options": {}
+      },
+      "id": "store-inputs-wf2", "name": "Store Inputs",
+      "type": "n8n-nodes-base.set", "position": [480, 300], "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "conditions": { "options": { "version": 2, "caseSensitive": false, "typeValidation": "strict" }, "combinator": "and",
+          "conditions": [{ "id": "gate-reddit", "operator": { "type": "string", "operation": "contains" }, "leftValue": "={{ $('Store Inputs').first().json.b2c_sources }}", "rightValue": "reddit" }]
+        }, "options": {}
+      },
+      "id": "gate-reddit-wf2", "name": "Gate - Reddit?",
+      "type": "n8n-nodes-base.filter", "position": [720, 160], "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "conditions": { "options": { "version": 2, "caseSensitive": false, "typeValidation": "strict" }, "combinator": "and",
+          "conditions": [{ "id": "gate-yelp", "operator": { "type": "string", "operation": "contains" }, "leftValue": "={{ $('Store Inputs').first().json.b2c_sources }}", "rightValue": "yelp" }]
+        }, "options": {}
+      },
+      "id": "gate-yelp-wf2", "name": "Gate - Yelp?",
+      "type": "n8n-nodes-base.filter", "position": [720, 300], "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "conditions": { "options": { "version": 2, "caseSensitive": false, "typeValidation": "strict" }, "combinator": "and",
+          "conditions": [{ "id": "gate-twitter", "operator": { "type": "string", "operation": "contains" }, "leftValue": "={{ $('Store Inputs').first().json.b2c_sources }}", "rightValue": "twitter" }]
+        }, "options": {}
+      },
+      "id": "gate-twitter-wf2", "name": "Gate - Twitter?",
+      "type": "n8n-nodes-base.filter", "position": [720, 440], "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "conditions": { "options": { "version": 2, "caseSensitive": false, "typeValidation": "strict" }, "combinator": "and",
+          "conditions": [{ "id": "gate-youtube", "operator": { "type": "string", "operation": "contains" }, "leftValue": "={{ $('Store Inputs').first().json.b2c_sources }}", "rightValue": "youtube" }]
+        }, "options": {}
+      },
+      "id": "gate-youtube-wf2", "name": "Gate - YouTube?",
+      "type": "n8n-nodes-base.filter", "position": [720, 580], "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "url": "=https://www.reddit.com/search.json?q={{ encodeURIComponent($('Store Inputs').first().json.client_service + ' ' + $('Store Inputs').first().json.location) }}&sort=new&limit=30&type=link,comment",
+        "options": { "response": { "response": { "responseFormat": "json" } } }
+      },
+      "id": "reddit-search-wf2", "name": "Reddit Search",
+      "type": "n8n-nodes-base.httpRequest", "position": [960, 160], "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "url": "=https://api.apify.com/v2/acts/apify~yelp-scraper/run-sync-get-dataset-items?token={{ $env.APIFY_TOKEN }}",
+        "sendBody": true, "specifyBody": "json",
+        "jsonBody": "={\"searchTerms\":[\"{{ $('Store Inputs').first().json.client_service }}\"],\"locations\":[\"{{ $('Store Inputs').first().json.location }}\"],\"maxRequestsPerCrawl\":20,\"scrapeReviews\":true,\"maxReviews\":10}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "yelp-scraper-wf2", "name": "Yelp Reviews Scraper",
+      "type": "n8n-nodes-base.httpRequest", "position": [960, 300], "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "url": "=https://api.apify.com/v2/acts/quacker~twitter-scraper/run-sync-get-dataset-items?token={{ $env.APIFY_TOKEN }}",
+        "sendBody": true, "specifyBody": "json",
+        "jsonBody": "={\"searchTerms\":[\"{{ $('Store Inputs').first().json.client_service }} {{ $('Store Inputs').first().json.location }}\",\"{{ $('Store Inputs').first().json.client_service }} recommendation\"],\"maxItems\":30,\"addUserInfo\":true,\"tweetLanguage\":\"en\"}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "twitter-scraper-wf2", "name": "Twitter - Intent Scraper",
+      "type": "n8n-nodes-base.httpRequest", "position": [960, 440], "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "url": "=https://api.apify.com/v2/acts/streamers~youtube-scraper/run-sync-get-dataset-items?token={{ $env.APIFY_TOKEN }}",
+        "sendBody": true, "specifyBody": "json",
+        "jsonBody": "={\"searchKeywords\":\"{{ $('Store Inputs').first().json.client_service }} {{ $('Store Inputs').first().json.location }} review\",\"maxResults\":20,\"scrapeComments\":true,\"maxComments\":15}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "youtube-scraper-wf2", "name": "YouTube - Comment Scraper",
+      "type": "n8n-nodes-base.httpRequest", "position": [960, 580], "typeVersion": 4.2
+    },
+    {
+      "parameters": { "mode": "combine", "combinationMode": "multiplex", "options": {} },
+      "id": "merge-sources-wf2", "name": "Merge All Sources",
+      "type": "n8n-nodes-base.merge", "position": [1200, 370], "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "jsCode": "const items=$input.all();const inputs=$('Store Inputs').first().json;const service=inputs.client_service||inputs.industry||'service';const location=inputs.location||'';const industry=inputs.industry||'';const signals=[];for(const item of items){const data=item.json;if(data.data&&data.data.children){for(const post of data.data.children){const p=post.data;if(p&&p.title)signals.push({source:'Reddit',text:(p.title+' '+(p.selftext||'')).substring(0,500),url:p.permalink?'https://reddit.com'+p.permalink:'',upvotes:p.score||0,author:p.author||null,service,location,industry});}}if(data.name&&data.reviews&&Array.isArray(data.reviews)){for(const review of data.reviews){if(review.text)signals.push({source:'Yelp',text:review.text.substring(0,500),url:data.url||'',upvotes:0,author:review.user?.name||null,service,location,industry});}}if(data.full_text||data.text){signals.push({source:'Twitter',text:(data.full_text||data.text||'').substring(0,500),url:data.url||'',upvotes:(data.favorite_count||0)+(data.retweet_count||0),author:data.user?.screen_name||null,service,location,industry});}if(data.text&&data.videoUrl)signals.push({source:'YouTube',text:data.text.substring(0,500),url:data.videoUrl||'',upvotes:data.likes||0,author:data.authorText||null,service,location,industry});if(data.title&&data.channelName&&!data.text)signals.push({source:'YouTube',text:(data.title+' '+(data.description||'')).substring(0,400),url:data.url||'',upvotes:data.viewCount||0,author:data.channelName||null,service,location,industry});}if(signals.length===0)return[{json:{source:'No signals',text:'No signals found for '+service+' in '+location,url:'',upvotes:0,author:null,service,location,industry,__empty:true}}];return signals.map(s=>({json:s}));"
+      },
+      "id": "extract-signals-wf2", "name": "Extract Signals",
+      "type": "n8n-nodes-base.code", "position": [1440, 370], "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": { "options": { "version": 2, "caseSensitive": false, "typeValidation": "strict" }, "combinator": "and", "conditions": [
+          { "id": "f-text",  "operator": { "type": "string",  "operation": "isNotEmpty"  }, "leftValue": "={{ $json.text }}", "rightValue": "" },
+          { "id": "f-empty", "operator": { "type": "boolean", "operation": "notEquals" }, "leftValue": "={{ $json.__empty }}", "rightValue": true }
+        ]}, "options": {}
+      },
+      "id": "filter-content-wf2", "name": "Filter - Has Content",
+      "type": "n8n-nodes-base.filter", "position": [1680, 370], "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "text": "=Analyze this public signal for buying intent.\n\nSource: {{ $json.source }}\nText: {{ $json.text }}\nService: {{ $json.service }}\nLocation: {{ $json.location }}\n\nReturn ONLY valid JSON:\n{\n  \"intent_score\": 72,\n  \"buying_stage\": \"Vendor Selection\",\n  \"urgency\": \"High\",\n  \"question\": \"Best botox in Murrieta under $500?\",\n  \"is_relevant\": true,\n  \"can_contact\": true\n}\n\nScores: 80-100=ready to buy, 50-79=researching, 20-49=curious, 0-19=not relevant.\nBuying stage: Research | Comparison | Vendor Selection | Ready To Buy\nUrgency: High | Medium | Low",
+        "attributes": { "attributes": [
+          { "name": "intent_score",  "description": "0-100 buying intent",                "required": true },
+          { "name": "buying_stage",  "description": "Research|Comparison|Vendor Selection|Ready To Buy", "required": true },
+          { "name": "urgency",       "description": "High|Medium|Low",                    "required": true },
+          { "name": "question",      "description": "Core intent question max 120 chars", "required": true },
+          { "name": "is_relevant",   "description": "Boolean relevance",                  "required": true },
+          { "name": "can_contact",   "description": "Boolean contactable profile",         "required": true }
+        ]}, "options": {}
+      },
+      "id": "ai-intent-wf2", "name": "AI Intent Classifier",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor", "position": [1920, 370], "typeVersion": 1.2
+    },
+    {
+      "parameters": { "model": { "__rl": true, "mode": "list", "value": "gpt-4.1-mini" }, "options": {} },
+      "id": "openai-wf2", "name": "GPT-4.1-mini",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi", "position": [2016, 520], "typeVersion": 1.2,
+      "credentials": { "openAiApi": { "id": "pcRo0Ru13Y38GX4e", "name": "Defiance OpenAi" } }
+    },
+    {
+      "parameters": {
+        "assignments": { "assignments": [
+          { "id": "m-intent",  "name": "intent_score",  "type": "number",  "value": "={{ $json.output.intent_score }}" },
+          { "id": "m-stage",   "name": "buying_stage",  "type": "string",  "value": "={{ $json.output.buying_stage }}" },
+          { "id": "m-urgency", "name": "urgency",       "type": "string",  "value": "={{ $json.output.urgency }}" },
+          { "id": "m-q",       "name": "question",      "type": "string",  "value": "={{ $json.output.question }}" },
+          { "id": "m-rel",     "name": "is_relevant",   "type": "boolean", "value": "={{ $json.output.is_relevant }}" },
+          { "id": "m-source",  "name": "source",        "type": "string",  "value": "={{ $('Extract Signals').item.json.source }}" },
+          { "id": "m-svc",     "name": "service",       "type": "string",  "value": "={{ $('Extract Signals').item.json.service }}" },
+          { "id": "m-ind",     "name": "industry",      "type": "string",  "value": "={{ $('Extract Signals').item.json.industry }}" },
+          { "id": "m-loc",     "name": "location",      "type": "string",  "value": "={{ $('Extract Signals').item.json.location }}" },
+          { "id": "m-url",     "name": "source_url",    "type": "string",  "value": "={{ $('Extract Signals').item.json.url }}" },
+          { "id": "m-date",    "name": "date_found",    "type": "string",  "value": "={{ $now.toISO() }}" },
+          { "id": "m-org",     "name": "org_id",        "type": "string",  "value": "={{ $('Store Inputs').first().json.org_id }}" },
+          { "id": "m-run",     "name": "run_id",        "type": "string",  "value": "={{ $('Store Inputs').first().json.run_id }}" }
+        ]}, "options": {}
+      },
+      "id": "merge-intent-wf2", "name": "Merge Intent Data",
+      "type": "n8n-nodes-base.set", "position": [2160, 370], "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "conditions": { "options": { "version": 2, "caseSensitive": true, "typeValidation": "strict" }, "combinator": "and", "conditions": [
+          { "id": "f-rel",   "operator": { "type": "boolean", "operation": "true" }, "leftValue": "={{ $json.is_relevant }}", "rightValue": "" },
+          { "id": "f-score", "operator": { "type": "number",  "operation": "gte"  }, "leftValue": "={{ $json.intent_score }}", "rightValue": "={{ $('Store Inputs').first().json.min_score }}" }
+        ]}, "options": {}
+      },
+      "id": "filter-relevant-wf2", "name": "Filter - Relevant + Score",
+      "type": "n8n-nodes-base.filter", "position": [2400, 370], "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": { "__rl": true, "mode": "list", "value": "public" },
+        "table": { "__rl": true, "mode": "list", "value": "intent_signals" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "org_id": "={{ $json.org_id }}", "run_id": "={{ $json.run_id }}",
+            "source": "={{ $json.source }}", "service": "={{ $json.service }}",
+            "industry": "={{ $json.industry }}", "question": "={{ $json.question }}",
+            "location": "={{ $json.location }}", "source_url": "={{ $json.source_url }}",
+            "intent_score": "={{ $json.intent_score }}", "buying_stage": "={{ $json.buying_stage }}",
+            "urgency": "={{ $json.urgency }}", "date_found": "={{ $json.date_found }}"
+          },
+          "matchingColumns": [], "schema": []
+        }, "options": {}
+      },
+      "id": "supabase-intent-wf2", "name": "Supabase - Save Intent Signal",
+      "type": "n8n-nodes-base.supabase", "position": [2640, 370], "typeVersion": 1,
+      "credentials": { "supabaseApi": { "id": "REPLACE_WITH_YOUR_SUPABASE_CREDENTIAL_ID", "name": "Blue Wolf Supabase" } }
+    },
+    {
+      "parameters": { "aggregate": "aggregateAllItemData", "options": {} },
+      "id": "aggregate-wf2", "name": "Aggregate Signals",
+      "type": "n8n-nodes-base.aggregate", "position": [2880, 370], "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto=require('crypto');const secret=$env.N8N_HMAC_SECRET||'dev-secret';const inputs=$('Store Inputs').first().json;const signalItems=$input.first().json.data||[];const topSignals=signalItems.sort((a,b)=>(b.intent_score||0)-(a.intent_score||0)).slice(0,10);const callbackBody={run_id:inputs.run_id,workflow_type:'intent_discovery',status:'complete',org_id:inputs.org_id,output:{signals_found:signalItems.length,sources_used:JSON.parse(inputs.b2c_sources||'[]'),min_score_applied:inputs.min_score}};const payload=JSON.stringify(callbackBody);const signature=crypto.createHmac('sha256',secret).update(payload).digest('hex');const wf3Payload=JSON.stringify({run_id:inputs.run_id,org_id:inputs.org_id,callback_url:inputs.callback_url,signals:topSignals.slice(0,3),service:inputs.client_service||inputs.industry,location:inputs.location,industry:inputs.industry});return[{json:{callback_url:inputs.callback_url,payload,signature,generate_landing_page:inputs.generate_landing_page,wf3_payload:wf3Payload}}];"
+      },
+      "id": "build-callback-wf2", "name": "Build HMAC Callback",
+      "type": "n8n-nodes-base.code", "position": [3120, 370], "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" },{ "name": "X-Signature", "value": "={{ $json.signature }}" }] },
+        "sendBody": true, "specifyBody": "string", "body": "={{ $json.payload }}", "options": {}
+      },
+      "id": "callback-signafy-wf2", "name": "Callback - Signafy",
+      "type": "n8n-nodes-base.httpRequest", "position": [3360, 300], "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "conditions": { "options": { "version": 2, "caseSensitive": true, "typeValidation": "strict" }, "combinator": "and",
+          "conditions": [{ "id": "gate-lp", "operator": { "type": "boolean", "operation": "true" }, "leftValue": "={{ $json.generate_landing_page }}", "rightValue": "" }]
+        }, "options": {}
+      },
+      "id": "gate-wf3-wf2", "name": "Gate - Generate Assets?",
+      "type": "n8n-nodes-base.filter", "position": [3360, 460], "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.N8N_BASE_URL }}/webhook/bw-wf3",
+        "sendBody": true, "specifyBody": "string",
+        "body": "={{ $('Build HMAC Callback').first().json.wf3_payload }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
+        "options": { "timeout": 8000 }
+      },
+      "id": "trigger-wf3-wf2", "name": "Trigger WF3 - Assets",
+      "type": "n8n-nodes-base.httpRequest", "position": [3600, 460], "typeVersion": 4.2
+    },
+    {
+      "parameters": { "content": "## WF2 v2\nSources: Reddit, Yelp, Twitter/X, YouTube\nGated by b2c_sources. HMAC callback. Triggers WF3 if generate_landing_page.", "height": 180, "width": 360, "color": 4 },
+      "id": "sticky-wf2", "name": "WF2 Notes",
+      "type": "n8n-nodes-base.stickyNote", "position": [240, 700], "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Webhook - WF2": { "main": [[{ "node": "Respond 202", "type": "main", "index": 0 },{ "node": "Store Inputs", "type": "main", "index": 0 }]] },
+    "Store Inputs": { "main": [[{ "node": "Gate - Reddit?", "type": "main", "index": 0 },{ "node": "Gate - Yelp?", "type": "main", "index": 0 },{ "node": "Gate - Twitter?", "type": "main", "index": 0 },{ "node": "Gate - YouTube?", "type": "main", "index": 0 }]] },
+    "Gate - Reddit?": { "main": [[{ "node": "Reddit Search", "type": "main", "index": 0 }]] },
+    "Gate - Yelp?": { "main": [[{ "node": "Yelp Reviews Scraper", "type": "main", "index": 0 }]] },
+    "Gate - Twitter?": { "main": [[{ "node": "Twitter - Intent Scraper", "type": "main", "index": 0 }]] },
+    "Gate - YouTube?": { "main": [[{ "node": "YouTube - Comment Scraper", "type": "main", "index": 0 }]] },
+    "Reddit Search": { "main": [[{ "node": "Merge All Sources", "type": "main", "index": 0 }]] },
+    "Yelp Reviews Scraper": { "main": [[{ "node": "Merge All Sources", "type": "main", "index": 1 }]] },
+    "Twitter - Intent Scraper": { "main": [[{ "node": "Merge All Sources", "type": "main", "index": 2 }]] },
+    "YouTube - Comment Scraper": { "main": [[{ "node": "Merge All Sources", "type": "main", "index": 3 }]] },
+    "Merge All Sources": { "main": [[{ "node": "Extract Signals", "type": "main", "index": 0 }]] },
+    "Extract Signals": { "main": [[{ "node": "Filter - Has Content", "type": "main", "index": 0 }]] },
+    "Filter - Has Content": { "main": [[{ "node": "AI Intent Classifier", "type": "main", "index": 0 }]] },
+    "AI Intent Classifier": { "main": [[{ "node": "Merge Intent Data", "type": "main", "index": 0 }]] },
+    "GPT-4.1-mini": { "ai_languageModel": [[{ "node": "AI Intent Classifier", "type": "ai_languageModel", "index": 0 }]] },
+    "Merge Intent Data": { "main": [[{ "node": "Filter - Relevant + Score", "type": "main", "index": 0 }]] },
+    "Filter - Relevant + Score": { "main": [[{ "node": "Supabase - Save Intent Signal", "type": "main", "index": 0 }]] },
+    "Supabase - Save Intent Signal": { "main": [[{ "node": "Aggregate Signals", "type": "main", "index": 0 }]] },
+    "Aggregate Signals": { "main": [[{ "node": "Build HMAC Callback", "type": "main", "index": 0 }]] },
+    "Build HMAC Callback": { "main": [[{ "node": "Callback - Signafy", "type": "main", "index": 0 },{ "node": "Gate - Generate Assets?", "type": "main", "index": 0 }]] },
+    "Gate - Generate Assets?": { "main": [[{ "node": "Trigger WF3 - Assets", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {}, "settings": { "executionOrder": "v1" }, "staticData": null,
+  "tags": ["blue-wolf","intent-finder"], "triggerCount": 1,
+  "updatedAt": "2026-06-17T00:00:00.000Z", "versionId": "bw-wf2-v2"
+}

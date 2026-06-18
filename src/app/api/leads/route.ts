@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { requireOrgContext, getSupabaseServiceClient, DEMO_ORG_ID } from "@/lib/supabase/server";
-import { triggerLeadDiscovery, type LeadDiscoveryInput } from "@/lib/n8n";
+import { triggerBWRouter, triggerLeadDiscovery, type LeadDiscoveryInput } from "@/lib/n8n";
 import { guardApiRate, guardLeadDiscoveryUsage } from "@/lib/access";
 import { errorResponse, jsonResponse, sanitizeText, generateId } from "@/lib/utils";
 import { discoverLeads } from "@/lib/ai";
@@ -61,21 +61,34 @@ const AddLeadSchema = z.object({
 
 const DiscoverSchema = z.object({
   action: z.literal("discover"),
-  target_market: z.enum(["b2b", "b2c"]).optional(),
-  b2c_sources: z.array(z.enum(["reddit", "review_platforms", "directories"])).max(3).optional(),
+  target_market: z.enum(["b2b", "b2c", "both"]).optional(),
+  // AI-interpreted target description — primary input from UI
+  target_description: z.string().max(1000).optional(),
+  // B2B specific (programmatic/API use)
+  b2b_vertical: z.enum([
+    "marketing_agency", "saas_software", "business_consultant",
+    "commercial_support", "recruiting_firm", "insurance_agency",
+  ]).optional(),
+  insurance_sub_targets: z.array(z.enum(["construction", "medical", "manufacturing"])).max(3).optional(),
   b2b_sources: z.array(z.enum(["linkedin", "directories", "company_websites"])).max(3).optional(),
+  // B2C specific (programmatic/API use)
+  b2c_sources: z.array(z.enum(["reddit", "twitter", "yelp", "youtube"])).max(4).optional(),
+  // Common
   industry: z.string().max(100).optional(),
   location: z.string().max(100).optional(),
   platforms: z.array(z.string()).max(6).optional(),
   keywords: z.array(z.string().max(100)).max(20).optional(),
   min_score: z.number().int().min(0).max(100).optional(),
   save_config_name: z.string().max(100).optional(),
+  // Agency mode
+  client_service: z.string().max(200).optional(),
+  generate_landing_page: z.boolean().optional(),
+  for_client: z.boolean().optional(),
 });
 
 const DEFAULT_B2C_SOURCES: NonNullable<LeadDiscoveryInput["b2c_sources"]> = [
   "reddit",
-  "review_platforms",
-  "directories",
+  "yelp",
 ];
 const DEFAULT_B2B_SOURCES: NonNullable<LeadDiscoveryInput["b2b_sources"]> = [
   "linkedin",
@@ -166,12 +179,13 @@ async function handleDiscover(ctx: Awaited<ReturnType<typeof requireOrgContext>>
   }
 
   const market = parsed.data.target_market ?? "b2b";
+  // "both" = B2B + B2C; WF0 router handles all sources when both are present
   const b2c_sources: LeadDiscoveryInput["b2c_sources"] =
-    market === "b2c"
+    market === "b2c" || market === "both"
       ? (parsed.data.b2c_sources?.length ? parsed.data.b2c_sources : DEFAULT_B2C_SOURCES)
       : undefined;
   const b2b_sources: LeadDiscoveryInput["b2b_sources"] =
-    market === "b2b"
+    market === "b2b" || market === "both"
       ? (parsed.data.b2b_sources?.length ? parsed.data.b2b_sources : DEFAULT_B2B_SOURCES)
       : undefined;
 
@@ -232,27 +246,46 @@ async function handleDiscover(ctx: Awaited<ReturnType<typeof requireOrgContext>>
   }
 
   const keywordsFlat = parsed.data.keywords ?? [];
-  const n8nResult = await triggerLeadDiscovery({
+  const triggerPayload: LeadDiscoveryInput = {
     run_id: runId,
     org_id: ctx.org.id,
     callback_url: callbackUrl,
-    target_market: market,
-    b2c_sources,
+    target_market: market as LeadDiscoveryInput["target_market"],
+    // AI target description (primary)
+    target_description: parsed.data.target_description,
+    // B2B
+    b2b_vertical: parsed.data.b2b_vertical,
+    insurance_sub_targets: parsed.data.insurance_sub_targets,
     b2b_sources,
-    industry: parsed.data.industry,
+    // B2C
+    b2c_sources,
+    // Common
+    industry: parsed.data.industry || parsed.data.target_description,
     location: parsed.data.location,
     platforms: parsed.data.platforms,
     keywords: keywordsFlat,
     min_score: parsed.data.min_score,
     count: 25,
     user_email: userEmail,
-  });
+    // Agency mode
+    client_service: parsed.data.client_service,
+    generate_landing_page: parsed.data.generate_landing_page,
+    for_client: parsed.data.for_client,
+  };
+
+  // Prefer Blue Wolf Router (WF0); fall back to legacy if not configured
+  let n8nResult = await triggerBWRouter(triggerPayload);
+  if (!n8nResult.ok) {
+    // BW router not available — try legacy workflow
+    n8nResult = await triggerLeadDiscovery(triggerPayload);
+  }
 
   if (!n8nResult.ok && db) {
     // n8n not configured — use AI to generate leads directly and mark run complete
+    const aiMarket: "b2b" | "b2c" = market === "both" ? "b2b" : market;
     try {
       const discovered = await discoverLeads({
-        target_market: market,
+        target_market: aiMarket,
         industry: normalizedParams.industry,
         location: normalizedParams.location,
         keywords: normalizedParams.keywords,
@@ -297,8 +330,9 @@ async function handleDiscover(ctx: Awaited<ReturnType<typeof requireOrgContext>>
     run_id: runId,
     status: n8nResult.ok ? "pending" : "complete",
     n8n_triggered: n8nResult.ok,
+    target_market: market,
     message: n8nResult.ok
-      ? "Lead discovery started — results will appear in real-time"
+      ? "Lead discovery started — prospects, intent signals, and assets will appear in real-time"
       : "Discovery complete — AI-generated leads added to your pipeline",
   }, 202);
 }

@@ -1,10 +1,11 @@
 import { verifyN8nSignature } from "@/lib/n8n";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 import { errorResponse, jsonResponse } from "@/lib/utils";
-import type { Lead } from "@/lib/supabase/types";
+import type { Lead, Business, IntentSignal, GeneratedAsset } from "@/lib/supabase/types";
 
 /**
  * n8n workflow callback — receives results after async workflows complete.
+ * Handles both legacy lead_discovery and Blue Wolf Intelligence workflows.
  * All callbacks must include X-Signature header (HMAC-SHA256).
  */
 export async function POST(request: Request) {
@@ -22,10 +23,18 @@ export async function POST(request: Request) {
     org_id: string;
     error_message?: string;
     output?: Record<string, unknown>;
+    // Legacy lead discovery
     leads?: Lead[];
+    // Content generation
     content?: { body: string; char_count: number; engagement_prediction: number; hashtags: string[] };
     reply_id?: string;
     reply_status?: "sent" | "failed";
+    // Blue Wolf WF1 — prospect finder
+    businesses?: Business[];
+    // Blue Wolf WF2 — intent finder
+    intent_signals?: IntentSignal[];
+    // Blue Wolf WF3 — asset generator
+    generated_assets?: GeneratedAsset[];
   };
 
   try {
@@ -47,19 +56,18 @@ export async function POST(request: Request) {
 
   // Handle workflow-specific results
   switch (body.workflow_type) {
+
+    // ─── Legacy / BW umbrella ─────────────────────────────────────────────────
     case "lead_discovery": {
       if (body.status === "complete" && Array.isArray(body.leads) && body.leads.length > 0) {
-        // Batch insert leads — ignore duplicates
         const leads = body.leads.map((l) => ({ ...l, org_id: body.org_id }));
         await db.from("leads").upsert(leads, { onConflict: "org_id,email", ignoreDuplicates: true });
 
-        // Update usage counter
         await db.rpc("increment_leads_usage", {
           p_org_id: body.org_id,
           p_amount: leads.length,
         });
 
-        // Log discovery activity for each lead
         const activities = leads.map((l) => ({
           lead_id: l.id,
           org_id: body.org_id,
@@ -71,9 +79,64 @@ export async function POST(request: Request) {
       break;
     }
 
+    // ─── Blue Wolf WF1: Business Prospect Finder ─────────────────────────────
+    case "prospect_discovery": {
+      if (body.status === "complete") {
+        // WF1 may send businesses in the callback payload OR write directly to Supabase
+        if (Array.isArray(body.businesses) && body.businesses.length > 0) {
+          const rows = body.businesses.map((b) => ({
+            ...b,
+            org_id: body.org_id,
+            run_id: body.run_id,
+          }));
+          // Upsert on org_id + website to prevent dupes across runs
+          await db
+            .from("businesses")
+            .upsert(rows, { onConflict: "org_id,website", ignoreDuplicates: true });
+
+          await db.rpc("increment_leads_usage", {
+            p_org_id: body.org_id,
+            p_amount: rows.length,
+          });
+        }
+        // Supabase Realtime will broadcast the new rows to subscribed UI clients
+      }
+      break;
+    }
+
+    // ─── Blue Wolf WF2: Consumer Intent Finder ────────────────────────────────
+    case "intent_discovery": {
+      if (body.status === "complete") {
+        if (Array.isArray(body.intent_signals) && body.intent_signals.length > 0) {
+          const rows = body.intent_signals.map((s) => ({
+            ...s,
+            org_id: body.org_id,
+            run_id: body.run_id,
+          }));
+          await db.from("intent_signals").insert(rows);
+        }
+      }
+      break;
+    }
+
+    // ─── Blue Wolf WF3: Funnel Asset Generator ────────────────────────────────
+    case "asset_generation": {
+      if (body.status === "complete") {
+        if (Array.isArray(body.generated_assets) && body.generated_assets.length > 0) {
+          const rows = body.generated_assets.map((a) => ({
+            ...a,
+            org_id: body.org_id,
+            run_id: body.run_id,
+          }));
+          await db.from("generated_assets").insert(rows);
+        }
+      }
+      break;
+    }
+
+    // ─── Content generation ───────────────────────────────────────────────────
     case "content_generation": {
       if (body.status === "complete" && body.content) {
-        // Find the content_piece created for this run and update it
         await db.from("content_pieces")
           .update({
             body: body.content.body,
@@ -83,25 +146,17 @@ export async function POST(request: Request) {
             status: "draft",
           })
           .eq("org_id", body.org_id)
-          // Match by run_id stored in metadata
           .filter("metadata->run_id", "eq", body.run_id);
       }
       break;
     }
 
-    case "social_classification": {
-      // n8n ingested new messages and classified them — they're already in DB via n8n→Supabase
-      // Just acknowledge receipt
+    case "social_classification":
+    case "seo_research":
+      // Written directly by n8n → Supabase; just acknowledge
       break;
-    }
-
-    case "seo_research": {
-      // Keywords and competitors written directly by n8n to Supabase via service role
-      // Just update the workflow run (done above)
-      break;
-    }
   }
 
-  // Supabase Realtime will broadcast DB changes to subscribed clients automatically
+  // Supabase Realtime broadcasts DB changes to subscribed UI clients automatically
   return jsonResponse({ received: true });
 }

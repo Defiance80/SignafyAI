@@ -53,9 +53,18 @@ async function trigger(path: string, body: object): Promise<{ ok: boolean; error
 export interface LeadDiscoveryInput {
   run_id: string;
   org_id: string;
-  target_market?: "b2b" | "b2c";
-  b2c_sources?: Array<"reddit" | "review_platforms" | "directories">;
+  callback_url: string;
+  target_market?: "b2b" | "b2c" | "both";
+  // ─── AI-interpreted target (primary input — replaces manual pickers) ──────
+  /** Free-text description of who to target — AI builds search queries from this */
+  target_description?: string;
+  // ─── B2B fields (kept for programmatic/API use) ───────────────────────────
+  b2b_vertical?: "marketing_agency" | "saas_software" | "business_consultant" | "commercial_support" | "recruiting_firm" | "insurance_agency";
+  insurance_sub_targets?: Array<"construction" | "medical" | "manufacturing">;
   b2b_sources?: Array<"linkedin" | "directories" | "company_websites">;
+  // ─── B2C fields (kept for programmatic/API use) ───────────────────────────
+  b2c_sources?: Array<"reddit" | "twitter" | "yelp" | "youtube">;
+  // ─── Common fields ────────────────────────────────────────────────────────
   industry?: string;
   location?: string;
   platforms?: string[];
@@ -63,11 +72,26 @@ export interface LeadDiscoveryInput {
   min_score?: number;
   count?: number;
   user_email?: string;
-  callback_url: string;
+  // ─── Agency mode fields ───────────────────────────────────────────────────
+  /** The service the client offers (used for B2C signal targeting) */
+  client_service?: string;
+  /** If true, generate organic landing pages for B2C signals via WF3 */
+  generate_landing_page?: boolean;
+  /** Agency mode: user is finding leads FOR their client, not themselves */
+  for_client?: boolean;
 }
 
 export function triggerLeadDiscovery(input: LeadDiscoveryInput) {
   return trigger("/webhook/lead-discovery", input);
+}
+
+/**
+ * Trigger the Blue Wolf Router (WF0) — routes to WF1 (prospects), WF2 (intent),
+ * WF3 (assets) based on target_market and sources.  This is the primary path
+ * for all new lead discovery runs.
+ */
+export function triggerBWRouter(input: LeadDiscoveryInput) {
+  return trigger("/webhook/bw-router", input);
 }
 
 export interface ContentGenerationInput {

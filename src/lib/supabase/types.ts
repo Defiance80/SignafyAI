@@ -20,7 +20,15 @@ export type LeadStatus = "new" | "contacted" | "qualified" | "converted" | "lost
 export type LeadPlatform = "instagram" | "linkedin" | "tiktok" | "twitter" | "facebook" | "google" | "manual";
 export type ContentType = "blog_post" | "social_caption" | "email_sequence" | "ad_copy" | "video_script";
 export type ContentStatus = "draft" | "approved" | "scheduled" | "published";
-export type WorkflowType = "lead_discovery" | "content_generation" | "social_classification" | "seo_research" | "analytics_aggregation";
+export type WorkflowType =
+  | "lead_discovery"
+  | "content_generation"
+  | "social_classification"
+  | "seo_research"
+  | "analytics_aggregation"
+  | "prospect_discovery"   // BW WF1
+  | "intent_discovery"     // BW WF2
+  | "asset_generation";    // BW WF3
 export type WorkflowStatus = "pending" | "running" | "complete" | "failed";
 export type MessageStatus = "pending" | "replied" | "dismissed" | "escalated";
 export type ReplyStatus = "draft" | "approved" | "sent" | "failed";
@@ -274,6 +282,74 @@ export interface ApiKey {
   key_hash: string;
   key_prefix: string;
   last_used_at: string | null;
+  created_at: string;
+}
+
+// ─── Blue Wolf Intelligence tables ──────────────────────────────────────────
+
+export interface Business {
+  id: string;
+  org_id: string | null;
+  run_id: string | null;
+  name: string;
+  industry: string | null;
+  service: string | null;
+  location: string | null;
+  website: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  category: string | null;
+  rating: number | null;
+  reviews: number;
+  opportunity_score: number;
+  weaknesses: string | null;
+  recommended_offer: string | null;
+  pitch_angle: string | null;
+  email_subject: string | null;
+  email_body: string | null;
+  scraped_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IntentSignal {
+  id: string;
+  org_id: string | null;
+  run_id: string | null;
+  source: string;
+  service: string | null;
+  industry: string | null;
+  question: string;
+  location: string | null;
+  source_url: string | null;
+  intent_score: number;
+  buying_stage: "Research" | "Comparison" | "Vendor Selection" | "Ready To Buy" | null;
+  urgency: "High" | "Medium" | "Low" | null;
+  date_found: string;
+  created_at: string;
+}
+
+export interface GeneratedAsset {
+  id: string;
+  org_id: string | null;
+  run_id: string | null;
+  signal_id: string | null;
+  intent_signal: string | null;
+  service: string | null;
+  location: string | null;
+  industry: string | null;
+  business_name: string | null;
+  landing_page: string | null;
+  landing_page_subheadline: string | null;
+  faq: string | null;
+  cta: string | null;
+  ai_script: string | null;
+  email_sequence: string | null;
+  blog_outline: string | null;
+  social_posts: string | null;
+  video_script: string | null;
+  schema_suggestion: string | null;
   created_at: string;
 }
 

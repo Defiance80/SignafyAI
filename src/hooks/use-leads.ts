@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Lead, LeadStatus } from "@/lib/supabase/types";
+import type { Lead, LeadStatus, Business, IntentSignal, GeneratedAsset } from "@/lib/supabase/types";
 
 interface LeadsParams {
   page?: number;
@@ -83,15 +83,26 @@ export function useDiscoverLeads() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (params: {
-      target_market?: "b2b" | "b2c";
-      b2c_sources?: Array<"reddit" | "review_platforms" | "directories">;
+      target_market?: "b2b" | "b2c" | "both";
+      // AI-interpreted target description (primary input)
+      target_description?: string;
+      // B2B (programmatic/API use)
+      b2b_vertical?: "marketing_agency" | "saas_software" | "business_consultant" | "commercial_support" | "recruiting_firm" | "insurance_agency";
+      insurance_sub_targets?: Array<"construction" | "medical" | "manufacturing">;
       b2b_sources?: Array<"linkedin" | "directories" | "company_websites">;
+      // B2C (programmatic/API use)
+      b2c_sources?: Array<"reddit" | "twitter" | "yelp" | "youtube">;
+      // Common
       industry?: string;
       location?: string;
       platforms?: string[];
       keywords?: string[];
       min_score?: number;
       save_config_name?: string;
+      // Agency mode
+      client_service?: string;
+      generate_landing_page?: boolean;
+      for_client?: boolean;
     }) => {
       const res = await fetch("/api/leads", {
         method: "POST",
@@ -102,11 +113,109 @@ export function useDiscoverLeads() {
         const err = await res.json();
         throw new Error(err.error ?? "Discovery failed");
       }
-      return res.json() as Promise<{ run_id: string; status: string; message: string }>;
+      return res.json() as Promise<{ run_id: string; status: string; target_market: string; message: string }>;
     },
     onSuccess: () => {
-      // Refresh leads after a short delay to pick up any immediate results
-      setTimeout(() => qc.invalidateQueries({ queryKey: ["leads"] }), 3000);
+      // Refresh all panels after a short delay to pick up immediate results
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ["leads"] });
+        qc.invalidateQueries({ queryKey: ["businesses"] });
+        qc.invalidateQueries({ queryKey: ["intent-signals"] });
+        qc.invalidateQueries({ queryKey: ["generated-assets"] });
+      }, 3000);
     },
+  });
+}
+
+// ─── Blue Wolf Intelligence hooks ─────────────────────────────────────────────
+
+interface BusinessesParams {
+  page?: number;
+  per_page?: number;
+  search?: string;
+  run_id?: string;
+  sort?: string;
+  dir?: "asc" | "desc";
+}
+
+export function useBusinesses(params: BusinessesParams = {}) {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.per_page) qs.set("per_page", String(params.per_page));
+  if (params.search) qs.set("search", params.search);
+  if (params.run_id) qs.set("run_id", params.run_id);
+  if (params.sort) qs.set("sort", params.sort);
+  if (params.dir) qs.set("dir", params.dir);
+
+  return useQuery({
+    queryKey: ["businesses", params],
+    queryFn: async () => {
+      const res = await fetch(`/api/businesses?${qs}`);
+      if (!res.ok) throw new Error("Failed to fetch businesses");
+      return res.json() as Promise<{ data: Business[]; total: number; page: number; per_page: number }>;
+    },
+    staleTime: 30_000,
+  });
+}
+
+interface IntentSignalsParams {
+  page?: number;
+  per_page?: number;
+  search?: string;
+  run_id?: string;
+  stage?: string;
+  urgency?: string;
+  sort?: string;
+  dir?: "asc" | "desc";
+}
+
+export function useIntentSignals(params: IntentSignalsParams = {}) {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.per_page) qs.set("per_page", String(params.per_page));
+  if (params.search) qs.set("search", params.search);
+  if (params.run_id) qs.set("run_id", params.run_id);
+  if (params.stage) qs.set("stage", params.stage);
+  if (params.urgency) qs.set("urgency", params.urgency);
+  if (params.sort) qs.set("sort", params.sort);
+  if (params.dir) qs.set("dir", params.dir);
+
+  return useQuery({
+    queryKey: ["intent-signals", params],
+    queryFn: async () => {
+      const res = await fetch(`/api/intent-signals?${qs}`);
+      if (!res.ok) throw new Error("Failed to fetch intent signals");
+      return res.json() as Promise<{ data: IntentSignal[]; total: number; page: number; per_page: number }>;
+    },
+    staleTime: 30_000,
+  });
+}
+
+interface GeneratedAssetsParams {
+  page?: number;
+  per_page?: number;
+  search?: string;
+  run_id?: string;
+  sort?: string;
+  dir?: "asc" | "desc";
+}
+
+export function useGeneratedAssets(params: GeneratedAssetsParams = {}) {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.per_page) qs.set("per_page", String(params.per_page));
+  if (params.search) qs.set("search", params.search);
+  if (params.run_id) qs.set("run_id", params.run_id);
+  if (params.sort) qs.set("sort", params.sort);
+  if (params.dir) qs.set("dir", params.dir);
+
+  return useQuery({
+    queryKey: ["generated-assets", params],
+    queryFn: async () => {
+      const res = await fetch(`/api/generated-assets?${qs}`);
+      if (!res.ok) throw new Error("Failed to fetch generated assets");
+      return res.json() as Promise<{ data: GeneratedAsset[]; total: number; page: number; per_page: number }>;
+    },
+    staleTime: 30_000,
   });
 }
