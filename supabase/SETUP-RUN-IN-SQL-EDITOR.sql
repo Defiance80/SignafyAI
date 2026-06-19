@@ -699,3 +699,36 @@ ALTER TABLE workflow_runs ADD CONSTRAINT workflow_runs_workflow_type_check
     'intent_discovery',
     'asset_generation'
   ));
+
+-- ─── Seed: Demo org (used by demo@signafyai.com / Demo1234! login) ─────────────
+-- Allows demo mode to write real data to Supabase without FK violations.
+-- Safe to re-run — ON CONFLICT DO NOTHING makes it idempotent.
+INSERT INTO users (id, clerk_id, email, full_name)
+VALUES (
+  '00000000-0000-0000-0000-000000000002',
+  'demo-clerk-user',
+  'demo@signafyai.com',
+  'Demo User'
+)
+ON CONFLICT (clerk_id) DO NOTHING;
+
+INSERT INTO organizations (id, name, slug, owner_id, plan, subscription_status, limits_leads_mo, limits_content_mo)
+VALUES (
+  '00000000-0000-0000-0000-000000000001',
+  'Demo Organization',
+  'demo-organization',
+  '00000000-0000-0000-0000-000000000002',
+  'pro',
+  'active',
+  500,
+  200
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO org_members (org_id, user_id, role)
+VALUES (
+  '00000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000002',
+  'owner'
+)
+ON CONFLICT (org_id, user_id) DO NOTHING;
