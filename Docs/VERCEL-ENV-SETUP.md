@@ -83,13 +83,14 @@ The database tables must exist before any data flows through.
 
 If tables already exist and you get "relation already exists" errors, just run the newer migrations individually (see `supabase/migrations/`).
 
-**New migration to run if already set up:**
+**New migrations to run if already set up (run in this order):**
 ```sql
--- Paste this if businesses table already exists:
+-- 1. Unique index on businesses(org_id, name) for upsert support
 CREATE UNIQUE INDEX IF NOT EXISTS idx_businesses_org_name
   ON businesses(org_id, name)
   WHERE org_id IS NOT NULL;
 
+-- 2. Add new workflow types
 ALTER TABLE workflow_runs DROP CONSTRAINT IF EXISTS workflow_runs_workflow_type_check;
 ALTER TABLE workflow_runs ADD CONSTRAINT workflow_runs_workflow_type_check
   CHECK (workflow_type IN (
@@ -98,9 +99,15 @@ ALTER TABLE workflow_runs ADD CONSTRAINT workflow_runs_workflow_type_check
     'prospect_discovery', 'intent_discovery', 'asset_generation'
   ));
 
+-- 3. Allow free plan
 ALTER TABLE organizations DROP CONSTRAINT IF EXISTS organizations_plan_check;
 ALTER TABLE organizations ADD CONSTRAINT organizations_plan_check
   CHECK (plan IN ('free', 'starter', 'pro', 'agency'));
+
+-- 4. Drop FK constraints on run_id (n8n writes directly, workflow_runs created by app beforehand)
+ALTER TABLE businesses     DROP CONSTRAINT IF EXISTS businesses_run_id_fkey;
+ALTER TABLE intent_signals DROP CONSTRAINT IF EXISTS intent_signals_run_id_fkey;
+ALTER TABLE generated_assets DROP CONSTRAINT IF EXISTS generated_assets_run_id_fkey;
 ```
 
 ---
