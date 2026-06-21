@@ -824,11 +824,22 @@ function LeadsPanel({ onSelectLead }: { onSelectLead: (id: string) => void }) {
   );
 }
 
-function ProspectsPanel({ onSelectBiz }: { onSelectBiz: (b: Business) => void }) {
+function ProspectsPanel({ onSelectBiz, activeRunId }: { onSelectBiz: (b: Business) => void; activeRunId?: string | null }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [runFilter, setRunFilter] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { data, isLoading } = useBusinesses({ search: debouncedSearch || undefined, sort: "opportunity_score" });
+
+  // When a new run fires, auto-filter to it; once cleared, go back to "all"
+  useEffect(() => {
+    if (activeRunId) setRunFilter(activeRunId);
+  }, [activeRunId]);
+
+  const { data, isLoading } = useBusinesses({
+    search: debouncedSearch || undefined,
+    run_id: runFilter || undefined,
+    sort: "opportunity_score",
+  });
   const businesses = data?.data ?? [];
   const total = data?.total ?? 0;
 
@@ -848,6 +859,14 @@ function ProspectsPanel({ onSelectBiz }: { onSelectBiz: (b: Business) => void })
 
   return (
     <div className="space-y-4">
+      {/* Run filter banner */}
+      {runFilter && (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs" style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", color: "#a78bfa" }}>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="#a78bfa" strokeWidth="1.5"/><path d="M6 4v3M6 8.5v.5" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <span className="flex-1">Showing results from this discovery run</span>
+          <button onClick={() => setRunFilter(null)} className="font-semibold underline hover:no-underline">Show all</button>
+        </div>
+      )}
       <div className="flex gap-3">
         <SearchBar value={search} onChange={onSearchChange} placeholder="Search businesses, location, service..." />
         {total > 0 && <div className="text-xs py-2 px-3 rounded-xl flex items-center" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>{total} prospects</div>}
@@ -1304,7 +1323,7 @@ export default function LeadsPage() {
       {/* Tab content */}
       <div className="animate-fade-up" style={{ animationDelay: "0.1s" }}>
         {activeTab === "leads"     && <LeadsPanel     onSelectLead={(id) => setSelectedLeadId(id)} />}
-        {activeTab === "prospects" && <ProspectsPanel  onSelectBiz={(b) => setSelectedBiz(b)} />}
+        {activeTab === "prospects" && <ProspectsPanel  onSelectBiz={(b) => setSelectedBiz(b)} activeRunId={activeRunId} />}
         {activeTab === "intent"    && <IntentPanel     onSelectSignal={(s) => setSelectedSignal(s)} />}
         {activeTab === "assets"    && <AssetsPanel     onSelectAsset={(a) => setSelectedAsset(a)} />}
       </div>
