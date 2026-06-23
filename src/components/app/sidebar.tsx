@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -64,10 +64,10 @@ const NAV_SECTIONS = [
 ];
 
 const PLAN_COLORS: Record<string, { text: string; bg: string }> = {
-  free:    { text: "#94a3b8", bg: "rgba(148,163,184,0.1)" },
-  starter: { text: "#60a5fa", bg: "rgba(96,165,250,0.1)" },
-  pro:     { text: "#a78bfa", bg: "rgba(167,139,250,0.1)" },
-  agency:  { text: "#f59e0b", bg: "rgba(245,158,11,0.1)" },
+  free:    { text: "#64748b", bg: "rgba(100,116,139,0.1)" },
+  starter: { text: "#2563eb", bg: "rgba(37,99,235,0.1)" },
+  pro:     { text: "#7c3aed", bg: "rgba(124,58,237,0.1)" },
+  agency:  { text: "#d97706", bg: "rgba(217,119,6,0.1)" },
 };
 
 interface MeData {
@@ -84,6 +84,7 @@ interface SidebarProps {
 export function Sidebar({ mobile, onClose }: SidebarProps) {
   const pathname = usePathname();
   const [me, setMe] = useState<MeData | null>(null);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch("/api/me")
@@ -92,13 +93,21 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
       .catch(() => {});
   }, []);
 
-  const orgName    = me?.org.name   ?? "My Workspace";
-  const planName   = me?.org.plan   ?? "free";
-  const userName   = me?.user.name  ?? "User";
-  const userEmail  = me?.user.email ?? "";
+  function toggleSection(key: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+
+  const orgName     = me?.org.name   ?? "My Workspace";
+  const planName    = me?.org.plan   ?? "free";
+  const userName    = me?.user.name  ?? "User";
+  const userEmail   = me?.user.email ?? "";
   const userInitial = userName.charAt(0).toUpperCase();
   const orgInitial  = orgName.charAt(0).toUpperCase();
-  const plan = PLAN_COLORS[planName] ?? PLAN_COLORS.free;
+  const plan        = PLAN_COLORS[planName] ?? PLAN_COLORS.free;
 
   return (
     <aside
@@ -107,6 +116,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
         background: "var(--color-surface)",
         borderRight: "1px solid var(--color-border)",
         width: mobile ? "260px" : "224px",
+        boxShadow: "1px 0 0 var(--color-border)",
       }}
     >
       {/* Logo */}
@@ -116,10 +126,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
       >
         <div
           className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{
-            background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)",
-            boxShadow: "0 0 14px rgba(124,58,237,0.4)",
-          }}
+          style={{ background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)" }}
         >
           <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
             <path d="M2.5 7.5L6.5 3.5L8 5L5 7.5L8 10L6.5 11.5L2.5 7.5Z" fill="white" fillOpacity="0.9"/>
@@ -149,24 +156,27 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
       </div>
 
       {/* Workspace selector */}
-      <div className="px-3 pt-3 pb-2">
+      <div className="px-3 pt-3 pb-1">
         <Link
           href="/settings"
           className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150"
-          style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)" }}
+          style={{
+            background: "var(--color-surface-2)",
+            border: "1px solid var(--color-border-subtle)",
+          }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--color-border)"; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--color-border-subtle)"; }}
         >
           <div
             className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-            style={{ background: "rgba(124,58,237,0.18)", color: "#a78bfa" }}
+            style={{ background: "rgba(124,58,237,0.12)", color: "#7c3aed" }}
           >
             {orgInitial}
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-xs font-semibold truncate" style={{ color: "var(--color-text-1)" }}>{orgName}</div>
             <div
-              className="text-[10px] capitalize font-medium px-1 py-px rounded mt-0.5 w-fit"
+              className="text-[10px] capitalize font-medium px-1.5 py-px rounded mt-0.5 w-fit"
               style={{ background: plan.bg, color: plan.text }}
             >
               {planName}
@@ -180,76 +190,93 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 pb-3 overflow-y-auto">
-        {NAV_SECTIONS.map((section) => (
-          <div key={section.label} className="mb-1">
-            <div className="px-3 pt-3 pb-1">
-              <span
-                className="text-[10px] font-semibold uppercase tracking-widest"
+        {NAV_SECTIONS.map((section) => {
+          const isCollapsed = collapsed.has(section.label);
+          return (
+            <div key={section.label} className="mb-0.5">
+              {/* Section header — clickable to collapse */}
+              <button
+                onClick={() => toggleSection(section.label)}
+                className="w-full flex items-center justify-between px-3 pt-3 pb-1.5 rounded-lg transition-colors group"
                 style={{ color: "var(--color-text-muted)" }}
               >
-                {section.label}
-              </span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest">
+                  {section.label}
+                </span>
+                <svg
+                  width="11" height="11" viewBox="0 0 11 11" fill="none"
+                  style={{
+                    transition: "transform 0.2s ease",
+                    transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)",
+                  }}
+                >
+                  <path d="M2.5 4L5.5 7L8.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+
+              {/* Section items */}
+              {!isCollapsed && (
+                <div className="space-y-0.5">
+                  {section.items.map((item) => {
+                    const isActive = pathname === item.href ||
+                      (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={onClose}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all duration-150"
+                        style={{
+                          background: isActive ? "rgba(124,58,237,0.09)" : "transparent",
+                          color: isActive ? "#7c3aed" : "var(--color-text-2)",
+                          fontWeight: isActive ? "600" : "500",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isActive) {
+                            (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)";
+                            (e.currentTarget as HTMLElement).style.color = "var(--color-text-1)";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isActive) {
+                            (e.currentTarget as HTMLElement).style.background = "transparent";
+                            (e.currentTarget as HTMLElement).style.color = "var(--color-text-2)";
+                          }
+                        }}
+                      >
+                        <span className="flex-shrink-0" style={{ color: isActive ? "#7c3aed" : "currentColor" }}>
+                          {item.icon}
+                        </span>
+                        <span className="flex-1">{item.label}</span>
+                        {isActive && (
+                          <span
+                            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                            style={{ background: "#7c3aed" }}
+                          />
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            <div className="space-y-0.5">
-              {section.items.map((item) => {
-                const isActive = pathname === item.href ||
-                  (item.href !== "/dashboard" && pathname.startsWith(item.href));
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onClose}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150"
-                    style={{
-                      background: isActive
-                        ? "linear-gradient(135deg, rgba(124,58,237,0.85) 0%, rgba(79,70,229,0.85) 100%)"
-                        : "transparent",
-                      color: isActive ? "white" : "var(--color-text-2)",
-                      boxShadow: isActive ? "0 2px 8px rgba(124,58,237,0.25)" : "none",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive) {
-                        (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)";
-                        (e.currentTarget as HTMLElement).style.color = "var(--color-text-1)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) {
-                        (e.currentTarget as HTMLElement).style.background = "transparent";
-                        (e.currentTarget as HTMLElement).style.color = "var(--color-text-2)";
-                      }
-                    }}
-                  >
-                    <span
-                      className="flex-shrink-0"
-                      style={{ color: isActive ? "rgba(255,255,255,0.9)" : "currentColor" }}
-                    >
-                      {item.icon}
-                    </span>
-                    <span className="flex-1">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Bottom — settings + user */}
       <div
-        className="px-3 pb-3 pt-3 space-y-1"
+        className="px-3 pb-3 pt-2.5 space-y-1"
         style={{ borderTop: "1px solid var(--color-border-subtle)" }}
       >
         <Link
           href="/settings"
           onClick={onClose}
-          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150"
+          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all duration-150"
           style={{
-            background: pathname === "/settings"
-              ? "linear-gradient(135deg, rgba(124,58,237,0.85) 0%, rgba(79,70,229,0.85) 100%)"
-              : "transparent",
-            color: pathname === "/settings" ? "white" : "var(--color-text-2)",
-            boxShadow: pathname === "/settings" ? "0 2px 8px rgba(124,58,237,0.25)" : "none",
+            background: pathname === "/settings" ? "rgba(124,58,237,0.09)" : "transparent",
+            color: pathname === "/settings" ? "#7c3aed" : "var(--color-text-2)",
+            fontWeight: pathname === "/settings" ? "600" : "500",
           }}
           onMouseEnter={(e) => {
             if (pathname !== "/settings") {
@@ -264,7 +291,9 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
             }
           }}
         >
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style={{ flexShrink: 0 }}>
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none"
+            style={{ flexShrink: 0, color: pathname === "/settings" ? "#7c3aed" : "currentColor" }}
+          >
             <circle cx="7.5" cy="7.5" r="2.2" stroke="currentColor" strokeWidth="1.4"/>
             <path d="M7.5 1.5v1.2M7.5 12.3v1.2M1.5 7.5h1.2M12.3 7.5h1.2M3.2 3.2l.85.85M10.95 10.95l.85.85M3.2 11.8l.85-.85M10.95 4.05l.85-.85" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
           </svg>
@@ -274,7 +303,10 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
         {/* User row */}
         <div
           className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl"
-          style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)" }}
+          style={{
+            background: "var(--color-surface-2)",
+            border: "1px solid var(--color-border-subtle)",
+          }}
         >
           <div
             className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
@@ -292,8 +324,8 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
               title="Sign out"
               className="p-1.5 rounded-lg transition-colors flex-shrink-0"
               style={{ color: "var(--color-text-muted)" }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#f87171"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--color-text-muted)"; }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#dc2626"; (e.currentTarget as HTMLElement).style.background = "rgba(220,38,38,0.06)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--color-text-muted)"; (e.currentTarget as HTMLElement).style.background = "transparent"; }}
             >
               <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
                 <path d="M4.5 11H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>

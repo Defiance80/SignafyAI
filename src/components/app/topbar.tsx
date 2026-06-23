@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -78,7 +78,7 @@ export function Topbar() {
         <div className="w-px h-4" style={{ background: "var(--color-border)" }} />
 
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {meta.parent && (
             <>
               <span className="text-sm" style={{ color: "var(--color-text-muted)" }}>{meta.parent}</span>
@@ -92,7 +92,7 @@ export function Topbar() {
       </div>
 
       {/* Right — actions */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1">
         {/* Search */}
         <button
           className="w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-150"
@@ -121,7 +121,7 @@ export function Topbar() {
             </svg>
             <span
               className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
-              style={{ background: "#ef4444", border: "1.5px solid var(--color-surface)" }}
+              style={{ background: "#ef4444", border: "2px solid var(--color-surface)" }}
             />
           </button>
 
@@ -130,31 +130,55 @@ export function Topbar() {
               <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
               <div
                 className="absolute right-0 top-10 w-72 rounded-2xl z-50 overflow-hidden"
-                style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}
+                style={{
+                  background: "var(--color-surface)",
+                  border: "1px solid var(--color-border)",
+                  boxShadow: "0 8px 30px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
+                }}
               >
-                <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+                <div
+                  className="flex items-center justify-between px-4 py-3"
+                  style={{ borderBottom: "1px solid var(--color-border-subtle)" }}
+                >
                   <span className="text-sm font-semibold" style={{ color: "var(--color-text-1)" }}>Notifications</span>
+                  <span
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                    style={{ background: "rgba(124,58,237,0.1)", color: "#7c3aed" }}
+                  >
+                    3 new
+                  </span>
                 </div>
-                <div className="p-3 space-y-2">
+                <div className="p-2 space-y-1">
                   {[
-                    { title: "Lead discovery complete", time: "2 min ago", color: "#34d399" },
-                    { title: "New intent signals found", time: "1 hr ago", color: "#a78bfa" },
-                    { title: "Weekly report ready", time: "Yesterday",    color: "#60a5fa" },
+                    { title: "Lead discovery complete", time: "2 min ago", color: "#10b981" },
+                    { title: "New intent signals found", time: "1 hr ago",  color: "#7c3aed" },
+                    { title: "Weekly report ready",      time: "Yesterday", color: "#3b82f6" },
                   ].map((n) => (
                     <div
                       key={n.title}
                       className="flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all"
-                      style={{ background: "var(--color-surface-2)" }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-border)"; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
+                      style={{ background: "transparent" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                     >
-                      <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: n.color }} />
+                      <div
+                        className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
+                        style={{ background: n.color }}
+                      />
                       <div>
                         <p className="text-xs font-medium" style={{ color: "var(--color-text-1)" }}>{n.title}</p>
                         <p className="text-[10px] mt-0.5" style={{ color: "var(--color-text-muted)" }}>{n.time}</p>
                       </div>
                     </div>
                   ))}
+                </div>
+                <div
+                  className="px-4 py-2.5 text-center"
+                  style={{ borderTop: "1px solid var(--color-border-subtle)" }}
+                >
+                  <button className="text-xs font-medium" style={{ color: "#7c3aed" }}>
+                    Mark all as read
+                  </button>
                 </div>
               </div>
             </>
