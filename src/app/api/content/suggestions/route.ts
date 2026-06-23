@@ -1,24 +1,12 @@
 import { auth } from "@clerk/nextjs/server";
-import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { triggerContentCalendarGeneration } from "@/lib/n8n";
+import { buildServerClient, resolveOrgId } from "@/lib/supabase/resolve-org";
 import crypto from "crypto";
 
-function serverClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return null;
-  return createClient(url, key);
-}
-
-async function resolveOrg(userId: string, supabase: ReturnType<typeof createClient>) {
-  const { data: user } = await supabase
-    .from("users").select("id").eq("clerk_id", userId).single();
-  if (!user) return null;
-  const { data: member } = await supabase
-    .from("org_members").select("org_id").eq("user_id", user.id).single();
-  return member?.org_id ?? null;
-}
+const serverClient = buildServerClient;
+const resolveOrg = (userId: string, supabase: ReturnType<typeof buildServerClient>) =>
+  resolveOrgId(userId, supabase!);
 
 // ── Demo suggestions ──────────────────────────────────────────
 const DEMO_SUGGESTIONS = [

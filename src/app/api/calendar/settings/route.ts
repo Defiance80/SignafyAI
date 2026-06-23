@@ -1,22 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
-import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
-
-function serverClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return null;
-  return createClient(url, key);
-}
-
-async function resolveOrg(userId: string, supabase: ReturnType<typeof createClient>) {
-  const { data: user } = await supabase
-    .from("users").select("id").eq("clerk_id", userId).single();
-  if (!user) return null;
-  const { data: member } = await supabase
-    .from("org_members").select("org_id").eq("user_id", user.id).single();
-  return member?.org_id ?? null;
-}
+import { buildServerClient, resolveOrgId } from "@/lib/supabase/resolve-org";
 
 const DEFAULT_SETTINGS = {
   platforms:           ["linkedin", "instagram", "facebook"],
@@ -35,10 +19,10 @@ export async function GET() {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = serverClient();
+  const supabase = buildServerClient();
   if (!supabase) return NextResponse.json({ settings: DEFAULT_SETTINGS });
 
-  const orgId = await resolveOrg(userId, supabase);
+  const orgId = await resolveOrgId(userId, supabase);
   if (!orgId) return NextResponse.json({ settings: DEFAULT_SETTINGS });
 
   const { data } = await supabase
@@ -56,10 +40,10 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const supabase = serverClient();
+  const supabase = buildServerClient();
   if (!supabase) return NextResponse.json({ error: "Not configured" }, { status: 503 });
 
-  const orgId = await resolveOrg(userId, supabase);
+  const orgId = await resolveOrgId(userId, supabase);
   if (!orgId) return NextResponse.json({ error: "No org" }, { status: 404 });
 
   const { data, error } = await supabase

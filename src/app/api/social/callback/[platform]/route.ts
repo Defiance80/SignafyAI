@@ -5,15 +5,12 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { buildServerClient, resolveOrgId } from "@/lib/supabase/resolve-org";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://signafy-ai.vercel.app";
 
 function serverClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return null;
-  return createClient(url, key);
+  return buildServerClient();
 }
 
 // ── Token exchange config per platform ───────────────────────
@@ -196,35 +193,20 @@ export async function GET(
   // Save to Supabase
   const supabase = serverClient();
   if (supabase) {
-    // Resolve org from clerk userId
-    const { data: user } = await supabase
-      .from("users")
-      .select("id")
-      .eq("clerk_id", cookieData.userId)
-      .single();
-
-    if (user) {
-      const { data: member } = await supabase
-        .from("org_members")
-        .select("org_id")
-        .eq("user_id", user.id)
-        .single();
-
-      if (member) {
-        // Upsert — if same platform+account_id exists, update tokens
-        await supabase.from("social_accounts").upsert({
-          org_id:        member.org_id,
-          platform:      platform === "twitter" ? "x" : platform,
-          account_id:    profile.account_id || `${platform}_${cookieData.userId}`,
-          account_name:  profile.account_name || platform,
-          avatar_url:    profile.avatar_url || null,
-          access_token:  accessToken,
-          refresh_token: refreshToken || null,
-          token_expires: tokenExpires,
-          is_active:     true,
-          scopes:        String(tokenData.scope ?? ""),
-        }, { onConflict: "org_id,platform,account_id" });
-      }
+    const orgId = await resolveOrgId(cookieData.userId, supabase);
+    if (orgId) {
+      await supabase.from("social_accounts").upsert({
+        org_id:        orgId,
+        platform:      platform === "twitter" ? "x" : platform,
+        account_id:    profile.account_id || `${platform}_${cookieData.userId}`,
+        account_name:  profile.account_name || platform,
+        avatar_url:    profile.avatar_url || null,
+        access_token:  accessToken,
+        refresh_token: refreshToken || null,
+        token_expires: tokenExpires,
+        is_active:     true,
+        scopes:        String(tokenData.scope ?? ""),
+      }, { onConflict: "org_id,platform,account_id" });
     }
   }
 
