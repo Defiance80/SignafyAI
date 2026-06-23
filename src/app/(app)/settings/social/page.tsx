@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 interface SocialAccount {
@@ -88,7 +88,8 @@ const PLATFORMS = [
   },
 ];
 
-export default function SocialSettingsPage() {
+// Inner component — uses useSearchParams, must be inside <Suspense>
+function SocialSettingsContent() {
   const searchParams = useSearchParams();
   const connected    = searchParams.get("connected");
   const errorParam   = searchParams.get("error");
@@ -295,5 +296,21 @@ export default function SocialSettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Page export — wraps content in Suspense so useSearchParams() is allowed
+// (Next.js requirement for static prerendering with search params)
+export default function SocialSettingsPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ maxWidth: 740, margin: "0 auto", padding: "32px 24px" }}>
+        <div style={{ color: "rgba(255,255,255,0.3)", textAlign: "center", paddingTop: 60 }}>
+          Loading…
+        </div>
+      </div>
+    }>
+      <SocialSettingsContent />
+    </Suspense>
   );
 }
