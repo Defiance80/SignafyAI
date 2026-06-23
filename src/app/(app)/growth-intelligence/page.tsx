@@ -20,12 +20,14 @@ const FORMAT_META: Record<string, { icon: string; label: string; color: string }
 };
 
 const PLATFORM_META: Record<string, { icon: string; color: string }> = {
-  reddit:       { icon: "🔴", color: "#ff4500" },
-  youtube:      { icon: "▶",  color: "#ff0000" },
   linkedin:     { icon: "💼", color: "#0a66c2" },
   tiktok:       { icon: "🎵", color: "#00f2ea" },
   instagram:    { icon: "📸", color: "#e040fb" },
-  twitter:      { icon: "𝕏",  color: "#8899a6" },
+  facebook:     { icon: "📘", color: "#1877f2" },
+  x:            { icon: "𝕏",  color: "#e7e9ea" },
+  reddit:       { icon: "🔴", color: "#ff4500" },
+  youtube:      { icon: "▶",  color: "#ff0000" },
+  twitter:      { icon: "𝕏",  color: "#e7e9ea" }, // alias for x
   google_news:  { icon: "📰", color: "#4285f4" },
 };
 
@@ -410,7 +412,7 @@ function DiscoveryModal({ onClose, onLaunched }: {
   const [audience, setAudience] = useState("");
   const [location, setLocation] = useState("");
   const [keywords, setKeywords] = useState("");
-  const [platforms, setPlatforms] = useState(["reddit", "youtube", "linkedin"]);
+  const [platforms, setPlatforms] = useState(["linkedin", "tiktok", "instagram", "facebook", "x"]);
   const [focus, setFocus] = useState<"trends" | "local" | "competitor_gaps" | "all">("all");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -503,12 +505,16 @@ function DiscoveryModal({ onClose, onLaunched }: {
 
           {/* Platforms */}
           <div>
-            <label className="text-xs font-semibold block mb-2" style={{ color: "var(--color-text-muted)" }}>SCAN PLATFORMS</label>
+            <label className="text-xs font-semibold block mb-2" style={{ color: "var(--color-text-muted)" }}>SCAN PLATFORMS <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>— select all that apply</span></label>
             <div className="grid grid-cols-2 gap-2">
               {([
-                { id: "reddit",      label: "Reddit",      icon: "🔴", desc: "Community discussions & Q&A" },
-                { id: "youtube",     label: "YouTube",     icon: "▶",  desc: "Comments & 'how to' searches" },
                 { id: "linkedin",    label: "LinkedIn",    icon: "💼", desc: "B2B conversations & pain points" },
+                { id: "tiktok",      label: "TikTok",      icon: "🎵", desc: "Viral trends & creator discussions" },
+                { id: "instagram",   label: "Instagram",   icon: "📸", desc: "Reels, posts & audience sentiment" },
+                { id: "facebook",    label: "Facebook",    icon: "📘", desc: "Groups, communities & Q&A" },
+                { id: "x",           label: "X (Twitter)", icon: "𝕏",  desc: "Real-time conversations & trends" },
+                { id: "reddit",      label: "Reddit",      icon: "🔴", desc: "Deep community discussions & Q&A" },
+                { id: "youtube",     label: "YouTube",     icon: "▶",  desc: "Comments & 'how to' searches" },
                 { id: "google_news", label: "Google News", icon: "📰", desc: "Industry trends & news" },
               ] as const).map(({ id, label, icon, desc }) => {
                 const active = platforms.includes(id);
@@ -706,7 +712,7 @@ function SignalsPanel() {
             className="px-2 py-1.5 rounded-lg text-xs outline-none"
             style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}>
             <option value="">All platforms</option>
-            {["reddit","youtube","linkedin","google_news","twitter"].map((s) => <option key={s} value={s}>{PLATFORM_META[s]?.icon} {s}</option>)}
+            {["linkedin","tiktok","instagram","facebook","x","reddit","youtube","google_news"].map((s) => <option key={s} value={s}>{PLATFORM_META[s]?.icon} {s}</option>)}
           </select>
         </div>
       </div>

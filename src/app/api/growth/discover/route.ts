@@ -9,7 +9,7 @@
  *   audience_description: string,
  *   keywords?: string[],
  *   location?: string,
- *   platforms?: ("reddit"|"youtube"|"linkedin"|"google_news"|"twitter")[],
+ *   platforms?: ("reddit"|"youtube"|"linkedin"|"tiktok"|"instagram"|"facebook"|"x"|"google_news")[],
  *   focus?: "trends" | "local" | "competitor_gaps" | "all"
  * }
  */
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     audience_description = "",
     keywords = [],
     location = "",
-    platforms = ["reddit", "youtube", "linkedin"],
+    platforms = ["linkedin", "tiktok", "instagram", "facebook", "x"],
     focus = "all",
   } = body;
 
@@ -87,18 +87,33 @@ export async function POST(request: Request) {
     const loc = location ? ` "${location}"` : "";
     const queries: { platform: string; q: string }[] = [];
 
+    if (platforms.includes("linkedin")) {
+      queries.push({ platform: "linkedin", q: `site:linkedin.com "${kw}"${loc} (trend OR challenge OR insight OR advice OR pain point)` });
+    }
+    if (platforms.includes("tiktok")) {
+      queries.push({ platform: "tiktok", q: `site:tiktok.com "${kw}"${loc} OR "tiktok trend" "${kw}"${loc} (viral OR trending OR tips OR honest)` });
+    }
+    if (platforms.includes("instagram")) {
+      queries.push({ platform: "instagram", q: `site:instagram.com "${kw}"${loc} OR instagram "${kw}"${loc} (reel OR post OR story OR tips OR review)` });
+    }
+    if (platforms.includes("facebook")) {
+      queries.push({ platform: "facebook", q: `site:facebook.com "${kw}"${loc} (group OR community OR recommend OR advice OR question)` });
+    }
+    if (platforms.includes("x")) {
+      queries.push({ platform: "x", q: `(site:twitter.com OR site:x.com) "${kw}"${loc} (question OR advice OR frustrated OR recommend OR experience)` });
+    }
     if (platforms.includes("reddit")) {
       queries.push({ platform: "reddit", q: `site:reddit.com "${kw}"${loc} (recommend OR advice OR "looking for" OR question OR help OR experience)` });
     }
     if (platforms.includes("youtube")) {
-      queries.push({ platform: "youtube", q: `site:youtube.com "${kw}"${loc} (how to OR best OR review OR tips)` });
+      queries.push({ platform: "youtube", q: `site:youtube.com "${kw}"${loc} (how to OR best OR review OR tips OR honest)` });
     }
-    if (platforms.includes("linkedin")) {
-      queries.push({ platform: "linkedin", q: `site:linkedin.com "${kw}"${loc} (trend OR challenge OR insight OR question)` });
+    if (platforms.includes("google_news")) {
+      queries.push({ platform: "google_news", q: `"${kw}"${loc} (trend OR industry OR news OR market OR 2025 OR 2026)` });
     }
 
     const searchResults = await Promise.allSettled(
-      queries.slice(0, 3).map(async ({ platform, q }) => {
+      queries.slice(0, 5).map(async ({ platform, q }) => {
         const res = await fetch("https://api.firecrawl.dev/v1/search", {
           method: "POST",
           headers: { "Authorization": `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },

@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS social_signals (
   id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id          UUID        NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   run_id          UUID,
-  source          TEXT,                     -- reddit, youtube, linkedin, google_news, twitter
+  source          TEXT,                     -- linkedin, tiktok, instagram, facebook, x, reddit, youtube, google_news
   topic           TEXT,
   question        TEXT        NOT NULL,     -- the actual text / question / post excerpt
   sentiment       TEXT,                     -- positive, negative, neutral, frustrated, excited
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS growth_opportunities (
   title               TEXT        NOT NULL,
   description         TEXT,
   topic               TEXT,
-  source              TEXT,                       -- comma-separated: "reddit,youtube"
+  source              TEXT,                       -- comma-separated: "linkedin,tiktok"
   signal_count        INT         DEFAULT 1,
   audience_match      INT         DEFAULT 50,     -- 0-100
   trend_score         INT         DEFAULT 50,
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS content_blueprints (
   hook            TEXT,           -- the opening hook
   outline         TEXT,           -- structured outline
   cta             TEXT,
-  platform        TEXT,           -- instagram, youtube, tiktok, linkedin, twitter
+  platform        TEXT,           -- instagram, tiktok, linkedin, facebook, x, youtube
   growth_score    INT             DEFAULT 50,
   created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
@@ -89,38 +89,57 @@ ALTER TABLE growth_opportunities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE content_blueprints   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE content_calendar     ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "members_own_org_signals"
+-- Drop policies if re-running this migration
+DROP POLICY IF EXISTS "social_signals_org_isolation"       ON social_signals;
+DROP POLICY IF EXISTS "growth_opportunities_org_isolation" ON growth_opportunities;
+DROP POLICY IF EXISTS "content_blueprints_org_isolation"   ON content_blueprints;
+DROP POLICY IF EXISTS "content_calendar_org_isolation"     ON content_calendar;
+
+CREATE POLICY "social_signals_org_isolation"
   ON social_signals FOR ALL
-  USING (org_id IN (SELECT org_id FROM memberships WHERE user_id = auth.uid()));
+  USING (org_id IN (
+    SELECT org_id FROM org_members
+    WHERE user_id = (SELECT id FROM users WHERE clerk_id = auth.jwt()->>'sub')
+  ))
+  WITH CHECK (org_id IN (
+    SELECT org_id FROM org_members
+    WHERE user_id = (SELECT id FROM users WHERE clerk_id = auth.jwt()->>'sub')
+  ));
 
-CREATE POLICY "members_own_org_opportunities"
+CREATE POLICY "growth_opportunities_org_isolation"
   ON growth_opportunities FOR ALL
-  USING (org_id IN (SELECT org_id FROM memberships WHERE user_id = auth.uid()));
+  USING (org_id IN (
+    SELECT org_id FROM org_members
+    WHERE user_id = (SELECT id FROM users WHERE clerk_id = auth.jwt()->>'sub')
+  ))
+  WITH CHECK (org_id IN (
+    SELECT org_id FROM org_members
+    WHERE user_id = (SELECT id FROM users WHERE clerk_id = auth.jwt()->>'sub')
+  ));
 
-CREATE POLICY "members_own_org_blueprints"
+CREATE POLICY "content_blueprints_org_isolation"
   ON content_blueprints FOR ALL
-  USING (org_id IN (SELECT org_id FROM memberships WHERE user_id = auth.uid()));
+  USING (org_id IN (
+    SELECT org_id FROM org_members
+    WHERE user_id = (SELECT id FROM users WHERE clerk_id = auth.jwt()->>'sub')
+  ))
+  WITH CHECK (org_id IN (
+    SELECT org_id FROM org_members
+    WHERE user_id = (SELECT id FROM users WHERE clerk_id = auth.jwt()->>'sub')
+  ));
 
-CREATE POLICY "members_own_org_calendar"
+CREATE POLICY "content_calendar_org_isolation"
   ON content_calendar FOR ALL
-  USING (org_id IN (SELECT org_id FROM memberships WHERE user_id = auth.uid()));
+  USING (org_id IN (
+    SELECT org_id FROM org_members
+    WHERE user_id = (SELECT id FROM users WHERE clerk_id = auth.jwt()->>'sub')
+  ))
+  WITH CHECK (org_id IN (
+    SELECT org_id FROM org_members
+    WHERE user_id = (SELECT id FROM users WHERE clerk_id = auth.jwt()->>'sub')
+  ));
 
--- Service role bypasses RLS (for n8n callbacks / server-side writes)
-CREATE POLICY "service_role_signals"
-  ON social_signals FOR ALL
-  USING (auth.role() = 'service_role');
-
-CREATE POLICY "service_role_opportunities"
-  ON growth_opportunities FOR ALL
-  USING (auth.role() = 'service_role');
-
-CREATE POLICY "service_role_blueprints"
-  ON content_blueprints FOR ALL
-  USING (auth.role() = 'service_role');
-
-CREATE POLICY "service_role_calendar"
-  ON content_calendar FOR ALL
-  USING (auth.role() = 'service_role');
+-- Note: service_role key bypasses RLS automatically in Supabase — no extra policy needed.
 
 -- ── Indexes ───────────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS social_signals_org_id_idx       ON social_signals(org_id);
@@ -129,3 +148,8 @@ CREATE INDEX IF NOT EXISTS growth_opp_org_id_idx           ON growth_opportuniti
 CREATE INDEX IF NOT EXISTS growth_opp_growth_score_idx     ON growth_opportunities(org_id, growth_score DESC);
 CREATE INDEX IF NOT EXISTS content_blueprints_org_id_idx   ON content_blueprints(org_id);
 CREATE INDEX IF NOT EXISTS content_calendar_org_date_idx   ON content_calendar(org_id, scheduled_date);
+
+-- ── Realtime ──────────────────────────────────────────────────────────────────
+ALTER PUBLICATION supabase_realtime ADD TABLE social_signals;
+ALTER PUBLICATION supabase_realtime ADD TABLE growth_opportunities;
+ALTER PUBLICATION supabase_realtime ADD TABLE content_calendar;
