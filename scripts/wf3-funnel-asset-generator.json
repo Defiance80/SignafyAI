@@ -1,0 +1,185 @@
+{
+  "name": "WF3 — Funnel Asset Generator (Blue Wolf B2C)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "bw-asset-generator",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-wf3-webhook",
+      "name": "Webhook — Asset Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify({ status: 'accepted', run_id: $json.run_id, message: 'Funnel asset generation queued' }) }}",
+        "options": {
+          "responseCode": 202,
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "node-wf3-respond",
+      "name": "Respond Accepted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [460, 160]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build the GPT prompt from the incoming signal\nconst body = $input.first().json.body ?? $input.first().json;\n\nconst {\n  signal_id,\n  question,\n  service,\n  location,\n  industry,\n  source,\n  intent_score,\n  buying_stage,\n  urgency,\n  org_id,\n  run_id,\n  callback_url,\n} = body;\n\nconst prompt = `You are a world-class direct-response copywriter. Generate a complete funnel asset bundle for a local service business targeting this consumer intent signal.\n\nSignal details:\n- Question / Post: \"${question}\"\n- Service: ${service ?? 'Not specified'}\n- Location: ${location ?? 'Not specified'}\n- Industry: ${industry ?? 'Local Business'}\n- Buying Stage: ${buying_stage ?? 'Research'}\n- Urgency: ${urgency ?? 'Medium'}\n- Intent Score: ${intent_score ?? 50}/100\n- Platform Found On: ${source ?? 'Online'}\n\nReturn ONLY this JSON object — no markdown, no explanation:\n{\n  \"landing_page\": \"<compelling headline for a page targeting this exact intent>\",\n  \"landing_page_subheadline\": \"<subheadline with social proof and urgency — 1-2 sentences>\",\n  \"faq\": \"<3-4 FAQ Q&As as plain text, Q: / A: format>\",\n  \"cta\": \"<strong call-to-action phrase (10 words max)>\",\n  \"ai_script\": \"<phone setter script — 5-7 short lines, uses [Name]/[Clinic] placeholders>\",\n  \"email_sequence\": \"<3-email follow-up sequence, one short descriptor per email with send day>\",\n  \"blog_outline\": \"<blog title + 5-section outline with SEO angle>\",\n  \"social_posts\": \"<3 posts: Instagram caption, Facebook post, Instagram Reel hook (label each)>\",\n  \"video_script\": \"<Hook (0-3s) + Problem (3-15s) + Solution (15-35s) + CTA (35-45s)>\",\n  \"schema_suggestion\": \"<JSON-LD schema markup as an escaped string>\"\n}`;\n\nreturn [{\n  json: {\n    signal_id: signal_id ?? null,\n    question,\n    service: service ?? null,\n    location: location ?? null,\n    industry: industry ?? null,\n    org_id,\n    run_id,\n    callback_url,\n    prompt,\n  }\n}];"
+      },
+      "id": "node-wf3-build-prompt",
+      "name": "Build GPT Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4.1-mini\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": {{ JSON.stringify($json.prompt) }} }\n  ],\n  \"temperature\": 0.5,\n  \"max_tokens\": 2500\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "node-wf3-gpt",
+      "name": "GPT — Generate Assets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst gptItem = $input.first();\nconst raw = gptItem.json.choices?.[0]?.message?.content ?? '{}';\n\n// Parse GPT output\nlet parsed = {};\ntry {\n  const cleaned = raw.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  parsed = { landing_page: 'Parse error — ' + raw.slice(0, 80) };\n}\n\n// Pull context from earlier in the chain\nconst ctx = $('Build GPT Prompt').first().json;\n\nconst payload = {\n  workflow_type: 'asset_generation',\n  status: 'complete',\n  org_id: ctx.org_id,\n  run_id: ctx.run_id,\n  generated_assets: [{\n    signal_id: ctx.signal_id,\n    intent_signal: ctx.question,\n    service: ctx.service,\n    location: ctx.location,\n    industry: ctx.industry,\n    business_name: null,\n    ...parsed,\n  }],\n};\n\nconst payloadStr = JSON.stringify(payload);\nconst hmacSecret = $env.N8N_HMAC_SECRET;\nconst signature = crypto.createHmac('sha256', hmacSecret).update(payloadStr).digest('hex');\n\nreturn [{\n  json: {\n    callback_url: ctx.callback_url,\n    payload: payloadStr,\n    signature,\n  }\n}];"
+      },
+      "id": "node-wf3-parse-sign",
+      "name": "Parse + Sign Callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "X-Signature",  "value": "={{ $json.signature }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.payload }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "node-wf3-callback",
+      "name": "POST Callback to App",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build error callback payload\nconst ctx = $('Build GPT Prompt').first().json;\nconst crypto = require('crypto');\n\nconst payload = {\n  workflow_type: 'asset_generation',\n  status: 'failed',\n  org_id: ctx.org_id,\n  run_id: ctx.run_id,\n  error_message: 'WF3 asset generation failed',\n  generated_assets: [],\n};\nconst payloadStr = JSON.stringify(payload);\nconst signature = crypto.createHmac('sha256', $env.N8N_HMAC_SECRET).update(payloadStr).digest('hex');\n\nreturn [{ json: { callback_url: ctx.callback_url, payload: payloadStr, signature } }];"
+      },
+      "id": "node-wf3-err-build",
+      "name": "Build Error Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "X-Signature",  "value": "={{ $json.signature }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.payload }}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "node-wf3-err-callback",
+      "name": "POST Error Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 600]
+    }
+  ],
+  "connections": {
+    "Webhook — Asset Request": {
+      "main": [
+        [
+          { "node": "Respond Accepted",  "type": "main", "index": 0 },
+          { "node": "Build GPT Prompt",  "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Build GPT Prompt": {
+      "main": [
+        [ { "node": "GPT — Generate Assets", "type": "main", "index": 0 } ]
+      ]
+    },
+    "GPT — Generate Assets": {
+      "main": [
+        [ { "node": "Parse + Sign Callback", "type": "main", "index": 0 } ]
+      ],
+      "error": [
+        [ { "node": "Build Error Payload",   "type": "main", "index": 0 } ]
+      ]
+    },
+    "Parse + Sign Callback": {
+      "main": [
+        [ { "node": "POST Callback to App",  "type": "main", "index": 0 } ]
+      ],
+      "error": [
+        [ { "node": "Build Error Payload",   "type": "main", "index": 0 } ]
+      ]
+    },
+    "Build Error Payload": {
+      "main": [
+        [ { "node": "POST Error Callback",   "type": "main", "index": 0 } ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": ["blue-wolf", "b2c", "assets"]
+}

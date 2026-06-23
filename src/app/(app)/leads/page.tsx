@@ -727,6 +727,13 @@ function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunch
   const [generateLandingPage, setGenerateLandingPage] = useState(false);
   const [forClient, setForClient] = useState(false);
   const [saveName, setSaveName] = useState("");
+  const [b2cSources, setB2cSources] = useState<string[]>(["reddit", "yelp"]);
+
+  function toggleB2cSource(id: string) {
+    setB2cSources((prev) =>
+      prev.includes(id) ? (prev.length > 1 ? prev.filter((s) => s !== id) : prev) : [...prev, id]
+    );
+  }
   const [error, setError] = useState("");
 
   async function handleLaunch() {
@@ -743,6 +750,7 @@ function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunch
         client_service: clientService.trim() || undefined,
         keywords: keywords.trim() ? keywords.split(",").map((k) => k.trim()).filter(Boolean) : undefined,
         min_score: minScore,
+        b2c_sources: (targetMarket === "b2c" || targetMarket === "both") ? b2cSources as Array<"reddit" | "twitter" | "yelp" | "youtube"> : undefined,
         generate_landing_page: (targetMarket === "b2c" || targetMarket === "both") ? generateLandingPage || undefined : undefined,
         for_client: forClient || undefined,
         save_config_name: saveName.trim() || undefined,
@@ -889,6 +897,33 @@ function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunch
                 <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all"
                   style={{ left: generateLandingPage ? "calc(100% - 18px)" : "2px" }} />
               </button>
+            </div>
+          )}
+
+          {/* ── B2C Platform Sources ── */}
+          {(targetMarket === "b2c" || targetMarket === "both") && (
+            <div>
+              <label className="text-xs font-semibold block mb-2" style={{ color: "var(--color-text-muted)" }}>
+                SEARCH PLATFORMS <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>(at least 1)</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { id: "reddit",  label: "Reddit",     icon: "🔴", desc: "Community Q&A · advice seeking" },
+                  { id: "yelp",    label: "Yelp",       icon: "⭐", desc: "Local reviews · complaints" },
+                  { id: "youtube", label: "YouTube",    icon: "▶", desc: "How-to · comparison searches" },
+                  { id: "twitter", label: "Twitter / X", icon: "𝕏", desc: "Real-time needs · complaints" },
+                ] as const).map(({ id, label, icon, desc }) => {
+                  const active = b2cSources.includes(id);
+                  return (
+                    <button key={id} onClick={() => toggleB2cSource(id)} type="button"
+                      className="text-left px-3 py-2 rounded-xl text-xs transition-all"
+                      style={{ background: active ? "rgba(124,58,237,0.12)" : "var(--color-surface-2)", border: active ? "1px solid rgba(124,58,237,0.35)" : "1px solid var(--color-border-subtle)", color: active ? "#a78bfa" : "var(--color-text-2)" }}>
+                      <div className="font-semibold">{icon} {label}</div>
+                      <div className="text-[10px] mt-0.5" style={{ color: active ? "#a78bfa88" : "var(--color-text-muted)" }}>{desc}</div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -1510,6 +1545,196 @@ function AssetsPanel({ onSelectAsset }: { onSelectAsset: (a: GeneratedAsset) => 
   );
 }
 
+// ─── Signal Drawer ────────────────────────────────────────────────────────────
+
+function SignalDrawer({
+  signal,
+  onClose,
+  onNavigateAssets,
+}: {
+  signal: IntentSignal;
+  onClose: () => void;
+  onNavigateAssets: () => void;
+}) {
+  const [generating, setGenerating] = useState(false);
+  const [genStatus, setGenStatus] = useState<"idle" | "queued" | "complete" | "error">("idle");
+  const [genMessage, setGenMessage] = useState("");
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const { color: ic } = scoreColor(signal.intent_score);
+  const uc = signal.urgency ? URGENCY_COLORS[signal.urgency] : null;
+  const sc = signal.buying_stage ? STAGE_COLORS[signal.buying_stage] : "#6b7280";
+
+  const SOURCE_ICONS: Record<string, string> = {
+    reddit: "🔴", yelp: "⭐", youtube: "▶", twitter: "𝕏", "twitter/x": "𝕏", google: "🔍", facebook: "📘",
+  };
+  const sourceIcon = SOURCE_ICONS[signal.source?.toLowerCase() ?? ""] ?? "📡";
+
+  async function generateAssets() {
+    setGenerating(true);
+    setGenStatus("idle");
+    setGenMessage("");
+    try {
+      const res = await fetch("/api/generated-assets/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ signal_id: signal.id, signal }),
+      });
+      const data = await res.json() as { status?: string; message?: string; error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Generation failed");
+      setGenStatus(data.status === "processing" ? "queued" : "complete");
+      setGenMessage(data.message ?? "Assets generated successfully!");
+    } catch (e) {
+      setGenStatus("error");
+      setGenMessage(e instanceof Error ? e.message : "Generation failed");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  function copyText(text: string, key: string) {
+    navigator.clipboard.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(null), 1500); });
+  }
+
+  const stageExplainer: Record<string, string> = {
+    "Ready To Buy": "This consumer is comparing providers right now. A targeted offer page + retargeting ads can capture this demand today.",
+    "Vendor Selection": "Evaluating specific providers. A compelling page with social proof and a strong CTA can win this conversion.",
+    "Comparison": "Weighing options. Comparison guides, FAQs, and video explainers position your client as the obvious choice.",
+    "Research": "Early-stage explorer. Lead magnets and informational content capture them before competitors do.",
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.5)" }} onClick={onClose} />
+      <div className="fixed right-0 top-0 bottom-0 z-50 flex flex-col overflow-hidden"
+        style={{ width: "min(560px, 100vw)", background: "var(--color-surface)", borderLeft: "1px solid var(--color-border)", boxShadow: "-16px 0 64px rgba(0,0,0,0.4)" }}>
+
+        {/* Header */}
+        <div className="flex items-start gap-3 px-6 py-5" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+          <button onClick={onClose} className="p-1.5 rounded-lg mt-0.5 flex-shrink-0" style={{ color: "var(--color-text-muted)" }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {signal.urgency && uc && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md" style={{ background: uc.bg, color: uc.color }}>{signal.urgency.toUpperCase()} URGENCY</span>
+              )}
+              {signal.buying_stage && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: `${sc}18`, color: sc }}>{signal.buying_stage}</span>
+              )}
+              <span className="text-[10px] px-2 py-0.5 rounded-md capitalize" style={{ background: "var(--color-surface-2)", color: "var(--color-text-muted)" }}>
+                {sourceIcon} {signal.source}
+              </span>
+            </div>
+            <h2 className="text-base font-bold mt-1.5" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Intent Signal</h2>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <div className="text-2xl font-bold" style={{ color: ic, fontFamily: "var(--font-syne)" }}>{signal.intent_score}</div>
+            <div className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>/ 100</div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+
+          {/* Full question */}
+          <div className="px-6 py-5" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[10px] font-semibold" style={{ color: "var(--color-text-muted)" }}>CONSUMER QUESTION / POST</div>
+              <button onClick={() => copyText(signal.question, "q")} className="text-[10px] px-2 py-0.5 rounded" style={{ color: copied === "q" ? "#34d399" : "#a78bfa", background: "rgba(124,58,237,0.1)" }}>
+                {copied === "q" ? "Copied!" : "Copy"}
+              </button>
+            </div>
+            <blockquote className="text-sm leading-relaxed" style={{ color: "var(--color-text-1)", borderLeft: `3px solid ${ic}`, paddingLeft: 12 }}>
+              &ldquo;{signal.question}&rdquo;
+            </blockquote>
+          </div>
+
+          {/* Intent score bar */}
+          <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+            <div className="text-[10px] font-semibold mb-2" style={{ color: "var(--color-text-muted)" }}>INTENT STRENGTH</div>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "var(--color-surface-2)" }}>
+                <div className="h-full rounded-full" style={{ width: `${signal.intent_score}%`, background: `linear-gradient(90deg, ${ic}88, ${ic})` }} />
+              </div>
+              <span className="text-sm font-bold tabular-nums" style={{ color: ic, fontFamily: "var(--font-syne)" }}>{signal.intent_score}/100</span>
+            </div>
+            <div className="flex justify-between mt-1">
+              <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>Passive browsing</span>
+              <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>Ready to buy</span>
+            </div>
+          </div>
+
+          {/* Metadata */}
+          <div className="px-6 py-4 grid grid-cols-2 gap-3" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+            {signal.service && <div><div className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Service</div><div className="text-xs font-medium" style={{ color: "var(--color-text-1)" }}>{signal.service}</div></div>}
+            {signal.industry && <div><div className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Industry</div><div className="text-xs font-medium" style={{ color: "var(--color-text-1)" }}>{signal.industry}</div></div>}
+            {signal.location && <div><div className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Location</div><div className="text-xs font-medium" style={{ color: "var(--color-text-1)" }}>📍 {signal.location}</div></div>}
+            <div><div className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Detected</div><div className="text-xs" style={{ color: "var(--color-text-2)" }}>{relativeTime(signal.date_found ?? signal.created_at)}</div></div>
+          </div>
+
+          {/* Strategy insight */}
+          {signal.buying_stage && stageExplainer[signal.buying_stage] && (
+            <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)", background: "rgba(124,58,237,0.03)" }}>
+              <div className="text-[10px] font-semibold mb-1.5" style={{ color: "#a78bfa" }}>💡 RECOMMENDED STRATEGY</div>
+              <p className="text-xs leading-relaxed" style={{ color: "var(--color-text-2)" }}>{stageExplainer[signal.buying_stage]}</p>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="px-6 py-5 space-y-3">
+            <div className="text-[10px] font-semibold" style={{ color: "var(--color-text-muted)" }}>ACTIONS</div>
+
+            {genStatus === "idle" && (
+              <button onClick={generateAssets} disabled={generating}
+                className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+                style={{ background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)", color: "white", boxShadow: "0 4px 12px rgba(124,58,237,0.3)", opacity: generating ? 0.7 : 1 }}>
+                {generating ? (
+                  <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />Generating assets…</>
+                ) : <>✨ Generate Funnel Assets</>}
+              </button>
+            )}
+
+            {genStatus === "queued" && (
+              <div className="p-3 rounded-xl text-xs" style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", color: "#a78bfa" }}>
+                <div className="font-semibold mb-1">⏳ Asset generation queued</div>
+                <div className="mb-2" style={{ color: "var(--color-text-muted)" }}>{genMessage}</div>
+                <button onClick={() => { onClose(); onNavigateAssets(); }} className="underline text-[11px]" style={{ color: "#a78bfa" }}>
+                  Go to Funnel Assets →
+                </button>
+              </div>
+            )}
+
+            {genStatus === "complete" && (
+              <div className="p-3 rounded-xl text-xs" style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.2)", color: "#34d399" }}>
+                <div className="font-semibold mb-1">✓ Assets generated!</div>
+                <button onClick={() => { onClose(); onNavigateAssets(); }} className="underline text-[11px]" style={{ color: "#34d399" }}>
+                  View Funnel Assets →
+                </button>
+              </div>
+            )}
+
+            {genStatus === "error" && (
+              <div className="p-3 rounded-xl text-xs" style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", color: "#f87171" }}>
+                <div className="font-semibold mb-1">⚠ {genMessage}</div>
+                <button onClick={() => setGenStatus("idle")} className="underline text-[11px]" style={{ color: "#f87171" }}>Try again</button>
+              </div>
+            )}
+
+            {signal.source_url && (
+              <a href={signal.source_url} target="_blank" rel="noopener noreferrer"
+                className="w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all"
+                style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}>
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M5 2H2a1 1 0 00-1 1v8a1 1 0 001 1h8a1 1 0 001-1V8M8 1h4m0 0v4m0-4L5 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                View Original Post on {signal.source ?? "platform"}
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function LeadsPage() {
@@ -1751,49 +1976,7 @@ export default function LeadsPage() {
       {selectedBiz && <BusinessDrawer biz={selectedBiz} onClose={() => setSelectedBiz(null)} />}
       {selectedAsset && <AssetDrawer asset={selectedAsset} onClose={() => setSelectedAsset(null)} />}
 
-      {/* Intent signal inline modal (simple overlay) */}
-      {selectedSignal && (
-        <>
-          <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.5)" }} onClick={() => setSelectedSignal(null)} />
-          <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg max-h-[80dvh] overflow-y-auto"
-            style={{ transform: "translate(-50%, -50%)", background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 20, boxShadow: "0 24px 80px rgba(0,0,0,0.5)", padding: 24 }}>
-            <div className="flex items-start justify-between gap-4 mb-4">
-              <div className="flex flex-wrap gap-2">
-                {selectedSignal.urgency && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md" style={{ background: URGENCY_COLORS[selectedSignal.urgency]?.bg, color: URGENCY_COLORS[selectedSignal.urgency]?.color }}>
-                    {selectedSignal.urgency.toUpperCase()} URGENCY
-                  </span>
-                )}
-                {selectedSignal.buying_stage && (
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-md" style={{ background: `${STAGE_COLORS[selectedSignal.buying_stage] ?? "#6b7280"}18`, color: STAGE_COLORS[selectedSignal.buying_stage] ?? "#6b7280" }}>
-                    {selectedSignal.buying_stage}
-                  </span>
-                )}
-              </div>
-              <button onClick={() => setSelectedSignal(null)} style={{ color: "var(--color-text-muted)" }}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-              </button>
-            </div>
-            <blockquote className="text-base leading-relaxed mb-4" style={{ color: "var(--color-text-1)" }}>
-              &ldquo;{selectedSignal.question}&rdquo;
-            </blockquote>
-            <div className="grid grid-cols-2 gap-3 text-xs" style={{ color: "var(--color-text-muted)" }}>
-              {selectedSignal.source && <div><span className="font-semibold" style={{ color: "var(--color-text-2)" }}>Source</span><br />{selectedSignal.source}</div>}
-              {selectedSignal.service && <div><span className="font-semibold" style={{ color: "var(--color-text-2)" }}>Service</span><br />{selectedSignal.service}</div>}
-              {selectedSignal.location && <div><span className="font-semibold" style={{ color: "var(--color-text-2)" }}>Location</span><br />{selectedSignal.location}</div>}
-              <div><span className="font-semibold" style={{ color: "var(--color-text-2)" }}>Intent Score</span><br />
-                <span style={{ color: scoreColor(selectedSignal.intent_score).color, fontWeight: 700 }}>{selectedSignal.intent_score}/100</span>
-              </div>
-            </div>
-            {selectedSignal.source_url && (
-              <a href={selectedSignal.source_url} target="_blank" rel="noopener" className="mt-4 block text-center py-2 rounded-xl text-sm font-semibold"
-                style={{ background: "rgba(124,58,237,0.12)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.2)" }}>
-                View Original Post →
-              </a>
-            )}
-          </div>
-        </>
-      )}
+      {selectedSignal && <SignalDrawer signal={selectedSignal} onClose={() => setSelectedSignal(null)} onNavigateAssets={() => { setSelectedSignal(null); setActiveTab("assets"); }} />}
     </div>
   );
 }
