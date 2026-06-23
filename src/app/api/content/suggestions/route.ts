@@ -5,8 +5,8 @@ import { buildServerClient, resolveOrgId } from "@/lib/supabase/resolve-org";
 import crypto from "crypto";
 
 const serverClient = buildServerClient;
-const resolveOrg = (userId: string, supabase: ReturnType<typeof buildServerClient>) =>
-  resolveOrgId(userId, supabase!);
+const resolveOrg = (userId: string, supabase: NonNullable<ReturnType<typeof buildServerClient>>) =>
+  resolveOrgId(userId, supabase);
 
 // ── Demo suggestions ──────────────────────────────────────────
 const DEMO_SUGGESTIONS = [
