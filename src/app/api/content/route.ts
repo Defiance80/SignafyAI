@@ -57,6 +57,13 @@ export async function POST(request: Request) {
     brandVoice = data ?? undefined;
   }
 
+  if (!process.env.OPENAI_API_KEY) {
+    return errorResponse(
+      "AI generation not configured — add your OPENAI_API_KEY in Vercel environment variables.",
+      503
+    );
+  }
+
   const generated = await generateContent({
     content_type: parsed.data.content_type,
     platform: parsed.data.platform,

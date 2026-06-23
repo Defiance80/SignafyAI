@@ -71,6 +71,21 @@ const NAV_SECTIONS = [
       },
     ],
   },
+  {
+    label: "Settings",
+    items: [
+      {
+        label: "Social Accounts",
+        href: "/settings/social",
+        icon: <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="5" cy="4" r="2" stroke="currentColor" strokeWidth="1.3"/><circle cx="10.5" cy="4" r="2" stroke="currentColor" strokeWidth="1.3"/><circle cx="5" cy="11" r="2" stroke="currentColor" strokeWidth="1.3"/><path d="M7 4h1M7 11h1.5a2 2 0 0 0 2-2V8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
+      },
+      {
+        label: "Brand Voice",
+        href: "/settings/voice",
+        icon: <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M3 7.5a4.5 4.5 0 0 1 9 0v3l1 1.5H2L3 10.5V7.5z" stroke="currentColor" strokeWidth="1.3"/><path d="M6 12.5a1.5 1.5 0 0 0 3 0" stroke="currentColor" strokeWidth="1.3"/></svg>,
+      },
+    ],
+  },
 ];
 
 const PLAN_COLORS: Record<string, { text: string; bg: string }> = {
