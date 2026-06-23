@@ -1,33 +1,25 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
-import { Plus_Jakarta_Sans, Syne, JetBrains_Mono } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
+import { Syne } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  variable: "--font-jakarta",
-  display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
-});
+// Geist — Vercel's premium clean font for body/UI text
+// GeistSans and GeistMono are already optimized CSS variables
 
+// Syne — geometric display font for headings and brand wordmarks
 const syne = Syne({
-  subsets: ["latin"],
-  variable: "--font-syne",
-  display: "swap",
-  weight: ["600", "700", "800"],
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono-var",
-  display: "swap",
-  weight: ["400", "600"],
+  subsets:  ["latin"],
+  variable: "--font-syne",   // keep for backward compat with sidebar refs
+  display:  "swap",
+  weight:   ["600", "700", "800"],
 });
 
 export const metadata: Metadata = {
   title: {
-    default: "SignafyAI — AI Growth Operating System",
+    default:  "SignafyAI — AI Growth Operating System",
     template: "%s | SignafyAI",
   },
   description:
@@ -37,8 +29,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${plusJakartaSans.variable} ${syne.variable} ${jetbrainsMono.variable}`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${GeistSans.variable} ${GeistMono.variable} ${syne.variable}`}
+      style={{ fontFamily: "var(--font-geist-sans, system-ui, sans-serif)" }}
+    >
+      <body>
         <ClerkProvider>
           <Providers>{children}</Providers>
         </ClerkProvider>

@@ -4,15 +4,19 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const PAGE_TITLES: Record<string, { title: string; parent?: string }> = {
-  "/dashboard":  { title: "Dashboard" },
-  "/leads":      { title: "Leads",          parent: "Dashboard" },
-  "/content":    { title: "Content",        parent: "Dashboard" },
-  "/social":     { title: "Social Inbox",   parent: "Dashboard" },
-  "/seo":        { title: "SEO Lab",        parent: "Dashboard" },
-  "/backlinks":  { title: "Backlinks",      parent: "Dashboard" },
-  "/campaigns":  { title: "Campaigns",      parent: "Dashboard" },
-  "/analytics":  { title: "Analytics",      parent: "Dashboard" },
-  "/settings":   { title: "Settings",       parent: "Dashboard" },
+  "/dashboard":          { title: "Dashboard" },
+  "/leads":              { title: "Leads",            parent: "Growth" },
+  "/campaigns":          { title: "Campaigns",        parent: "Growth" },
+  "/social":             { title: "Social Inbox",     parent: "Growth" },
+  "/growth-intelligence":{ title: "Growth Intel",     parent: "Growth" },
+  "/content-studio":     { title: "Content Studio",   parent: "Content" },
+  "/brand-studio":       { title: "Brand Studio",     parent: "Content" },
+  "/seo":                { title: "SEO Lab",          parent: "Content" },
+  "/backlinks":          { title: "Backlinks",        parent: "Content" },
+  "/analytics":          { title: "Analytics",        parent: "Overview" },
+  "/settings":           { title: "Settings" },
+  "/settings/social":    { title: "Social Accounts",  parent: "Settings" },
+  "/settings/voice":     { title: "Brand Voice",      parent: "Settings" },
 };
 
 interface MeData {
@@ -33,7 +37,12 @@ export function Topbar() {
       .catch(() => {});
   }, []);
 
-  const meta = PAGE_TITLES[pathname] ?? { title: "Signafy" };
+  // Try exact match first, then longest prefix match
+  const meta = PAGE_TITLES[pathname] ??
+    Object.entries(PAGE_TITLES)
+      .filter(([k]) => pathname.startsWith(k) && k !== "/")
+      .sort((a, b) => b[0].length - a[0].length)[0]?.[1] ??
+    { title: "SignafyAI" };
   const userInitial = me?.user.name?.charAt(0).toUpperCase() ?? "U";
 
   return (

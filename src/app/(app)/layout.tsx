@@ -8,7 +8,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-dvh overflow-hidden" style={{ background: "var(--color-bg)" }}>
+    <div data-scheme="dark" className="flex h-dvh overflow-hidden" style={{ background: "var(--color-bg)" }}>
       {/* Desktop sidebar */}
       <div className="hidden md:flex flex-col flex-shrink-0">
         <Sidebar />
