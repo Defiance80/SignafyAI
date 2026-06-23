@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useLeads, useUpdateLead, useDeleteLead, useDiscoverLeads, useLeadDetail,
   useBusinesses, useIntentSignals, useGeneratedAssets,
+  useWebsiteAudit, useSocialChatter,
 } from "@/hooks/use-leads";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { scoreColor, relativeTime } from "@/lib/utils";
@@ -217,6 +218,299 @@ function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }
   );
 }
 
+// ─── Website Audit Section ────────────────────────────────────────────────────
+
+function WebsiteAuditSection({ bizId }: { bizId: string }) {
+  const [open, setOpen] = useState(false);
+  const { data, isLoading, error } = useWebsiteAudit(open ? bizId : null);
+  const audit = data?.audit;
+
+  const ScorePill = ({ score, label }: { score: number; label: string }) => {
+    const color = score >= 70 ? "#34d399" : score >= 45 ? "#fbbf24" : "#f87171";
+    return (
+      <div className="text-center px-3 py-2 rounded-xl" style={{ background: `${color}10`, border: `1px solid ${color}30` }}>
+        <div className="text-lg font-bold" style={{ color, fontFamily: "var(--font-syne)" }}>{score}</div>
+        <div className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>{label}</div>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+      <button
+        className="w-full flex items-center justify-between px-6 py-3.5"
+        onClick={() => setOpen((v) => !v)}
+        style={{ background: open ? "rgba(14,165,233,0.05)" : "transparent" }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold" style={{ color: "#0ea5e9" }}>🔍 WEBSITE AUDIT</span>
+          {data?.cached && <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "rgba(14,165,233,0.1)", color: "#0ea5e9" }}>cached</span>}
+          {isLoading && <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>Running...</span>}
+        </div>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ color: "var(--color-text-muted)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="px-6 pb-5">
+          {isLoading && (
+            <div className="flex items-center gap-3 py-4">
+              <div className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#0ea5e9", borderTopColor: "transparent" }} />
+              <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>Scanning website and analyzing with AI…</span>
+            </div>
+          )}
+          {error && <p className="text-xs py-3" style={{ color: "#f87171" }}>Audit failed — {error.message}</p>}
+          {data?.error && <p className="text-xs py-3" style={{ color: "var(--color-text-muted)" }}>{data.error}</p>}
+          {audit && (
+            <div className="space-y-4">
+              {/* Score row */}
+              <div className="grid grid-cols-4 gap-2 pt-1">
+                <ScorePill score={audit.overall_score} label="Overall" />
+                <ScorePill score={audit.seo.score} label="SEO" />
+                <ScorePill score={audit.design.score} label="Design" />
+                <ScorePill score={audit.conversion.score} label="Conversion" />
+              </div>
+
+              {/* Opportunity */}
+              <div className="px-3 py-3 rounded-xl text-xs leading-relaxed" style={{ background: "rgba(14,165,233,0.07)", color: "var(--color-text-1)", border: "1px solid rgba(14,165,233,0.15)" }}>
+                💡 {audit.opportunity}
+              </div>
+
+              {/* Issues */}
+              {audit.seo.issues.length > 0 && (
+                <div>
+                  <div className="text-[10px] font-semibold mb-1.5" style={{ color: "#f87171" }}>SEO ISSUES</div>
+                  <ul className="space-y-1">
+                    {audit.seo.issues.map((issue, i) => (
+                      <li key={i} className="text-xs flex gap-2" style={{ color: "var(--color-text-2)" }}>
+                        <span style={{ color: "#f87171" }}>✕</span>{issue}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {audit.conversion.issues.length > 0 && (
+                <div>
+                  <div className="text-[10px] font-semibold mb-1.5" style={{ color: "#fbbf24" }}>CONVERSION GAPS</div>
+                  <ul className="space-y-1">
+                    {audit.conversion.issues.map((issue, i) => (
+                      <li key={i} className="text-xs flex gap-2" style={{ color: "var(--color-text-2)" }}>
+                        <span style={{ color: "#fbbf24" }}>△</span>{issue}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Recommendations */}
+              <div>
+                <div className="text-[10px] font-semibold mb-1.5" style={{ color: "#34d399" }}>TOP RECOMMENDATIONS</div>
+                <ol className="space-y-1.5">
+                  {audit.recommendations.map((rec, i) => (
+                    <li key={i} className="text-xs flex gap-2" style={{ color: "var(--color-text-2)" }}>
+                      <span className="font-bold flex-shrink-0" style={{ color: "#34d399" }}>{i + 1}.</span>{rec}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Social Chatter Section ───────────────────────────────────────────────────
+
+function SocialChatterSection({ bizId }: { bizId: string }) {
+  const [open, setOpen] = useState(false);
+  const { data, isLoading, error } = useSocialChatter(open ? bizId : null);
+  const social = data?.social;
+
+  const sentimentColor: Record<string, string> = {
+    positive: "#34d399", negative: "#f87171", mixed: "#fbbf24", neutral: "#6b7280",
+  };
+  const platformEmoji: Record<string, string> = {
+    "Google Reviews": "⭐", Yelp: "🔴", Facebook: "📘", Instagram: "📸",
+    Reddit: "🤖", Twitter: "🐦", "Google Maps": "📍",
+  };
+
+  return (
+    <div style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+      <button
+        className="w-full flex items-center justify-between px-6 py-3.5"
+        onClick={() => setOpen((v) => !v)}
+        style={{ background: open ? "rgba(168,85,247,0.05)" : "transparent" }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold" style={{ color: "#a855f7" }}>📡 SOCIAL CHATTER</span>
+          {data?.cached && <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "rgba(168,85,247,0.1)", color: "#a855f7" }}>cached</span>}
+          {isLoading && <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>Scanning...</span>}
+        </div>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ color: "var(--color-text-muted)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="px-6 pb-5">
+          {isLoading && (
+            <div className="flex items-center gap-3 py-4">
+              <div className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#a855f7", borderTopColor: "transparent" }} />
+              <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>Scanning online conversations…</span>
+            </div>
+          )}
+          {error && <p className="text-xs py-3" style={{ color: "#f87171" }}>Scan failed — {error.message}</p>}
+          {social && (
+            <div className="space-y-4">
+              {/* Opportunity relevance */}
+              <div className="px-3 py-3 rounded-xl text-xs leading-relaxed" style={{ background: "rgba(168,85,247,0.07)", color: "var(--color-text-1)", border: "1px solid rgba(168,85,247,0.15)" }}>
+                🎯 {social.opportunity_relevance}
+              </div>
+
+              {/* Mentions */}
+              <div className="space-y-2">
+                {social.mentions.map((m, i) => {
+                  const sc = sentimentColor[m.sentiment] ?? "#6b7280";
+                  const emoji = platformEmoji[m.platform] ?? "💬";
+                  return (
+                    <div key={i} className="px-3 py-2.5 rounded-xl" style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)" }}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10px] font-semibold" style={{ color: "var(--color-text-muted)" }}>{emoji} {m.platform}</span>
+                        <div className="flex items-center gap-2">
+                          {m.date && <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>{m.date}</span>}
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${sc}15`, color: sc }}>{m.sentiment}</span>
+                        </div>
+                      </div>
+                      <p className="text-xs leading-relaxed" style={{ color: "var(--color-text-2)" }}>&ldquo;{m.text}&rdquo;</p>
+                      {m.url && (
+                        <a href={m.url} target="_blank" rel="noopener" className="text-[10px] mt-1 inline-block" style={{ color: "#a78bfa" }}>View source →</a>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Summary */}
+              <p className="text-xs leading-relaxed" style={{ color: "var(--color-text-muted)" }}>{social.sentiment_summary}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Export Button ────────────────────────────────────────────────────────────
+
+function ExportButton({ businesses, runLabel }: { businesses: Business[]; runLabel?: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  function exportCSV() {
+    const headers = ["Name", "Score", "Industry", "Location", "Website", "Phone", "Rating", "Reviews", "Weakness", "Offer", "Pitch Angle"];
+    const rows = businesses.map((b) => [
+      b.name, b.opportunity_score, b.industry ?? "", b.location ?? "",
+      b.website ?? "", b.phone ?? "", b.rating ?? "", b.reviews,
+      b.weaknesses ?? "", b.recommended_offer ?? "", b.pitch_angle ?? "",
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `prospects-${runLabel ?? "export"}.csv`; a.click();
+    URL.revokeObjectURL(url); setOpen(false);
+  }
+
+  async function exportExcel() {
+    const { utils, writeFile } = await import("xlsx");
+    const ws = utils.json_to_sheet(businesses.map((b) => ({
+      Name: b.name, "Opp. Score": b.opportunity_score, Industry: b.industry ?? "",
+      Location: b.location ?? "", Website: b.website ?? "", Phone: b.phone ?? "",
+      Rating: b.rating ?? "", Reviews: b.reviews, Weaknesses: b.weaknesses ?? "",
+      "Recommended Offer": b.recommended_offer ?? "", "Pitch Angle": b.pitch_angle ?? "",
+      "Email Subject": b.email_subject ?? "", "Email Body": b.email_body ?? "",
+    })));
+    const wb = utils.book_new(); utils.book_append_sheet(wb, ws, "Prospects");
+    writeFile(wb, `prospects-${runLabel ?? "export"}.xlsx`);
+    setOpen(false);
+  }
+
+  async function exportPDF() {
+    const { default: jsPDF } = await import("jspdf");
+    const { default: autoTable } = await import("jspdf-autotable");
+    const doc = new jsPDF({ orientation: "landscape" });
+    doc.setFontSize(14);
+    doc.text(`SignafyAI Prospects${runLabel ? ` — ${runLabel}` : ""}`, 14, 16);
+    doc.setFontSize(9);
+    doc.text(`Exported ${new Date().toLocaleDateString()}  ·  ${businesses.length} prospects`, 14, 22);
+    autoTable(doc, {
+      startY: 28,
+      head: [["Name", "Score", "Location", "Website", "Weakness (summary)", "Recommended Offer"]],
+      body: businesses.map((b) => [
+        b.name, b.opportunity_score, b.location ?? "—", (b.website ?? "").replace(/^https?:\/\//, ""),
+        (b.weaknesses ?? "").slice(0, 60), (b.recommended_offer ?? "").slice(0, 60),
+      ]),
+      headStyles: { fillColor: [124, 58, 237] },
+      styles: { fontSize: 7, cellPadding: 3 },
+      alternateRowStyles: { fillColor: [248, 247, 255] },
+    });
+    doc.save(`prospects-${runLabel ?? "export"}.pdf`); setOpen(false);
+  }
+
+  function exportAirtable() {
+    window.open("https://airtable.com/", "_blank");
+    setOpen(false);
+    alert("To import to Airtable:\n1. Export as CSV first\n2. In Airtable → Create a base → Import → CSV file\n\nOr add your Airtable API key in Settings → Integrations for automatic sync (coming soon).");
+  }
+
+  function exportGSheets() {
+    setOpen(false);
+    alert("To import to Google Sheets:\n1. Export as CSV first\n2. In Google Sheets → File → Import → Upload the CSV\n\nOr add your Google Service Account in Settings → Integrations for automatic sync (coming soon).");
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium"
+        style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}
+      >
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5l3 3 3-3M2 10h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        Export
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1.5 z-50 rounded-xl overflow-hidden" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "0 8px 24px rgba(0,0,0,0.2)", minWidth: 160 }}>
+          {[
+            { label: "📄 CSV", action: exportCSV },
+            { label: "📊 Excel (.xlsx)", action: exportExcel },
+            { label: "🖨 PDF", action: exportPDF },
+            { label: "🗄 Airtable", action: exportAirtable },
+            { label: "📋 Google Sheets", action: exportGSheets },
+          ].map(({ label, action }) => (
+            <button key={label} onClick={action} className="w-full text-left px-4 py-2.5 text-xs font-medium transition-colors"
+              style={{ color: "var(--color-text-2)" }}
+              onMouseEnter={(e) => { (e.currentTarget).style.background = "var(--color-surface-2)"; }}
+              onMouseLeave={(e) => { (e.currentTarget).style.background = "transparent"; }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Business Prospect Drawer ─────────────────────────────────────────────────
 
 function BusinessDrawer({ biz, onClose }: { biz: Business; onClose: () => void }) {
@@ -226,11 +520,18 @@ function BusinessDrawer({ biz, onClose }: { biz: Business; onClose: () => void }
   };
   const { color } = scoreColor(biz.opportunity_score);
 
+  function openGmailDraft() {
+    const to = biz.email ?? "";
+    const subject = encodeURIComponent(biz.email_subject ?? `Quick question for ${biz.name}`);
+    const body = encodeURIComponent(biz.email_body ?? "");
+    window.open(`https://mail.google.com/mail/?view=cm&to=${to}&su=${subject}&body=${body}`, "_blank");
+  }
+
   return (
     <>
       <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.5)" }} onClick={onClose} />
       <div className="fixed right-0 top-0 bottom-0 z-50 flex flex-col overflow-hidden"
-        style={{ width: "min(560px, 100vw)", background: "var(--color-surface)", borderLeft: "1px solid var(--color-border)", boxShadow: "-16px 0 64px rgba(0,0,0,0.4)" }}>
+        style={{ width: "min(580px, 100vw)", background: "var(--color-surface)", borderLeft: "1px solid var(--color-border)", boxShadow: "-16px 0 64px rgba(0,0,0,0.4)" }}>
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-5" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
           <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: "var(--color-text-muted)" }}>
@@ -250,8 +551,8 @@ function BusinessDrawer({ biz, onClose }: { biz: Business; onClose: () => void }
           {/* Contact info */}
           <div className="px-6 py-4 grid grid-cols-2 gap-3" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
             {biz.website && <div><div className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>Website</div><a href={biz.website} target="_blank" rel="noopener" className="text-sm font-medium" style={{ color: "#a78bfa" }}>{biz.website.replace(/^https?:\/\//, "")}</a></div>}
-            {biz.phone && <div><div className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>Phone</div><div className="text-sm" style={{ color: "var(--color-text-2)" }}>{biz.phone}</div></div>}
-            {biz.email && <div><div className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>Email</div><div className="text-sm" style={{ color: "var(--color-text-2)" }}>{biz.email}</div></div>}
+            {biz.phone && <div><div className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>Phone</div><a href={`tel:${biz.phone}`} className="text-sm" style={{ color: "var(--color-text-2)" }}>{biz.phone}</a></div>}
+            {biz.email && <div><div className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>Email</div><a href={`mailto:${biz.email}`} className="text-sm" style={{ color: "#a78bfa" }}>{biz.email}</a></div>}
             {biz.address && <div><div className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>Address</div><div className="text-sm" style={{ color: "var(--color-text-2)" }}>{biz.address}</div></div>}
             {biz.rating != null && (
               <div><div className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>Rating</div>
@@ -285,21 +586,40 @@ function BusinessDrawer({ biz, onClose }: { biz: Business; onClose: () => void }
             </div>
           )}
 
-          {/* Draft email */}
+          {/* Draft email + Gmail button */}
           {(biz.email_subject || biz.email_body) && (
             <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
               <div className="flex items-center justify-between mb-3">
                 <div className="text-xs font-semibold" style={{ color: "var(--color-text-muted)" }}>✉ DRAFT OUTREACH EMAIL</div>
-                {biz.email_body && (
-                  <button onClick={() => copy(`Subject: ${biz.email_subject ?? ""}\n\n${biz.email_body}`, "email")} className="text-[10px] px-2 py-0.5 rounded" style={{ color: copied === "email" ? "#34d399" : "#a78bfa", background: "rgba(124,58,237,0.1)" }}>
-                    {copied === "email" ? "Copied!" : "Copy Email"}
-                  </button>
-                )}
+                <div className="flex gap-2">
+                  {biz.email_body && (
+                    <button onClick={() => copy(`Subject: ${biz.email_subject ?? ""}\n\n${biz.email_body}`, "email")} className="text-[10px] px-2 py-0.5 rounded" style={{ color: copied === "email" ? "#34d399" : "#a78bfa", background: "rgba(124,58,237,0.1)" }}>
+                      {copied === "email" ? "Copied!" : "Copy"}
+                    </button>
+                  )}
+                </div>
               </div>
               {biz.email_subject && <div className="text-xs font-semibold mb-2 px-3 py-2 rounded-lg" style={{ background: "var(--color-surface-2)", color: "var(--color-text-1)" }}>Subject: {biz.email_subject}</div>}
-              {biz.email_body && <div className="text-sm leading-relaxed px-3 py-3 rounded-xl" style={{ background: "var(--color-surface-2)", color: "var(--color-text-2)", whiteSpace: "pre-wrap" }}>{biz.email_body}</div>}
+              {biz.email_body && <div className="text-sm leading-relaxed px-3 py-3 rounded-xl mb-3" style={{ background: "var(--color-surface-2)", color: "var(--color-text-2)", whiteSpace: "pre-wrap" }}>{biz.email_body}</div>}
+              {/* Gmail Send Draft button */}
+              <button
+                onClick={openGmailDraft}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                style={{ background: "linear-gradient(135deg, #ea4335 0%, #c5221f 100%)", color: "white", boxShadow: "0 3px 10px rgba(234,67,53,0.25)" }}
+                onMouseEnter={(e) => { (e.currentTarget).style.opacity = "0.9"; }}
+                onMouseLeave={(e) => { (e.currentTarget).style.opacity = "1"; }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="2.5" width="12" height="9" rx="1.5" stroke="white" strokeWidth="1.3"/><path d="M1 4l6 4 6-4" stroke="white" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                Send Email via Gmail
+              </button>
             </div>
           )}
+
+          {/* Website Audit — B2B only */}
+          <WebsiteAuditSection bizId={biz.id} />
+
+          {/* Social Chatter */}
+          <SocialChatterSection bizId={biz.id} />
 
           <div className="px-6 py-4">
             <div className="text-xs" style={{ color: "var(--color-text-muted)" }}>
@@ -824,29 +1144,103 @@ function LeadsPanel({ onSelectLead }: { onSelectLead: (id: string) => void }) {
   );
 }
 
+function BizCard({ biz, onSelectBiz }: { biz: Business; onSelectBiz: (b: Business) => void }) {
+  const { color } = scoreColor(biz.opportunity_score);
+  return (
+    <div onClick={() => onSelectBiz(biz)} className="rounded-2xl p-5 cursor-pointer transition-all"
+      style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
+      onMouseEnter={(e) => { (e.currentTarget).style.border = "1px solid rgba(124,58,237,0.3)"; (e.currentTarget).style.boxShadow = "0 8px 24px rgba(124,58,237,0.1)"; }}
+      onMouseLeave={(e) => { (e.currentTarget).style.border = "1px solid var(--color-border)"; (e.currentTarget).style.boxShadow = "none"; }}>
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold truncate" style={{ color: "var(--color-text-1)" }}>{biz.name}</div>
+          <div className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>{biz.location ?? biz.industry ?? "—"}</div>
+        </div>
+        <div className="flex flex-col items-end flex-shrink-0">
+          <div className="text-xl font-bold" style={{ color, fontFamily: "var(--font-syne)" }}>{biz.opportunity_score}</div>
+          <div className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>opp. score</div>
+        </div>
+      </div>
+      {biz.rating != null && (
+        <div className="text-xs mb-2" style={{ color: "#fbbf24" }}>★ {biz.rating} <span style={{ color: "var(--color-text-muted)" }}>({biz.reviews} reviews)</span></div>
+      )}
+      {biz.weaknesses && (
+        <div className="text-xs mb-2 p-2 rounded-lg" style={{ background: "rgba(248,113,113,0.08)", color: "#f87171" }}>
+          ⚠ {biz.weaknesses.length > 80 ? biz.weaknesses.slice(0, 80) + "…" : biz.weaknesses}
+        </div>
+      )}
+      {biz.recommended_offer && (
+        <div className="text-xs p-2 rounded-lg" style={{ background: "rgba(52,211,153,0.08)", color: "#34d399" }}>
+          ✦ {biz.recommended_offer.length > 80 ? biz.recommended_offer.slice(0, 80) + "…" : biz.recommended_offer}
+        </div>
+      )}
+      <div className="mt-3 flex items-center justify-between">
+        {biz.website && <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>{biz.website.replace(/^https?:\/\//, "").split("/")[0]}</span>}
+        <span className="text-[10px] font-semibold" style={{ color: "#a78bfa" }}>View intelligence →</span>
+      </div>
+    </div>
+  );
+}
+
 function ProspectsPanel({ onSelectBiz, activeRunId }: { onSelectBiz: (b: Business) => void; activeRunId?: string | null }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [runFilter, setRunFilter] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [collapsedRuns, setCollapsedRuns] = useState<Set<string>>(new Set());
 
-  // When a new run fires, auto-filter to it; once cleared, go back to "all"
-  useEffect(() => {
-    if (activeRunId) setRunFilter(activeRunId);
-  }, [activeRunId]);
-
+  // Fetch ALL businesses (no per-run filter — we group client-side)
   const { data, isLoading } = useBusinesses({
     search: debouncedSearch || undefined,
-    run_id: runFilter || undefined,
     sort: "opportunity_score",
+    per_page: 200,
   });
-  const businesses = data?.data ?? [];
-  const total = data?.total ?? 0;
+  const allBiz = data?.data ?? [];
 
   function onSearchChange(v: string) {
     setSearch(v);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setDebouncedSearch(v), 400);
+  }
+
+  // Group by run_id, newest first
+  const runGroups = useMemo(() => {
+    const map = new Map<string, Business[]>();
+    const noRun: Business[] = [];
+    allBiz.forEach((biz) => {
+      if (!biz.run_id) { noRun.push(biz); return; }
+      if (!map.has(biz.run_id)) map.set(biz.run_id, []);
+      map.get(biz.run_id)!.push(biz);
+    });
+    const groups = Array.from(map.entries()).map(([runId, bizes]) => ({
+      runId,
+      bizes: bizes.sort((a, b) => b.opportunity_score - a.opportunity_score),
+      latestAt: Math.max(...bizes.map((b) => new Date(b.created_at).getTime())),
+      industry: bizes[0]?.industry ?? null,
+      location: bizes[0]?.location ?? null,
+      avgScore: Math.round(bizes.reduce((s, b) => s + b.opportunity_score, 0) / bizes.length),
+    }));
+    groups.sort((a, b) => b.latestAt - a.latestAt);
+    if (noRun.length > 0) groups.push({ runId: "__no_run", bizes: noRun, latestAt: 0, industry: null, location: null, avgScore: 0 });
+    return groups;
+  }, [allBiz]);
+
+  // Auto-expand the active run; collapse others if it's new
+  useEffect(() => {
+    if (activeRunId) {
+      setCollapsedRuns((prev) => {
+        const next = new Set(prev);
+        next.delete(activeRunId); // ensure active run is expanded
+        return next;
+      });
+    }
+  }, [activeRunId]);
+
+  function toggleCollapse(runId: string) {
+    setCollapsedRuns((prev) => {
+      const next = new Set(prev);
+      if (next.has(runId)) next.delete(runId); else next.add(runId);
+      return next;
+    });
   }
 
   if (isLoading) return (
@@ -859,61 +1253,83 @@ function ProspectsPanel({ onSelectBiz, activeRunId }: { onSelectBiz: (b: Busines
 
   return (
     <div className="space-y-4">
-      {/* Run filter banner */}
-      {runFilter && (
-        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs" style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", color: "#a78bfa" }}>
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="#a78bfa" strokeWidth="1.5"/><path d="M6 4v3M6 8.5v.5" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          <span className="flex-1">Showing results from this discovery run</span>
-          <button onClick={() => setRunFilter(null)} className="font-semibold underline hover:no-underline">Show all</button>
-        </div>
-      )}
-      <div className="flex gap-3">
+      {/* Toolbar */}
+      <div className="flex gap-3 flex-wrap">
         <SearchBar value={search} onChange={onSearchChange} placeholder="Search businesses, location, service..." />
-        {total > 0 && <div className="text-xs py-2 px-3 rounded-xl flex items-center" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>{total} prospects</div>}
+        {allBiz.length > 0 && (
+          <div className="text-xs py-2 px-3 rounded-xl flex items-center" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>
+            {allBiz.length} total
+          </div>
+        )}
+        {allBiz.length > 0 && <ExportButton businesses={allBiz} runLabel={runGroups[0]?.industry ?? undefined} />}
       </div>
 
-      {businesses.length === 0 ? (
+      {runGroups.length === 0 ? (
         <EmptyState icon="🏢" title="No prospects yet" desc="Run B2B discovery to find AI-scored businesses ready for outreach." />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {businesses.map((biz) => {
-            const { color } = scoreColor(biz.opportunity_score);
+        <div className="space-y-5">
+          {runGroups.map((group, idx) => {
+            const isActive = group.runId === activeRunId;
+            const isLatest = idx === 0;
+            const isCollapsed = collapsedRuns.has(group.runId);
+            const runDate = group.latestAt ? new Date(group.latestAt) : null;
+            const label = group.industry
+              ? `${group.industry}${group.location ? ` · ${group.location}` : ""}`
+              : group.location ?? "Discovery Run";
+            const dateLabel = runDate ? runDate.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+
             return (
-              <div key={biz.id} onClick={() => onSelectBiz(biz)} className="rounded-2xl p-5 cursor-pointer transition-all group"
-                style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
-                onMouseEnter={(e) => { (e.currentTarget).style.border = "1px solid rgba(124,58,237,0.3)"; (e.currentTarget).style.boxShadow = "0 8px 24px rgba(124,58,237,0.1)"; }}
-                onMouseLeave={(e) => { (e.currentTarget).style.border = "1px solid var(--color-border)"; (e.currentTarget).style.boxShadow = "none"; }}>
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold truncate" style={{ color: "var(--color-text-1)" }}>{biz.name}</div>
-                    <div className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>{biz.location ?? biz.industry ?? "—"}</div>
-                  </div>
-                  <div className="flex flex-col items-end flex-shrink-0">
-                    <div className="text-xl font-bold" style={{ color, fontFamily: "var(--font-syne)" }}>{biz.opportunity_score}</div>
-                    <div className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>opp. score</div>
-                  </div>
+              <div key={group.runId}>
+                {/* Run header */}
+                <div className="flex items-center gap-3 mb-3">
+                  <button
+                    className="flex items-center gap-2.5 flex-1 min-w-0"
+                    onClick={() => toggleCollapse(group.runId)}
+                  >
+                    {/* Collapse chevron */}
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: "var(--color-text-muted)", transform: isCollapsed ? "rotate(-90deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }}>
+                      <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {isActive && (
+                        <div className="w-2 h-2 rounded-full animate-pulse flex-shrink-0" style={{ background: "#34d399" }} />
+                      )}
+                      {isLatest && !isActive && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "rgba(124,58,237,0.15)", color: "#a78bfa" }}>LATEST</span>
+                      )}
+                      <span className="text-sm font-semibold truncate" style={{ color: "var(--color-text-1)" }}>{label}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-lg flex-shrink-0" style={{ background: "var(--color-surface-2)", color: "var(--color-text-muted)" }}>
+                        {group.bizes.length} prospects
+                      </span>
+                      <span className="text-xs flex-shrink-0" style={{ color: "var(--color-text-muted)" }}>avg {group.avgScore}</span>
+                    </div>
+                  </button>
+                  {dateLabel && <span className="text-[10px] flex-shrink-0" style={{ color: "var(--color-text-muted)" }}>{dateLabel}</span>}
+                  {/* Per-run export */}
+                  <ExportButton businesses={group.bizes} runLabel={group.industry ?? group.runId.slice(0, 8)} />
                 </div>
 
-                {biz.rating != null && (
-                  <div className="text-xs mb-2" style={{ color: "#fbbf24" }}>★ {biz.rating} <span style={{ color: "var(--color-text-muted)" }}>({biz.reviews} reviews)</span></div>
-                )}
-
-                {biz.weaknesses && (
-                  <div className="text-xs mb-2 p-2 rounded-lg" style={{ background: "rgba(248,113,113,0.08)", color: "#f87171" }}>
-                    ⚠ {biz.weaknesses.length > 80 ? biz.weaknesses.slice(0, 80) + "…" : biz.weaknesses}
+                {/* Active run live-update banner */}
+                {isActive && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl mb-3 text-xs" style={{ background: "rgba(52,211,153,0.07)", border: "1px solid rgba(52,211,153,0.2)", color: "#34d399" }}>
+                    <div className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0" style={{ background: "#34d399" }} />
+                    Results updating live as AI processes each business
                   </div>
                 )}
 
-                {biz.recommended_offer && (
-                  <div className="text-xs p-2 rounded-lg" style={{ background: "rgba(52,211,153,0.08)", color: "#34d399" }}>
-                    ✦ {biz.recommended_offer.length > 80 ? biz.recommended_offer.slice(0, 80) + "…" : biz.recommended_offer}
+                {/* Business cards */}
+                {!isCollapsed && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {group.bizes.map((biz) => (
+                      <BizCard key={biz.id} biz={biz} onSelectBiz={onSelectBiz} />
+                    ))}
                   </div>
                 )}
 
-                <div className="mt-3 flex items-center justify-between">
-                  {biz.website && <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>{biz.website.replace(/^https?:\/\//, "").split("/")[0]}</span>}
-                  <span className="text-[10px] font-semibold" style={{ color: "#a78bfa" }}>View intelligence →</span>
-                </div>
+                {/* Divider between runs */}
+                {idx < runGroups.length - 1 && (
+                  <div className="mt-5" style={{ borderBottom: "1px solid var(--color-border-subtle)" }} />
+                )}
               </div>
             );
           })}

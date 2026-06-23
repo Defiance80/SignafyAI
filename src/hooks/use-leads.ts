@@ -191,6 +191,36 @@ export function useIntentSignals(params: IntentSignalsParams = {}) {
   });
 }
 
+// ─── Business audit + social hooks ─────────────────────────────────────────
+
+export function useWebsiteAudit(businessId: string | null) {
+  return useQuery({
+    queryKey: ["business-audit", businessId],
+    queryFn: async () => {
+      const res = await fetch(`/api/businesses/${businessId}/audit`);
+      if (!res.ok) throw new Error("Audit failed");
+      return res.json() as Promise<{ audit: import("@/lib/supabase/types").AuditData | null; cached: boolean; error?: string }>;
+    },
+    enabled: !!businessId,
+    staleTime: 3600_000, // 1 hour — re-fetch if older
+    retry: 1,
+  });
+}
+
+export function useSocialChatter(businessId: string | null) {
+  return useQuery({
+    queryKey: ["business-social", businessId],
+    queryFn: async () => {
+      const res = await fetch(`/api/businesses/${businessId}/social`);
+      if (!res.ok) throw new Error("Social scan failed");
+      return res.json() as Promise<{ social: import("@/lib/supabase/types").SocialData | null; cached: boolean }>;
+    },
+    enabled: !!businessId,
+    staleTime: 3600_000,
+    retry: 1,
+  });
+}
+
 interface GeneratedAssetsParams {
   page?: number;
   per_page?: number;

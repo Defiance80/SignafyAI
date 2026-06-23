@@ -287,6 +287,31 @@ export interface ApiKey {
 
 // ─── Blue Wolf Intelligence tables ──────────────────────────────────────────
 
+export interface AuditData {
+  seo: { score: number; issues: string[]; positives: string[] };
+  design: { score: number; notes: string; trust_signals: string[] };
+  conversion: { score: number; issues: string[]; recommendation: string };
+  overall_score: number;
+  opportunity: string;
+  recommendations: string[];
+  cached_at: string;
+}
+
+export interface SocialMention {
+  platform: string;
+  text: string;
+  sentiment: "positive" | "negative" | "mixed" | "neutral";
+  url?: string;
+  date?: string;
+}
+
+export interface SocialData {
+  mentions: SocialMention[];
+  sentiment_summary: string;
+  opportunity_relevance: string;
+  cached_at: string;
+}
+
 export interface Business {
   id: string;
   org_id: string | null;
@@ -308,6 +333,9 @@ export interface Business {
   pitch_angle: string | null;
   email_subject: string | null;
   email_body: string | null;
+  audit_data: AuditData | null;
+  social_data: SocialData | null;
+  raw_data: string | null;
   scraped_at: string | null;
   created_at: string;
   updated_at: string;
