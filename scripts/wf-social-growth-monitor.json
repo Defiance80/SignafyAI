@@ -1,0 +1,206 @@
+{
+  "name": "SignafyAI — Social Growth Monitor (Scheduled)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 4 }]
+        }
+      },
+      "id": "schedule",
+      "name": "Every 4 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/social_accounts?is_active=eq.true&select=id,org_id,platform,account_id,account_name,access_token",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      },
+      "id": "fetch-accounts",
+      "name": "Fetch All Active Accounts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/social_messages?status=eq.pending&is_read=eq.false&select=id,org_id,account_id,platform,platform_msg_id,author_name,body,message_type,received_at&order=received_at.desc&limit=50",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      },
+      "id": "fetch-messages",
+      "name": "Fetch Unread Messages",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/brand_voices?is_default=eq.true&select=org_id,tone,vocabulary,avoid_words,example_posts,cta_style",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      },
+      "id": "fetch-brand-voices",
+      "name": "Fetch Brand Voices",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine all data — match messages to accounts and brand voices\nconst accounts = $('Fetch All Active Accounts').first().json;\nconst messages = $('Fetch Unread Messages').first().json;\nconst voices = $('Fetch Brand Voices').first().json;\n\nconst accountsArr = Array.isArray(accounts) ? accounts : [];\nconst messagesArr = Array.isArray(messages) ? messages : [];\nconst voicesArr = Array.isArray(voices) ? voices : [];\n\n// Group accounts by org_id\nconst accountsByOrg = {};\nfor (const acc of accountsArr) {\n  if (!accountsByOrg[acc.org_id]) accountsByOrg[acc.org_id] = [];\n  accountsByOrg[acc.org_id].push(acc);\n}\n\n// Group voices by org_id\nconst voiceByOrg = {};\nfor (const v of voicesArr) {\n  voiceByOrg[v.org_id] = v;\n}\n\n// Build work items — only messages that have a matching active account\nconst workItems = [];\nfor (const msg of messagesArr) {\n  const orgAccounts = accountsByOrg[msg.org_id] || [];\n  const matchingAccount = orgAccounts.find(a => a.platform === msg.platform && a.is_active !== false);\n  if (!matchingAccount) continue;\n\n  const voice = voiceByOrg[msg.org_id] || { tone: 'professional and helpful' };\n\n  // Prioritize: purchase_intent and complaints get auto-replied, others get queued\n  const priority = ['purchase_intent', 'complaint', 'inquiry'].includes(msg.message_type) ? 'high' : 'normal';\n\n  workItems.push({\n    message_id: msg.id,\n    org_id: msg.org_id,\n    platform: msg.platform,\n    platform_msg_id: msg.platform_msg_id,\n    author_name: msg.author_name || 'there',\n    message_body: msg.body,\n    message_type: msg.message_type,\n    account: matchingAccount,\n    voice,\n    priority\n  });\n}\n\n// Only auto-reply high priority for now (normal → just mark read)\nconsole.log(`[Growth Monitor] ${workItems.length} messages to process`);\n\nreturn workItems.filter(w => w.priority === 'high').slice(0, 10); // max 10 per run\n"
+      },
+      "id": "build-work-items",
+      "name": "Build Work Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4.1-mini\",\n  \"max_tokens\": 400,\n  \"temperature\": 0.6,\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a social media expert writing a reply on behalf of a business. Match the brand voice exactly.\\n\\nBRAND VOICE:\\nTone: {{ $json.voice.tone || 'professional and helpful' }}\\n{{ $json.voice.vocabulary && $json.voice.vocabulary.length > 0 ? 'Preferred words: ' + $json.voice.vocabulary.join(', ') : '' }}\\n{{ $json.voice.avoid_words && $json.voice.avoid_words.length > 0 ? 'Never use: ' + $json.voice.avoid_words.join(', ') : '' }}\\n{{ $json.voice.example_posts && $json.voice.example_posts.length > 0 ? 'Style examples:\\\\n' + $json.voice.example_posts.slice(0,2).join('\\\\n\\\\n') : '' }}\\n\\nCRITICAL: Sound like a real person, not a brand. Be genuine, add value, never be salesy.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Write a reply for this {{ $json.platform }} {{ $json.message_type }} from {{ $json.author_name.split(' ')[0] }}:\\n\\n\\\"{{ $json.message_body }}\\\"\\n\\nRequirements:\\n- Address them by first name\\n- Keep it under {{ $json.platform === 'x' || $json.platform === 'twitter' ? 240 : $json.platform === 'tiktok' ? 140 : 400 }} characters\\n- Be helpful and genuine, no corporate speak\\n- End with a soft open question or next step\\n\\nReturn JSON: { \\\"reply\\\": \\\"<the reply text>\\\", \\\"confidence\\\": <0.0-1.0 how confident you are this is appropriate to auto-send> }\"\n    }\n  ]\n}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "generate-reply",
+      "name": "GPT: Generate Brand Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Decide whether to auto-post or queue the reply\nconst gptResponse = $input.first().json;\nconst workItem = $('Build Work Items').first().json;\n\nlet reply = '';\nlet confidence = 0;\n\ntry {\n  const parsed = JSON.parse(gptResponse.choices[0].message.content);\n  reply = parsed.reply || '';\n  confidence = parsed.confidence || 0;\n} catch(e) {\n  return [{ skip: true, reason: 'GPT parse error' }];\n}\n\nif (!reply || confidence < 0.75) {\n  // Low confidence — save as draft for human review, don't auto-post\n  return [{\n    skip: true,\n    save_as_draft: true,\n    reply,\n    confidence,\n    ...workItem\n  }];\n}\n\n// High confidence — ready to auto-post\nreturn [{\n  skip: false,\n  reply,\n  confidence,\n  ...workItem\n}];\n"
+      },
+      "id": "confidence-check",
+      "name": "Confidence Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "should-post",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": false,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auto-post",
+      "name": "Auto-Post?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Save reply as draft in Supabase for human review\nconst data = $input.first().json;\nconst supaUrl = process.env.SUPABASE_URL;\nconst supaKey = process.env.SUPABASE_SERVICE_ROLE_KEY;\n\nif (!supaUrl || !supaKey) return [{ saved: false }];\n\n// Insert draft reply\nawait $helpers.httpRequest({\n  method: 'POST',\n  url: `${supaUrl}/rest/v1/social_replies`,\n  headers: {\n    'apikey': supaKey,\n    'Authorization': `Bearer ${supaKey}`,\n    'Content-Type': 'application/json',\n    'Prefer': 'return=minimal'\n  },\n  body: JSON.stringify({\n    message_id: data.message_id,\n    org_id: data.org_id,\n    body: data.reply,\n    status: 'draft'\n  })\n});\n\n// Mark message as read\nawait $helpers.httpRequest({\n  method: 'PATCH',\n  url: `${supaUrl}/rest/v1/social_messages?id=eq.${data.message_id}`,\n  headers: {\n    'apikey': supaKey,\n    'Authorization': `Bearer ${supaKey}`,\n    'Content-Type': 'application/json',\n    'Prefer': 'return=minimal'\n  },\n  body: JSON.stringify({ is_read: true, status: 'reviewed' })\n});\n\nconsole.log(`[Growth Monitor] Saved draft reply for message ${data.message_id} (confidence: ${data.confidence})`);\nreturn [{ saved: true, message_id: data.message_id }];\n"
+      },
+      "id": "save-draft",
+      "name": "Save Draft Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build and execute the platform-specific reply\nconst data = $input.first().json;\nconst platform = data.platform;\nconst token = data.account.access_token;\nconst replyText = data.reply;\nconst platformMsgId = data.platform_msg_id;\n\nlet apiUrl = '';\nlet apiBody = {};\nlet extraHeaders = {};\n\nswitch (platform) {\n  case 'linkedin':\n    apiUrl = `https://api.linkedin.com/v2/socialActions/${encodeURIComponent(platformMsgId)}/comments`;\n    apiBody = {\n      actor: `urn:li:person:${data.account.account_id}`,\n      message: { text: replyText }\n    };\n    extraHeaders = { 'Authorization': `Bearer ${token}`, 'X-Restli-Protocol-Version': '2.0.0' };\n    break;\n\n  case 'facebook':\n    apiUrl = `https://graph.facebook.com/v18.0/${platformMsgId}/comments`;\n    apiBody = { message: replyText, access_token: token };\n    break;\n\n  case 'instagram':\n    apiUrl = `https://graph.facebook.com/v18.0/${platformMsgId}/replies`;\n    apiBody = { message: replyText, access_token: token };\n    break;\n\n  case 'x':\n  case 'twitter':\n    apiUrl = 'https://api.twitter.com/2/tweets';\n    apiBody = {\n      text: replyText.slice(0, 280),\n      reply: { in_reply_to_tweet_id: platformMsgId }\n    };\n    extraHeaders = { 'Authorization': `Bearer ${token}` };\n    break;\n\n  case 'tiktok':\n    apiUrl = 'https://open.tiktokapis.com/v2/comment/create/';\n    apiBody = { video_id: platformMsgId, text: replyText.slice(0, 150) };\n    extraHeaders = { 'Authorization': `Bearer ${token}` };\n    break;\n}\n\n// Post the reply\ntry {\n  const result = await $helpers.httpRequest({\n    method: 'POST',\n    url: apiUrl,\n    headers: { 'Content-Type': 'application/json', ...extraHeaders },\n    body: JSON.stringify(apiBody)\n  });\n\n  const supaUrl = process.env.SUPABASE_URL;\n  const supaKey = process.env.SUPABASE_SERVICE_ROLE_KEY;\n\n  if (supaUrl && supaKey) {\n    // Insert sent reply record\n    await $helpers.httpRequest({\n      method: 'POST',\n      url: `${supaUrl}/rest/v1/social_replies`,\n      headers: {\n        'apikey': supaKey,\n        'Authorization': `Bearer ${supaKey}`,\n        'Content-Type': 'application/json',\n        'Prefer': 'return=minimal'\n      },\n      body: JSON.stringify({\n        message_id: data.message_id,\n        org_id: data.org_id,\n        body: replyText,\n        status: 'sent',\n        sent_at: new Date().toISOString()\n      })\n    });\n\n    // Mark original message as replied\n    await $helpers.httpRequest({\n      method: 'PATCH',\n      url: `${supaUrl}/rest/v1/social_messages?id=eq.${data.message_id}`,\n      headers: {\n        'apikey': supaKey,\n        'Authorization': `Bearer ${supaKey}`,\n        'Content-Type': 'application/json',\n        'Prefer': 'return=minimal'\n      },\n      body: JSON.stringify({ status: 'replied', is_read: true })\n    });\n  }\n\n  console.log(`[Growth Monitor] Auto-replied to ${platform} message ${data.message_id}`);\n  return [{ replied: true, message_id: data.message_id, platform, confidence: data.confidence }];\n\n} catch(err) {\n  console.error(`[Growth Monitor] Reply failed for ${data.message_id}: ${err.message}`);\n  return [{ replied: false, error: err.message, message_id: data.message_id }];\n}\n"
+      },
+      "id": "auto-reply",
+      "name": "Auto Reply to Platform",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log run summary to Supabase workflow_runs table\nconst supaUrl = process.env.SUPABASE_URL;\nconst supaKey = process.env.SUPABASE_SERVICE_ROLE_KEY;\n\nconst allResults = $input.all().map(i => i.json);\nconst replied = allResults.filter(r => r.replied === true).length;\nconst drafted = allResults.filter(r => r.saved === true).length;\nconst failed = allResults.filter(r => r.replied === false).length;\n\nconsole.log(`[Growth Monitor] Run complete — replied: ${replied}, drafted: ${drafted}, failed: ${failed}`);\n\nif (supaUrl && supaKey) {\n  await $helpers.httpRequest({\n    method: 'POST',\n    url: `${supaUrl}/rest/v1/workflow_runs`,\n    headers: {\n      'apikey': supaKey,\n      'Authorization': `Bearer ${supaKey}`,\n      'Content-Type': 'application/json',\n      'Prefer': 'return=minimal'\n    },\n    body: JSON.stringify({\n      workflow_type: 'growth_intelligence',\n      status: 'complete',\n      completed_at: new Date().toISOString(),\n      output_summary: { replied, drafted, failed, timestamp: new Date().toISOString() }\n    })\n  });\n}\n\nreturn [{ replied, drafted, failed }];\n"
+      },
+      "id": "log-summary",
+      "name": "Log Run Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2220, 300]
+    }
+  ],
+  "connections": {
+    "Every 4 Hours": {
+      "main": [[{ "node": "Fetch All Active Accounts", "type": "main", "index": 0 }]]
+    },
+    "Fetch All Active Accounts": {
+      "main": [[{ "node": "Fetch Unread Messages", "type": "main", "index": 0 }]]
+    },
+    "Fetch Unread Messages": {
+      "main": [[{ "node": "Fetch Brand Voices", "type": "main", "index": 0 }]]
+    },
+    "Fetch Brand Voices": {
+      "main": [[{ "node": "Build Work Items", "type": "main", "index": 0 }]]
+    },
+    "Build Work Items": {
+      "main": [[{ "node": "GPT: Generate Brand Reply", "type": "main", "index": 0 }]]
+    },
+    "GPT: Generate Brand Reply": {
+      "main": [[{ "node": "Confidence Check", "type": "main", "index": 0 }]]
+    },
+    "Confidence Check": {
+      "main": [[{ "node": "Auto-Post?", "type": "main", "index": 0 }]]
+    },
+    "Auto-Post?": {
+      "main": [
+        [{ "node": "Auto Reply to Platform", "type": "main", "index": 0 }],
+        [{ "node": "Save Draft Reply",        "type": "main", "index": 0 }]
+      ]
+    },
+    "Auto Reply to Platform": {
+      "main": [[{ "node": "Log Run Summary", "type": "main", "index": 0 }]]
+    },
+    "Save Draft Reply": {
+      "main": [[{ "node": "Log Run Summary", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1", "saveManualExecutions": true },
+  "meta": { "instanceId": "signafyai" },
+  "tags": [{ "name": "signafyai" }, { "name": "social" }, { "name": "scheduled" }]
+}

@@ -1,0 +1,188 @@
+{
+  "name": "SignafyAI — Social Comment Reply",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "social-reply",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "social-reply"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 202,
+        "responseBody": "={ \"status\": \"processing\", \"run_id\": \"{{ $json.body.run_id }}\" }",
+        "options": {}
+      },
+      "id": "respond-202",
+      "name": "Respond 202",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [460, 180]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/social_accounts?id=eq.{{ $json.body.account_id }}&select=id,platform,account_id,account_name,access_token",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": { "timeout": 10000 }
+      },
+      "id": "fetch-account",
+      "name": "Fetch Social Account",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build platform-specific comment reply request\nconst accounts = $input.first().json;\nconst account = Array.isArray(accounts) ? accounts[0] : accounts;\nconst body = $('Webhook').first().json.body;\n\nif (!account || !account.access_token) {\n  throw new Error(`No connected account found for id ${body.account_id}`);\n}\n\nconst platform = account.platform;\nconst token = account.access_token;\nconst replyText = body.reply_body;\n\n// The message_id is the platform-native ID of the comment/post being replied to\n// Stored in social_messages.platform_msg_id — must be passed in the webhook payload\nconst platformMsgId = body.platform_msg_id; \n\nlet apiUrl = '';\nlet apiBody = {};\nlet extraHeaders = {};\n\nswitch (platform) {\n  case 'linkedin': {\n    // LinkedIn: reply to a share/post as a comment\n    apiUrl = `https://api.linkedin.com/v2/socialActions/${encodeURIComponent(platformMsgId)}/comments`;\n    apiBody = {\n      actor: `urn:li:person:${account.account_id}`,\n      message: { text: replyText }\n    };\n    extraHeaders = {\n      'Authorization': `Bearer ${token}`,\n      'X-Restli-Protocol-Version': '2.0.0'\n    };\n    break;\n  }\n\n  case 'facebook': {\n    // Facebook: reply to a comment\n    apiUrl = `https://graph.facebook.com/v18.0/${platformMsgId}/comments`;\n    apiBody = { message: replyText, access_token: token };\n    break;\n  }\n\n  case 'instagram': {\n    // Instagram: reply to a comment on a media object\n    apiUrl = `https://graph.facebook.com/v18.0/${platformMsgId}/replies`;\n    apiBody = { message: replyText, access_token: token };\n    break;\n  }\n\n  case 'x':\n  case 'twitter': {\n    // X (Twitter): reply to a tweet\n    apiUrl = 'https://api.twitter.com/2/tweets';\n    const tweetText = replyText.length > 280 ? replyText.slice(0, 277) + '...' : replyText;\n    apiBody = {\n      text: tweetText,\n      reply: { in_reply_to_tweet_id: platformMsgId }\n    };\n    extraHeaders = { 'Authorization': `Bearer ${token}` };\n    break;\n  }\n\n  case 'tiktok': {\n    // TikTok: comment on a video\n    apiUrl = 'https://open.tiktokapis.com/v2/comment/create/';\n    apiBody = {\n      video_id: platformMsgId,\n      text: replyText.slice(0, 150)\n    };\n    extraHeaders = { 'Authorization': `Bearer ${token}` };\n    break;\n  }\n\n  default:\n    throw new Error(`Unsupported platform: ${platform}`);\n}\n\nreturn [{\n  apiUrl,\n  apiBody: JSON.stringify(apiBody),\n  extraHeaders: JSON.stringify(extraHeaders),\n  platform,\n  run_id: body.run_id,\n  org_id: body.org_id,\n  message_id: body.message_id,\n  reply_id: body.reply_id,\n  callback_url: body.callback_url\n}];\n"
+      },
+      "id": "build-reply-request",
+      "name": "Build Reply Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.apiUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ $json.extraHeaders }}",
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.apiBody }}",
+        "options": { "timeout": 20000 }
+      },
+      "id": "post-reply",
+      "name": "Post Reply to Platform",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mark message as replied in Supabase\nconst buildData = $('Build Reply Request').first().json;\nconst supaUrl = process.env.SUPABASE_URL;\nconst supaKey = process.env.SUPABASE_SERVICE_ROLE_KEY;\n\nif (supaUrl && supaKey) {\n  // Update social_message status\n  await $helpers.httpRequest({\n    method: 'PATCH',\n    url: `${supaUrl}/rest/v1/social_messages?id=eq.${buildData.message_id}`,\n    headers: {\n      'apikey': supaKey,\n      'Authorization': `Bearer ${supaKey}`,\n      'Content-Type': 'application/json',\n      'Prefer': 'return=minimal'\n    },\n    body: JSON.stringify({ status: 'replied', is_read: true })\n  });\n\n  // Update reply record status\n  if (buildData.reply_id) {\n    await $helpers.httpRequest({\n      method: 'PATCH',\n      url: `${supaUrl}/rest/v1/social_replies?id=eq.${buildData.reply_id}`,\n      headers: {\n        'apikey': supaKey,\n        'Authorization': `Bearer ${supaKey}`,\n        'Content-Type': 'application/json',\n        'Prefer': 'return=minimal'\n      },\n      body: JSON.stringify({ status: 'sent', sent_at: new Date().toISOString() })\n    });\n  }\n}\n\nreturn [buildData];\n"
+      },
+      "id": "update-db-replied",
+      "name": "Update DB — Replied",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst data = $input.first().json;\n\nconst payload = {\n  workflow_type: 'social_classification',\n  status: 'complete',\n  run_id: data.run_id,\n  org_id: data.org_id,\n  reply_id: data.reply_id,\n  reply_status: 'sent'\n};\n\nconst body = JSON.stringify(payload);\nconst secret = process.env.N8N_HMAC_SECRET || '';\nconst signature = crypto.createHmac('sha256', secret).update(body).digest('hex');\n\nreturn [{ body, signature, callback_url: data.callback_url }];\n"
+      },
+      "id": "sign-success",
+      "name": "Sign Success Callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-signature",  "value": "={{ $json.signature }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "callback-success",
+      "name": "POST Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst wb = $('Webhook').first().json.body;\nconst errMsg = $input.first().json.message || 'Reply failed';\n\nconst payload = {\n  workflow_type: 'social_classification',\n  status: 'failed',\n  run_id: wb.run_id,\n  org_id: wb.org_id,\n  reply_id: wb.reply_id,\n  reply_status: 'failed',\n  error_message: errMsg\n};\n\nconst body = JSON.stringify(payload);\nconst secret = process.env.N8N_HMAC_SECRET || '';\nconst signature = crypto.createHmac('sha256', secret).update(body).digest('hex');\n\nreturn [{ body, signature, callback_url: wb.callback_url }];\n"
+      },
+      "id": "sign-error",
+      "name": "Sign Error Callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 620]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-signature",  "value": "={{ $json.signature }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "callback-error",
+      "name": "POST Error Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 620]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[
+        { "node": "Respond 202",          "type": "main", "index": 0 },
+        { "node": "Fetch Social Account", "type": "main", "index": 0 }
+      ]]
+    },
+    "Fetch Social Account": {
+      "main": [[{ "node": "Build Reply Request", "type": "main", "index": 0 }]]
+    },
+    "Build Reply Request": {
+      "main": [[{ "node": "Post Reply to Platform", "type": "main", "index": 0 }]]
+    },
+    "Post Reply to Platform": {
+      "main":  [[{ "node": "Update DB — Replied",   "type": "main", "index": 0 }]],
+      "error": [[{ "node": "Sign Error Callback",   "type": "main", "index": 0 }]]
+    },
+    "Update DB — Replied": {
+      "main": [[{ "node": "Sign Success Callback", "type": "main", "index": 0 }]]
+    },
+    "Sign Success Callback": {
+      "main": [[{ "node": "POST Callback",       "type": "main", "index": 0 }]]
+    },
+    "Sign Error Callback": {
+      "main": [[{ "node": "POST Error Callback", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1", "saveManualExecutions": false },
+  "meta": { "instanceId": "signafyai" },
+  "tags": [{ "name": "signafyai" }, { "name": "social" }]
+}

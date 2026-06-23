@@ -1,0 +1,202 @@
+{
+  "name": "SignafyAI — Social Post Publisher",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "social-post",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "social-post"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 202,
+        "responseBody": "={ \"status\": \"processing\", \"run_id\": \"{{ $json.body.run_id }}\" }",
+        "options": {}
+      },
+      "id": "respond-202",
+      "name": "Respond 202",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [460, 180]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/social_accounts?id=eq.{{ $json.body.account_id }}&select=id,platform,account_id,account_name,access_token,refresh_token",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": { "timeout": 10000 }
+      },
+      "id": "fetch-account",
+      "name": "Fetch Social Account",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Resolve account + build platform-specific post request\nconst accounts = $input.first().json;\nconst account = Array.isArray(accounts) ? accounts[0] : accounts;\nconst body = $('Webhook').first().json.body;\n\nif (!account || !account.access_token) {\n  throw new Error(`No connected account found for id ${body.account_id}`);\n}\n\nconst platform = account.platform;\nconst token = account.access_token;\nconst platformAccountId = account.account_id; // external ID (page ID, user URN, etc.)\n\n// Build hashtag string\nconst hashtags = (body.hashtags || []).map(h => h.startsWith('#') ? h : `#${h}`).join(' ');\nconst fullContent = hashtags ? `${body.content}\\n\\n${hashtags}` : body.content;\n\nlet apiUrl = '';\nlet apiBody = {};\nlet apiMethod = 'POST';\nlet extraHeaders = {};\n\nswitch (platform) {\n  case 'linkedin': {\n    // LinkedIn UGC Post API\n    apiUrl = 'https://api.linkedin.com/v2/ugcPosts';\n    apiBody = {\n      author: `urn:li:person:${platformAccountId}`,\n      lifecycleState: 'PUBLISHED',\n      specificContent: {\n        'com.linkedin.ugc.ShareContent': {\n          shareCommentary: { text: fullContent },\n          shareMediaCategory: 'NONE'\n        }\n      },\n      visibility: {\n        'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC'\n      }\n    };\n    extraHeaders = {\n      'Authorization': `Bearer ${token}`,\n      'X-Restli-Protocol-Version': '2.0.0'\n    };\n    break;\n  }\n\n  case 'facebook': {\n    // Facebook Graph API — page post\n    apiUrl = `https://graph.facebook.com/v18.0/${platformAccountId}/feed`;\n    apiBody = {\n      message: fullContent,\n      access_token: token\n    };\n    break;\n  }\n\n  case 'instagram': {\n    // Instagram Graph API — requires media_url for feed posts.\n    // Step 1: create media container (caption only — works for Reels/Carousels with media_url)\n    // For text-only we create a container via caption field.\n    // Note: Instagram does NOT support text-only posts without media.\n    // If no media_url provided, this will fail — the user must supply an image/video URL.\n    const mediaUrl = body.media_url;\n    if (!mediaUrl) {\n      throw new Error('Instagram requires a media_url (image or video). Add one to the calendar item.');\n    }\n    apiUrl = `https://graph.facebook.com/v18.0/${platformAccountId}/media`;\n    apiBody = {\n      image_url: mediaUrl,\n      caption: fullContent,\n      access_token: token\n    };\n    break;\n  }\n\n  case 'x':\n  case 'twitter': {\n    // X (Twitter) API v2\n    apiUrl = 'https://api.twitter.com/2/tweets';\n    // Twitter has 280 char limit — truncate if needed\n    const tweetText = fullContent.length > 280 ? fullContent.slice(0, 277) + '...' : fullContent;\n    apiBody = { text: tweetText };\n    extraHeaders = { 'Authorization': `Bearer ${token}` };\n    break;\n  }\n\n  case 'tiktok': {\n    // TikTok Content Posting API v2 — text post init\n    apiUrl = 'https://open.tiktokapis.com/v2/post/publish/text/init/';\n    apiBody = {\n      post_info: {\n        title: fullContent.slice(0, 150),\n        privacy_level: 'PUBLIC_TO_EVERYONE',\n        disable_duet: false,\n        disable_comment: false,\n        disable_stitch: false\n      },\n      source_info: { source: 'PULL_FROM_URL' }\n    };\n    extraHeaders = { 'Authorization': `Bearer ${token}` };\n    break;\n  }\n\n  default:\n    throw new Error(`Unsupported platform: ${platform}`);\n}\n\nreturn [{\n  apiUrl,\n  apiBody: JSON.stringify(apiBody),\n  apiMethod,\n  extraHeaders: JSON.stringify(extraHeaders),\n  platform,\n  run_id: body.run_id,\n  org_id: body.org_id,\n  content_piece_id: body.content_piece_id,\n  calendar_item_id: body.calendar_item_id || null,\n  callback_url: body.callback_url,\n  account_id: body.account_id,\n  // Instagram needs a second step to publish the container\n  needs_instagram_publish: platform === 'instagram',\n  instagram_account_id: platformAccountId,\n  instagram_token: token\n}];\n"
+      },
+      "id": "build-request",
+      "name": "Build Platform Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 420]
+    },
+    {
+      "parameters": {
+        "method": "={{ $json.apiMethod }}",
+        "url": "={{ $json.apiUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ $json.extraHeaders }}",
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.apiBody }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "post-to-platform",
+      "name": "Post to Platform",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Instagram 2-step: publish the media container we just created\nconst prev = $input.first().json;\nconst buildData = $('Build Platform Request').first().json;\n\nif (!buildData.needs_instagram_publish) {\n  // Not Instagram — pass through\n  return [{ ...prev, ...buildData, skipped: true }];\n}\n\n// The previous step created the container — get the container ID\nconst containerId = prev.id;\nif (!containerId) throw new Error('Instagram media container creation failed');\n\nconst publishRes = await $helpers.httpRequest({\n  method: 'POST',\n  url: `https://graph.facebook.com/v18.0/${buildData.instagram_account_id}/media_publish`,\n  body: JSON.stringify({\n    creation_id: containerId,\n    access_token: buildData.instagram_token\n  }),\n  headers: { 'Content-Type': 'application/json' }\n});\n\nreturn [{ ...buildData, instagram_post_id: publishRes.id, skipped: false }];\n"
+      },
+      "id": "instagram-publish",
+      "name": "Instagram Publish Step",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Update content_pieces status to 'published' in Supabase\nconst data = $('Build Platform Request').first().json;\nconst postResult = $input.first().json;\n\nconst supaUrl = process.env.SUPABASE_URL;\nconst supaKey = process.env.SUPABASE_SERVICE_ROLE_KEY;\n\nif (data.content_piece_id && supaUrl && supaKey) {\n  await $helpers.httpRequest({\n    method: 'PATCH',\n    url: `${supaUrl}/rest/v1/content_pieces?id=eq.${data.content_piece_id}`,\n    headers: {\n      'apikey': supaKey,\n      'Authorization': `Bearer ${supaKey}`,\n      'Content-Type': 'application/json',\n      'Prefer': 'return=minimal'\n    },\n    body: JSON.stringify({ status: 'published' })\n  });\n}\n\n// Update calendar item if linked\nif (data.calendar_item_id && supaUrl && supaKey) {\n  await $helpers.httpRequest({\n    method: 'PATCH',\n    url: `${supaUrl}/rest/v1/content_calendar?id=eq.${data.calendar_item_id}`,\n    headers: {\n      'apikey': supaKey,\n      'Authorization': `Bearer ${supaKey}`,\n      'Content-Type': 'application/json',\n      'Prefer': 'return=minimal'\n    },\n    body: JSON.stringify({ status: 'published' })\n  });\n}\n\nreturn [{ ...data, post_result: postResult }];\n"
+      },
+      "id": "update-db-success",
+      "name": "Update DB — Published",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst data = $input.first().json;\n\nconst payload = {\n  workflow_type: 'social_post',\n  status: 'complete',\n  run_id: data.run_id,\n  org_id: data.org_id,\n  platform: data.platform,\n  account_id: data.account_id,\n  content_piece_id: data.content_piece_id\n};\n\nconst body = JSON.stringify(payload);\nconst secret = process.env.N8N_HMAC_SECRET || '';\nconst signature = crypto.createHmac('sha256', secret).update(body).digest('hex');\n\nreturn [{ body, signature, callback_url: data.callback_url }];\n"
+      },
+      "id": "sign-success",
+      "name": "Sign Success Callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-signature",  "value": "={{ $json.signature }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "callback-success",
+      "name": "POST Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst wb = $('Webhook').first().json.body;\nconst errMsg = $input.first().json.message || $input.first().json.error || 'Unknown error';\n\nconst payload = {\n  workflow_type: 'social_post',\n  status: 'failed',\n  run_id: wb.run_id,\n  org_id: wb.org_id,\n  error_message: errMsg\n};\n\nconst body = JSON.stringify(payload);\nconst secret = process.env.N8N_HMAC_SECRET || '';\nconst signature = crypto.createHmac('sha256', secret).update(body).digest('hex');\n\nreturn [{ body, signature, callback_url: wb.callback_url }];\n"
+      },
+      "id": "sign-error",
+      "name": "Sign Error Callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 620]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-signature",  "value": "={{ $json.signature }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "callback-error",
+      "name": "POST Error Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 620]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[
+        { "node": "Respond 202",          "type": "main", "index": 0 },
+        { "node": "Fetch Social Account", "type": "main", "index": 0 }
+      ]]
+    },
+    "Fetch Social Account": {
+      "main": [[{ "node": "Build Platform Request", "type": "main", "index": 0 }]]
+    },
+    "Build Platform Request": {
+      "main": [[{ "node": "Post to Platform", "type": "main", "index": 0 }]]
+    },
+    "Post to Platform": {
+      "main":  [[{ "node": "Instagram Publish Step", "type": "main", "index": 0 }]],
+      "error": [[{ "node": "Sign Error Callback",   "type": "main", "index": 0 }]]
+    },
+    "Instagram Publish Step": {
+      "main":  [[{ "node": "Update DB — Published",  "type": "main", "index": 0 }]],
+      "error": [[{ "node": "Sign Error Callback",    "type": "main", "index": 0 }]]
+    },
+    "Update DB — Published": {
+      "main": [[{ "node": "Sign Success Callback", "type": "main", "index": 0 }]]
+    },
+    "Sign Success Callback": {
+      "main": [[{ "node": "POST Callback",       "type": "main", "index": 0 }]]
+    },
+    "Sign Error Callback": {
+      "main": [[{ "node": "POST Error Callback", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1", "saveManualExecutions": false },
+  "meta": { "instanceId": "signafyai" },
+  "tags": [{ "name": "signafyai" }, { "name": "social" }]
+}
