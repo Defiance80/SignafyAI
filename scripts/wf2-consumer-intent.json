@@ -1,0 +1,269 @@
+﻿{
+  "name": "WF2 — B2C Consumer Intent Finder (Firecrawl)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bw-consumer-intent",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wf2-node-01",
+      "name": "Webhook — B2C Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 320]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ accepted: true, run_id: $json.body?.run_id ?? $json.run_id, message: 'B2C consumer intent scan started' }) }}",
+        "options": {}
+      },
+      "id": "wf2-node-02",
+      "name": "Respond Accepted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [460, 320]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── Build one Firecrawl search query per requested B2C source ─────────────\n// Supports: reddit | yelp | youtube | twitter | google\nconst raw = $input.first().json;\nconst body = raw.body ?? raw;\n\nconst industry   = (body.industry ?? body.target_description ?? 'local services').trim();\nconst location   = (body.location ?? '').trim();\nconst sources    = body.b2c_sources ?? ['reddit', 'yelp'];\nconst keywords   = (body.keywords ?? []).slice(0, 4).join(' OR ');\nconst context = {\n  run_id:       body.run_id,\n  org_id:       body.org_id,\n  callback_url: body.callback_url,\n  industry,\n  location,\n  service:      body.client_service ?? industry,\n};\n\nconst locStr = location ? ` \"${location}\"` : '';\nconst kwStr  = keywords ? ` ${keywords}` : '';\n\nconst QUERIES = {\n  reddit:\n    `site:reddit.com \"${industry}\"${locStr} (recommend OR \"looking for\" OR advice OR help OR \"who should I\" OR \"best\")${kwStr}`,\n  yelp:\n    `site:yelp.com \"${industry}\"${locStr} review${kwStr}`,\n  youtube:\n    `site:youtube.com \"${industry}\"${locStr} (review OR recommend OR \"how to find\" OR best)${kwStr}`,\n  twitter:\n    `(site:x.com OR site:twitter.com) \"${industry}\"${locStr} (recommend OR looking OR need OR help)${kwStr}`,\n  google:\n    `\"${industry}\" ${location} (recommend OR review OR \"looking for\" OR \"need a\" OR \"best\")${kwStr}`,\n};\n\nconst items = sources\n  .filter(s => QUERIES[s])\n  .map(source => ({\n    json: {\n      ...context,\n      source,\n      query: QUERIES[source],\n    }\n  }));\n\nreturn items.length ? items : [{ json: { ...context, source: 'google', query: QUERIES.google } }];\n"
+      },
+      "id": "wf2-node-03",
+      "name": "Build Search Queries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 320]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v1/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.FIRECRAWL_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ query: $json.query, limit: 8, scrapeOptions: { formats: ['markdown'], onlyMainContent: true, waitFor: 0 } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "includeAll": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "wf2-node-04",
+      "name": "Firecrawl Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [940, 320]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Flatten the Firecrawl response into individual result items,\n// tagging each with its source and the discovery context.\nconst ctx = $json;  // has source, run_id, org_id, industry, location, etc.\nconst results = ctx.data ?? [];\n\nif (!results.length) return [];\n\nreturn results.map(r => ({\n  json: {\n    run_id:   ctx.run_id,\n    org_id:   ctx.org_id,\n    callback_url: ctx.callback_url,\n    source:   ctx.source,\n    industry: ctx.industry,\n    location: ctx.location,\n    service:  ctx.service,\n    url:    r.url ?? '',\n    title:  r.title ?? '',\n    content: ((r.markdown ?? r.description ?? '')\n      .replace(/\\n{3,}/g, '\\n\\n')\n      .slice(0, 800)),\n  }\n}));\n"
+      },
+      "id": "wf2-node-05",
+      "name": "Flatten Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1180, 320]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "wf2-node-06",
+      "name": "Aggregate All Results",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1420, 320]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENAI_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ (function(){\n  const items = $json.data ?? [];\n  if (!items.length) return JSON.stringify({ model:'gpt-4.1-mini', messages:[{role:'user',content:'Return empty JSON array: []'}], temperature:0.3, max_tokens:10 });\n\n  const ctx = items[0] ?? {};\n  const contentBlock = items.map((r,i) =>\n    `[${i+1}] SOURCE: ${r.source} | URL: ${r.url}\\nTITLE: ${r.title}\\n${r.content}\\n---`\n  ).join('\\n');\n\n  const prompt = `You are an expert at identifying B2C purchase intent signals from web content.\\n\\nIndustry being searched: ${ctx.industry ?? 'local services'}\\nLocation: ${ctx.location ?? 'any'}\\nService: ${ctx.service ?? ctx.industry ?? 'local services'}\\n\\nBelow are ${items.length} web search results. Identify every person or post that shows genuine buying intent for this service.\\n\\nFor each intent signal found, return a JSON object with:\\n- source: the platform name (reddit/yelp/youtube/twitter/google)\\n- question: the exact signal or quote showing intent (1-2 sentences)\\n- location: city/region if mentioned, else use \"${ctx.location ?? 'unknown'}\"\\n- source_url: the URL\\n- intent_score: 0-100 (100 = actively trying to buy right now)\\n- buying_stage: one of \"Research\" | \"Comparison\" | \"Vendor Selection\" | \"Ready To Buy\"\\n- urgency: one of \"High\" | \"Medium\" | \"Low\"\\n- service: specific service they need\\n- industry: \"${ctx.industry ?? 'local services'}\"\\n\\nReturn ONLY a JSON array. Return [] if no real intent signals. No markdown, no explanation.\\n\\nCONTENT TO ANALYZE:\\n${contentBlock}`;\n\n  return JSON.stringify({ model:'gpt-4.1-mini', messages:[{role:'user',content:prompt}], temperature:0.3, max_tokens:2000 });\n})() }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "wf2-node-07",
+      "name": "GPT — Analyze Intent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1660, 320]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Parse GPT response, validate signals, add HMAC signature for callback\nconst crypto = require('crypto');\n\nconst gptResp = $input.first().json;\nconst raw = gptResp?.choices?.[0]?.message?.content ?? '[]';\n\nlet signals = [];\ntry {\n  const clean = raw.replace(/```json\\n?/g,'').replace(/```\\n?/g,'').trim();\n  const parsed = JSON.parse(clean);\n  signals = Array.isArray(parsed) ? parsed : (parsed.signals ?? parsed.intent_signals ?? []);\n} catch(e) {\n  signals = [];\n}\n\n// Pull context from the first aggregated item\nconst allItems = $('Aggregate All Results').all();\nconst ctx = allItems?.[0]?.json?.data?.[0] ?? {};\n\nconst payload = {\n  run_id:          ctx.run_id ?? '',\n  org_id:          ctx.org_id ?? '',\n  workflow_type:   'intent_discovery',\n  status:          'complete',\n  intent_signals:  signals.slice(0, 50),\n  output: {\n    signals_found: signals.length,\n    sources_scanned: [...new Set(signals.map(s => s.source))],\n  },\n};\n\nconst payloadStr = JSON.stringify(payload);\nconst hmacSecret = $env.N8N_HMAC_SECRET ?? 'dev-secret';\nconst signature  = crypto.createHmac('sha256', hmacSecret).update(payloadStr).digest('hex');\n\nreturn [{\n  json: {\n    payload,\n    payloadStr,\n    signature,\n    callback_url: ctx.callback_url ?? '',\n  }\n}];\n"
+      },
+      "id": "wf2-node-08",
+      "name": "Parse + Sign Callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1900, 320]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.payloadStr }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "wf2-node-09",
+      "name": "POST Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2140, 320]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Error handler — post failure callback to SignafyAI\nconst crypto = require('crypto');\n\n// Try to grab context from any available input\nconst item = $input.first()?.json ?? {};\nconst runId = item.run_id ?? item.body?.run_id ?? '';\nconst orgId = item.org_id ?? item.body?.org_id ?? '';\nconst callbackUrl = item.callback_url ?? item.body?.callback_url ?? '';\n\nif (!callbackUrl) return [{ json: { skipped: true } }];\n\nconst payload = {\n  run_id:        runId,\n  org_id:        orgId,\n  workflow_type: 'intent_discovery',\n  status:        'failed',\n  error_message: 'WF2 B2C Consumer Intent Finder encountered an error',\n};\n\nconst payloadStr = JSON.stringify(payload);\nconst hmacSecret = $env.N8N_HMAC_SECRET ?? 'dev-secret';\nconst signature  = crypto.createHmac('sha256', hmacSecret).update(payloadStr).digest('hex');\n\nreturn [{ json: { payloadStr, signature, callback_url: callbackUrl } }];\n"
+      },
+      "id": "wf2-node-10",
+      "name": "Error — Build Fail Callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1420, 560]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "X-Signature",  "value": "={{ $json.signature }}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.payloadStr }}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "wf2-node-11",
+      "name": "Error — POST Fail Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1660, 560]
+    }
+  ],
+  "connections": {
+    "Webhook — B2C Trigger": {
+      "main": [
+        [{ "node": "Respond Accepted", "type": "main", "index": 0 }]
+      ]
+    },
+    "Respond Accepted": {
+      "main": [
+        [{ "node": "Build Search Queries", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build Search Queries": {
+      "main": [
+        [{ "node": "Firecrawl Search", "type": "main", "index": 0 }]
+      ]
+    },
+    "Firecrawl Search": {
+      "main": [
+        [{ "node": "Flatten Results", "type": "main", "index": 0 }]
+      ]
+    },
+    "Flatten Results": {
+      "main": [
+        [{ "node": "Aggregate All Results", "type": "main", "index": 0 }]
+      ]
+    },
+    "Aggregate All Results": {
+      "main": [
+        [{ "node": "GPT — Analyze Intent", "type": "main", "index": 0 }]
+      ]
+    },
+    "GPT — Analyze Intent": {
+      "main": [
+        [{ "node": "Parse + Sign Callback", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse + Sign Callback": {
+      "main": [
+        [{ "node": "POST Callback", "type": "main", "index": 0 }]
+      ]
+    },
+    "Error — Build Fail Callback": {
+      "main": [
+        [{ "node": "Error — POST Fail Callback", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "SignafyAI" },
+    { "name": "B2C" },
+    { "name": "Firecrawl" }
+  ],
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "signafy-wf2-b2c-v1"
+  }
+}
