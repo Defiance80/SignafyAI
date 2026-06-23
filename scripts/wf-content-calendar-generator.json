@@ -1,0 +1,254 @@
+{
+  "name": "SignafyAI — Content Calendar Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "content-calendar",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "content-calendar"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 202,
+        "responseBody": "={ \"status\": \"generating\", \"run_id\": \"{{ $json.body.run_id }}\" }",
+        "options": {}
+      },
+      "id": "respond-202",
+      "name": "Respond 202",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [460, 180]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/brand_profiles?org_id=eq.{{ $json.body.org_id }}&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": { "timeout": 10000 }
+      },
+      "id": "fetch-brand-profile",
+      "name": "Fetch Brand Profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 420]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/inspiration_accounts?org_id=eq.{{ $('Webhook').first().json.body.org_id }}&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": { "timeout": 10000 }
+      },
+      "id": "fetch-inspiration",
+      "name": "Fetch Inspiration Accounts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 420]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/calendar_settings?org_id=eq.{{ $('Webhook').first().json.body.org_id }}&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": { "timeout": 10000 }
+      },
+      "id": "fetch-calendar-settings",
+      "name": "Fetch Calendar Settings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 420]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/brand_voices?org_id=eq.{{ $('Webhook').first().json.body.org_id }}&is_default=eq.true&select=tone,vocabulary,avoid_words,example_posts,cta_style",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": { "timeout": 10000 }
+      },
+      "id": "fetch-brand-voice",
+      "name": "Fetch Brand Voice",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Consolidate all fetched data into one context object\nconst wb = $('Webhook').first().json.body;\n\nconst profileArr = $('Fetch Brand Profile').first().json;\nconst profile = Array.isArray(profileArr) ? profileArr[0] : profileArr;\n\nconst inspirationArr = $('Fetch Inspiration Accounts').first().json;\nconst inspiration = Array.isArray(inspirationArr) ? inspirationArr : [];\n\nconst settingsArr = $('Fetch Calendar Settings').first().json;\nconst settings = Array.isArray(settingsArr) ? settingsArr[0] : settingsArr;\n\nconst voiceArr = $('Fetch Brand Voice').first().json;\nconst voice = Array.isArray(voiceArr) ? voiceArr[0] : voiceArr;\n\nconst postsCount = wb.posts_count || 7;\nconst weekOf = wb.week_of || new Date().toISOString().slice(0, 10);\n\n// Build posting day schedule (distribute across the week)\nconst daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];\nconst postingDays = daysOfWeek.slice(0, Math.min(postsCount, 7));\n\n// Content mix from settings\nconst contentMix = settings?.content_mix || { educational: 40, promotional: 20, entertainment: 30, behind_scenes: 10 };\n\n// Build content type schedule based on mix percentages\nconst contentSchedule = [];\nconst sortedTypes = Object.entries(contentMix).sort((a, b) => b[1] - a[1]);\nfor (let i = 0; i < postsCount; i++) {\n  const idx = i % sortedTypes.length;\n  contentSchedule.push(sortedTypes[idx][0]);\n}\n\n// Build inspiration summary\nconst inspirationSummary = inspiration.slice(0, 8).map(acc => \n  `${acc.platform}/${acc.handle} (${acc.category}) — ${acc.why || 'inspiring content style'}`\n).join('\\n');\n\nreturn [{\n  run_id: wb.run_id,\n  org_id: wb.org_id,\n  week_of: weekOf,\n  posts_count: postsCount,\n  posting_days: postingDays,\n  content_schedule: contentSchedule,\n  callback_url: wb.callback_url,\n  // Brand context\n  profile: profile || {},\n  inspiration_summary: inspirationSummary,\n  settings: settings || {},\n  voice: voice || {},\n}];\n"
+      },
+      "id": "build-context",
+      "name": "Build Generation Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4.1\",\n  \"max_tokens\": 8000,\n  \"temperature\": 0.8,\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an expert social media strategist and copywriter specializing in content that drives real engagement, not vanity metrics. You write content that sounds like a real person, never a brand. You understand viral psychology, hook writing, and what makes people stop scrolling.\\n\\nYour job is to generate a full week of content suggestions for a specific brand. Each suggestion must have 3 caption variations (A/B/C) with different tones and hooks.\\n\\nIMPORTANT: Generate content that is genuinely valuable and likely to outperform average posts. Reference real patterns from viral content in the brand's space.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Generate {{ $json.posts_count }} content suggestions for the week of {{ $json.week_of }}.\\n\\n═══ BRAND PROFILE ═══\\nCompany Type: {{ $json.profile.company_type || 'business' }}\\nIndustry: {{ $json.profile.industry || 'not specified' }}\\nDescription: {{ $json.profile.description || 'not provided' }}\\nTarget Audience: {{ $json.profile.target_audience_description || 'not specified' }}\\nPersonality Traits: {{ ($json.profile.personality_traits || []).join(', ') || 'not specified' }}\\nContent Themes: {{ ($json.profile.content_themes || []).join(', ') || 'not specified' }}\\nPosting Goals: {{ ($json.profile.posting_goals || []).join(', ') || 'not specified' }}\\nBackground: {{ $json.profile.background_story || 'not provided' }}\\nInterests: {{ ($json.profile.interests || []).join(', ') || 'not specified' }}\\n\\n═══ BRAND VOICE ═══\\nTone: {{ $json.voice.tone || 'professional and authentic' }}\\nVocabulary: {{ ($json.voice.vocabulary || []).join(', ') || 'natural' }}\\nAvoid: {{ ($json.voice.avoid_words || []).join(', ') || 'corporate jargon' }}\\nCTA Style: {{ $json.voice.cta_style || 'soft, conversational' }}\\n{{ $json.voice.example_posts && $json.voice.example_posts.length > 0 ? 'Example posts: ' + $json.voice.example_posts.slice(0,1).join(' | ') : '' }}\\n\\n═══ INSPIRATION ACCOUNTS ═══\\n{{ $json.inspiration_summary || 'No specific accounts set — use industry best practices' }}\\n\\n═══ PLATFORMS ═══\\n{{ ($json.settings.platforms || ['linkedin', 'instagram']).join(', ') }}\\n\\n═══ CONTENT SCHEDULE ═══\\nPost types needed (in order): {{ $json.content_schedule.join(', ') }}\\nPosting days: {{ $json.posting_days.join(', ') }}\\n\\n═══ OUTPUT FORMAT ═══\\nReturn JSON with this exact structure:\\n{\\n  \\\"suggestions\\\": [\\n    {\\n      \\\"day\\\": \\\"Monday\\\",\\n      \\\"title\\\": \\\"Hook-focused post title\\\",\\n      \\\"topic\\\": \\\"what this post is about\\\",\\n      \\\"content_type\\\": \\\"educational|promotional|entertainment|behind_scenes|trend|testimonial\\\",\\n      \\\"target_platforms\\\": [\\\"linkedin\\\", \\\"instagram\\\"],\\n      \\\"best_posting_time\\\": \\\"Tuesday 9am EST\\\",\\n      \\\"performance_score\\\": 78,\\n      \\\"virality_score\\\": 72,\\n      \\\"image_type\\\": \\\"ai_generated|stock_photo|local_event|user_provided\\\",\\n      \\\"image_prompt\\\": \\\"Detailed DALL-E prompt for the visual\\\",\\n      \\\"image_description\\\": \\\"What the image should look like / what to photograph\\\",\\n      \\\"benchmark_reference\\\": \\\"Brief description of a comparable post that went viral and why it worked\\\",\\n      \\\"optimization_tips\\\": [\\n        \\\"Specific tip 1 to increase performance\\\",\\n        \\\"Specific tip 2\\\",\\n        \\\"Specific tip 3\\\"\\n      ],\\n      \\\"engagement_prediction\\\": { \\\"likes\\\": 350, \\\"comments\\\": 45, \\\"shares\\\": 28, \\\"reach\\\": 6800 },\\n      \\\"variations\\\": [\\n        {\\n          \\\"variation_label\\\": \\\"A\\\",\\n          \\\"tone\\\": \\\"Direct & Provocative\\\",\\n          \\\"hook\\\": \\\"The opening line\\\",\\n          \\\"caption\\\": \\\"Full caption text. Can be multi-paragraph.\\\",\\n          \\\"hashtags\\\": [\\\"#Tag1\\\", \\\"#Tag2\\\"],\\n          \\\"cta\\\": \\\"The call to action\\\",\\n          \\\"predicted_reach\\\": 7200\\n        },\\n        {\\n          \\\"variation_label\\\": \\\"B\\\",\\n          \\\"tone\\\": \\\"Educational & Warm\\\",\\n          \\\"hook\\\": \\\"Different opening\\\",\\n          \\\"caption\\\": \\\"Different approach, same topic\\\",\\n          \\\"hashtags\\\": [\\\"#Tag1\\\", \\\"#Tag3\\\"],\\n          \\\"cta\\\": \\\"Different CTA\\\",\\n          \\\"predicted_reach\\\": 5800\\n        },\\n        {\\n          \\\"variation_label\\\": \\\"C\\\",\\n          \\\"tone\\\": \\\"Story-driven\\\",\\n          \\\"hook\\\": \\\"Story opener\\\",\\n          \\\"caption\\\": \\\"Story format caption\\\",\\n          \\\"hashtags\\\": [\\\"#Tag2\\\", \\\"#Tag4\\\"],\\n          \\\"cta\\\": \\\"Story CTA\\\",\\n          \\\"predicted_reach\\\": 9100\\n        }\\n      ]\\n    }\\n  ]\\n}\\n\\nRules:\\n- Make performance_score and virality_score realistic (40-92 range based on content quality)\\n- Variation A should be bold/direct, B educational/warm, C story-driven\\n- Each caption must be ready to post — no placeholders\\n- Hashtags should be specific and researched, not generic\\n- Image prompts should be detailed enough for DALL-E to generate\\n- benchmark_reference should cite a real type of viral post (can reference account types without exact attribution)\"\n    }\n  ]\n}",
+        "options": { "timeout": 90000 }
+      },
+      "id": "generate-suggestions",
+      "name": "GPT: Generate Content Suggestions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse GPT response and save all suggestions + variations to Supabase\nconst gptRes = $input.first().json;\nconst ctx = $('Build Generation Context').first().json;\n\nconst supaUrl = process.env.SUPABASE_URL;\nconst supaKey = process.env.SUPABASE_SERVICE_ROLE_KEY;\n\nlet parsed;\ntry {\n  const content = gptRes.choices[0].message.content;\n  parsed = JSON.parse(content);\n} catch(e) {\n  throw new Error('GPT response parse failed: ' + gptRes.choices?.[0]?.message?.content?.slice(0, 200));\n}\n\nconst suggestions = parsed.suggestions || [];\nconst savedIds = [];\n\nfor (const sug of suggestions) {\n  const { variations = [], ...sugData } = sug;\n\n  // Insert suggestion\n  const insertRes = await $helpers.httpRequest({\n    method: 'POST',\n    url: `${supaUrl}/rest/v1/content_suggestions`,\n    headers: {\n      'apikey': supaKey,\n      'Authorization': `Bearer ${supaKey}`,\n      'Content-Type': 'application/json',\n      'Prefer': 'return=representation',\n    },\n    body: JSON.stringify({\n      org_id:               ctx.org_id,\n      run_id:               ctx.run_id,\n      title:                sugData.title,\n      topic:                sugData.topic,\n      content_type:         sugData.content_type,\n      target_platforms:     sugData.target_platforms || ctx.settings?.platforms || [],\n      best_posting_time:    sugData.best_posting_time,\n      week_of:              ctx.week_of,\n      performance_score:    sugData.performance_score || 60,\n      virality_score:       sugData.virality_score || 55,\n      image_type:           sugData.image_type || 'ai_generated',\n      image_prompt:         sugData.image_prompt || null,\n      image_description:    sugData.image_description || null,\n      benchmark_reference:  sugData.benchmark_reference || null,\n      optimization_tips:    sugData.optimization_tips || [],\n      engagement_prediction: sugData.engagement_prediction || {},\n      status:               'pending',\n    })\n  });\n\n  const saved = Array.isArray(insertRes) ? insertRes[0] : insertRes;\n  if (!saved?.id) continue;\n\n  savedIds.push(saved.id);\n\n  // Insert variations\n  for (const v of variations) {\n    await $helpers.httpRequest({\n      method: 'POST',\n      url: `${supaUrl}/rest/v1/content_variations`,\n      headers: {\n        'apikey': supaKey,\n        'Authorization': `Bearer ${supaKey}`,\n        'Content-Type': 'application/json',\n        'Prefer': 'return=minimal',\n      },\n      body: JSON.stringify({\n        suggestion_id:   saved.id,\n        org_id:          ctx.org_id,\n        variation_label: v.variation_label,\n        caption:         v.caption,\n        hashtags:        v.hashtags || [],\n        hook:            v.hook || null,\n        cta:             v.cta || null,\n        tone:            v.tone || null,\n        predicted_reach: v.predicted_reach || 0,\n        is_selected:     v.variation_label === 'A',\n      })\n    });\n  }\n}\n\nconsole.log(`[Content Calendar] Saved ${savedIds.length} suggestions with variations for org ${ctx.org_id}`);\n\nreturn [{ savedIds, count: savedIds.length, ctx }];\n"
+      },
+      "id": "save-to-supabase",
+      "name": "Save Suggestions to Supabase",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst { ctx, count, savedIds } = $input.first().json;\n\nconst payload = {\n  workflow_type: 'content_generation',\n  status: 'complete',\n  run_id: ctx.run_id,\n  org_id: ctx.org_id,\n  output_summary: {\n    suggestions_created: count,\n    suggestion_ids: savedIds,\n    week_of: ctx.week_of,\n  }\n};\n\nconst body = JSON.stringify(payload);\nconst secret = process.env.N8N_HMAC_SECRET || '';\nconst signature = crypto.createHmac('sha256', secret).update(body).digest('hex');\n\nreturn [{ body, signature, callback_url: ctx.callback_url }];\n"
+      },
+      "id": "sign-callback",
+      "name": "Sign Callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-signature",  "value": "={{ $json.signature }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "post-callback",
+      "name": "POST Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2220, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst wb = $('Webhook').first().json.body;\nconst errMsg = $input.first().json.message || 'Content generation failed';\n\nconst payload = {\n  workflow_type: 'content_generation',\n  status: 'failed',\n  run_id: wb.run_id,\n  org_id: wb.org_id,\n  error_message: errMsg\n};\n\nconst body = JSON.stringify(payload);\nconst secret = process.env.N8N_HMAC_SECRET || '';\nconst signature = crypto.createHmac('sha256', secret).update(body).digest('hex');\n\nreturn [{ body, signature, callback_url: wb.callback_url }];\n"
+      },
+      "id": "sign-error",
+      "name": "Sign Error Callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 620]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-signature",  "value": "={{ $json.signature }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "error-callback",
+      "name": "POST Error Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2220, 620]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[
+        { "node": "Respond 202",          "type": "main", "index": 0 },
+        { "node": "Fetch Brand Profile",  "type": "main", "index": 0 }
+      ]]
+    },
+    "Fetch Brand Profile": {
+      "main": [[{ "node": "Fetch Inspiration Accounts", "type": "main", "index": 0 }]]
+    },
+    "Fetch Inspiration Accounts": {
+      "main": [[{ "node": "Fetch Calendar Settings", "type": "main", "index": 0 }]]
+    },
+    "Fetch Calendar Settings": {
+      "main": [[{ "node": "Fetch Brand Voice", "type": "main", "index": 0 }]]
+    },
+    "Fetch Brand Voice": {
+      "main": [[{ "node": "Build Generation Context", "type": "main", "index": 0 }]]
+    },
+    "Build Generation Context": {
+      "main": [[{ "node": "GPT: Generate Content Suggestions", "type": "main", "index": 0 }]]
+    },
+    "GPT: Generate Content Suggestions": {
+      "main":  [[{ "node": "Save Suggestions to Supabase", "type": "main", "index": 0 }]],
+      "error": [[{ "node": "Sign Error Callback",          "type": "main", "index": 0 }]]
+    },
+    "Save Suggestions to Supabase": {
+      "main":  [[{ "node": "Sign Callback",       "type": "main", "index": 0 }]],
+      "error": [[{ "node": "Sign Error Callback", "type": "main", "index": 0 }]]
+    },
+    "Sign Callback": {
+      "main": [[{ "node": "POST Callback",       "type": "main", "index": 0 }]]
+    },
+    "Sign Error Callback": {
+      "main": [[{ "node": "POST Error Callback", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1", "saveManualExecutions": false },
+  "meta": { "instanceId": "signafyai" },
+  "tags": [{ "name": "signafyai" }, { "name": "content" }, { "name": "ai-generation" }]
+}

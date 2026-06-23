@@ -159,6 +159,20 @@ export function triggerSocialPost(input: SocialPostInput) {
   return trigger("/webhook/social-post", input);
 }
 
+// ─── Content Calendar Generation ─────────────────────────────────────────────
+
+export interface ContentCalendarInput {
+  run_id: string;
+  org_id: string;
+  week_of: string;        // ISO date "2026-06-23"
+  posts_count: number;    // how many suggestions to generate
+  callback_url: string;
+}
+
+export function triggerContentCalendarGeneration(input: ContentCalendarInput) {
+  return trigger("/webhook/content-calendar", input);
+}
+
 /** Verify that an inbound callback from n8n has a valid HMAC signature */
 export function verifyN8nSignature(payload: string, signature: string): boolean {
   const expected = sign(payload);

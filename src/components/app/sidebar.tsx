@@ -50,9 +50,14 @@ const NAV_SECTIONS = [
     label: "Content",
     items: [
       {
-        label: "Content",
-        href: "/content",
-        icon: <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1.5" y="1.5" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.4"/><path d="M4.5 5.5h6M4.5 8h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+        label: "Content Studio",
+        href: "/content-studio",
+        icon: <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 10.5L6.5 6l2.5 2.5L12 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12.5" cy="2.5" r="1.5" stroke="currentColor" strokeWidth="1.3"/></svg>,
+      },
+      {
+        label: "Brand Studio",
+        href: "/brand-studio",
+        icon: <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 1.5l1.8 3.7 4 .6-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4L1.7 5.8l4-.6z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>,
       },
       {
         label: "SEO Lab",
