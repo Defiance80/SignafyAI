@@ -105,7 +105,7 @@ const PLANS = [
 
 export default function LandingPage() {
   return (
-    <div style={{ background: "var(--color-bg)", minHeight: "100dvh" }}>
+    <div data-scheme="dark" style={{ background: "var(--color-bg)", minHeight: "100vh" }}>
 
       {/* Nav */}
       <nav
