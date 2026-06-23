@@ -193,16 +193,39 @@ export function useIntentSignals(params: IntentSignalsParams = {}) {
 
 // ─── Business audit + social hooks ─────────────────────────────────────────
 
+const SESSION_CACHE_TTL_MS = 3 * 3600_000; // 3 hours in browser sessionStorage
+
+function ssGet<T>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    const { value, ts } = JSON.parse(raw);
+    if (Date.now() - ts > SESSION_CACHE_TTL_MS) { sessionStorage.removeItem(key); return null; }
+    return value as T;
+  } catch { return null; }
+}
+function ssSet(key: string, value: unknown) {
+  if (typeof window === "undefined") return;
+  try { sessionStorage.setItem(key, JSON.stringify({ value, ts: Date.now() })); } catch { /* quota */ }
+}
+
 export function useWebsiteAudit(businessId: string | null) {
   return useQuery({
     queryKey: ["business-audit", businessId],
     queryFn: async () => {
+      type R = { audit: import("@/lib/supabase/types").AuditData | null; cached: boolean; error?: string };
+      const cacheKey = `signafy:audit:${businessId}`;
+      const cached = ssGet<R>(cacheKey);
+      if (cached) return cached;
       const res = await fetch(`/api/businesses/${businessId}/audit`);
       if (!res.ok) throw new Error("Audit failed");
-      return res.json() as Promise<{ audit: import("@/lib/supabase/types").AuditData | null; cached: boolean; error?: string }>;
+      const data = await res.json() as R;
+      if (data.audit) ssSet(cacheKey, data);
+      return data;
     },
     enabled: !!businessId,
-    staleTime: 3600_000, // 1 hour — re-fetch if older
+    staleTime: 3600_000,
     retry: 1,
   });
 }
@@ -211,9 +234,15 @@ export function useSocialChatter(businessId: string | null) {
   return useQuery({
     queryKey: ["business-social", businessId],
     queryFn: async () => {
+      type R = { social: import("@/lib/supabase/types").SocialData | null; cached: boolean };
+      const cacheKey = `signafy:social:${businessId}`;
+      const cached = ssGet<R>(cacheKey);
+      if (cached) return cached;
       const res = await fetch(`/api/businesses/${businessId}/social`);
       if (!res.ok) throw new Error("Social scan failed");
-      return res.json() as Promise<{ social: import("@/lib/supabase/types").SocialData | null; cached: boolean }>;
+      const data = await res.json() as R;
+      if (data.social) ssSet(cacheKey, data);
+      return data;
     },
     enabled: !!businessId,
     staleTime: 3600_000,

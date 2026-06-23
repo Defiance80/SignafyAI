@@ -16,76 +16,73 @@ export async function GET(
   const db = getSupabaseServiceClient();
   if (!db) return errorResponse("Database not configured", 503);
 
+  // Only select columns guaranteed to exist
   const { data: biz, error } = await db
     .from("businesses")
-    .select("id, name, location, industry, org_id, social_data, website, weaknesses")
+    .select("id, name, location, industry, org_id, website, weaknesses")
     .eq("id", id)
     .eq("org_id", ctx.org.id)
     .single();
 
   if (error || !biz) return errorResponse("Business not found", 404);
 
-  // Return cached if fresh enough
-  if (biz.social_data) {
-    const cached = biz.social_data as SocialData;
-    const cacheAge = (Date.now() - new Date(cached.cached_at).getTime()) / 3600000;
-    if (cacheAge < CACHE_TTL_HOURS) {
-      return jsonResponse({ social: cached, cached: true });
+  // Try cache if column exists (migration 010)
+  try {
+    const { data: cached } = await db
+      .from("businesses")
+      .select("social_data")
+      .eq("id", id)
+      .single();
+
+    if (cached?.social_data) {
+      const s = cached.social_data as SocialData;
+      const ageH = (Date.now() - new Date(s.cached_at).getTime()) / 3600000;
+      if (ageH < CACHE_TTL_HOURS) {
+        return jsonResponse({ social: s, cached: true });
+      }
     }
-  }
+  } catch { /* migration 010 not yet applied */ }
 
   // Try Serper.dev for real search results
   const serperKey = process.env.SERPER_API_KEY;
   let searchResults = "";
-
   if (serperKey) {
     try {
-      const query = `"${biz.name}" ${biz.location ?? ""} reviews complaints`;
       const serperRes = await fetch("https://google.serper.dev/search", {
         method: "POST",
         headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
-        body: JSON.stringify({ q: query, num: 10, gl: "us" }),
+        body: JSON.stringify({ q: `"${biz.name}" ${biz.location ?? ""} reviews`, num: 8, gl: "us" }),
       });
       const data = await serperRes.json();
-      const organic = (data.organic ?? []).slice(0, 8);
-      const kgBox = data.knowledgeGraph;
-      searchResults = JSON.stringify({ organic, knowledgeGraph: kgBox });
-    } catch { /* fall through to GPT-only */ }
+      searchResults = JSON.stringify({ organic: (data.organic ?? []).slice(0, 6) });
+    } catch { /* fall through */ }
   }
 
-  // Use GPT to synthesize social intelligence
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-    baseURL: process.env.OPENAI_BASE_URL,
-  });
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: process.env.OPENAI_BASE_URL });
 
-  const userPrompt = `Research the online reputation and social chatter for this business:
-
+  const userPrompt = `Research the online reputation for:
 Business: ${biz.name}
 Location: ${biz.location ?? "Unknown"}
 Industry: ${biz.industry ?? "Local Business"}
-Website: ${biz.website ?? "Not available"}
+Website: ${biz.website ?? "N/A"}
 Known weaknesses: ${biz.weaknesses ?? "None noted"}
-
-${searchResults ? `Search results found:\n${searchResults}` : "No live search data available — use your training knowledge and general patterns for this type of business."}
-
-Based on what you know about businesses like this and the search results above, generate a social intelligence report.
+${searchResults ? `\nSearch results:\n${searchResults}` : ""}
 
 Return ONLY this JSON (no markdown):
 {
   "mentions": [
     {
       "platform": "<Google Reviews|Yelp|Facebook|Instagram|Reddit|Twitter>",
-      "text": "<representative paraphrase of what customers/people say about this type of business — 1-2 sentences>",
+      "text": "<representative customer sentiment — 1-2 sentences>",
       "sentiment": "<positive|negative|mixed|neutral>",
-      "date": "<approximate or 'recent'>"
+      "date": "<approximate>"
     }
   ],
-  "sentiment_summary": "<2 sentences summarizing the general online sentiment and reputation>",
-  "opportunity_relevance": "<1-2 sentences: what the online chatter reveals that's relevant for a digital marketing pitch to this business>"
+  "sentiment_summary": "<2 sentences on overall reputation>",
+  "opportunity_relevance": "<1-2 sentences: what online chatter reveals for a pitch to this business>"
 }
 
-Include 3-5 mentions covering different platforms. Be specific to their industry and location.`;
+Include 3-5 mentions across different platforms. Be specific to their industry and location.`;
 
   try {
     const resp = await openai.chat.completions.create({
@@ -94,17 +91,16 @@ Include 3-5 mentions covering different platforms. Be specific to their industry
       temperature: 0.4,
       max_tokens: 600,
     });
-
     const raw = resp.choices[0]?.message?.content ?? "{}";
-    const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const social: SocialData = { ...JSON.parse(cleaned), cached_at: new Date().toISOString() };
+    const social: SocialData = {
+      ...JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()),
+      cached_at: new Date().toISOString(),
+    };
 
-    // Cache in DB
-    await db
-      .from("businesses")
-      .update({ social_data: social })
-      .eq("id", id)
-      .eq("org_id", ctx.org.id);
+    // Try to cache — silently skip if migration 010 not yet applied
+    try {
+      await db.from("businesses").update({ social_data: social } as never).eq("id", id).eq("org_id", ctx.org.id);
+    } catch { /* column not yet added */ }
 
     return jsonResponse({ social, cached: false });
   } catch (e) {
