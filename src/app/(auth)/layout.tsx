@@ -1,32 +1,70 @@
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh flex items-center justify-center relative overflow-hidden"
-      style={{ background: "var(--color-bg)" }}>
-      {/* Ambient background orbs */}
+    <div
+      data-scheme="dark"
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        position: "relative",
+        overflow: "hidden",
+        background: "#09090f",
+      }}
+    >
+      {/* Ambient glow — top left */}
       <div
-        className="absolute top-[-20%] left-[10%] w-[600px] h-[600px] rounded-full pointer-events-none"
+        aria-hidden
         style={{
-          background: "radial-gradient(circle, rgba(109,40,217,0.12) 0%, transparent 70%)",
-          filter: "blur(40px)",
+          position: "absolute",
+          top: "-15%",
+          left: "5%",
+          width: 700,
+          height: 700,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(109,40,217,0.18) 0%, transparent 65%)",
+          filter: "blur(60px)",
+          pointerEvents: "none",
         }}
       />
+      {/* Ambient glow — bottom right */}
       <div
-        className="absolute bottom-[-10%] right-[5%] w-[500px] h-[500px] rounded-full pointer-events-none"
+        aria-hidden
         style={{
-          background: "radial-gradient(circle, rgba(79,70,229,0.08) 0%, transparent 70%)",
-          filter: "blur(40px)",
+          position: "absolute",
+          bottom: "-10%",
+          right: "5%",
+          width: 500,
+          height: 500,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(79,70,229,0.12) 0%, transparent 65%)",
+          filter: "blur(60px)",
+          pointerEvents: "none",
         }}
       />
-      {/* Grid pattern */}
+      {/* Subtle grid */}
       <div
-        className="absolute inset-0 pointer-events-none"
+        aria-hidden
         style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-                            linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)`,
-          backgroundSize: "48px 48px",
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)
+          `,
+          backgroundSize: "52px 52px",
         }}
       />
-      <div className="relative z-10 w-full px-4 py-8">
+      {/* Content */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 10,
+          width: "100%",
+          padding: "32px 16px",
+        }}
+      >
         {children}
       </div>
     </div>
