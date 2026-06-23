@@ -1,9 +1,9 @@
 /**
- * Migration runner — connects directly to Supabase PostgreSQL and
- * runs all pending migrations in order.
+ * Migration runner — runs all pending Supabase migrations in order.
+ * Uses the exact connection URI from the Supabase Connect panel.
  *
  * Usage:
- *   SUPABASE_DB_PASSWORD=your_password node scripts/run_migrations.mjs
+ *   node scripts/run_migrations.mjs
  */
 
 import pg from "pg";
@@ -13,26 +13,16 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const PROJECT_REF = "shqsgswoficddajtqhuh";
-const PASSWORD     = process.env.SUPABASE_DB_PASSWORD;
-
-if (!PASSWORD) {
-  console.error("❌ Set SUPABASE_DB_PASSWORD — find it in:");
-  console.error("   Supabase Dashboard → Settings → Database → Connection string → Password");
-  process.exit(1);
-}
-
-// Supabase connection pooler (port 6543 = transaction mode, works everywhere)
 const client = new pg.Client({
-  host:     `aws-0-us-east-1.pooler.supabase.com`,
-  port:     6543,
+  host:     "aws-1-us-east-2.pooler.supabase.com",
+  port:     5432,
   database: "postgres",
-  user:     `postgres.${PROJECT_REF}`,
-  password: PASSWORD,
+  user:     "postgres.shqsgswoficddajtqhuh",
+  password: "LetsWin@123!!!",
   ssl:      { rejectUnauthorized: false },
 });
 
-// Migrations to run in order (only missing ones)
+// All migrations in order
 const MIGRATIONS = [
   "001_initial_schema.sql",
   "002_rls_policies.sql",
@@ -45,29 +35,29 @@ const MIGRATIONS = [
 ];
 
 async function run() {
-  console.log("🔌 Connecting to Supabase…");
+  console.log("🔌 Connecting to Supabase (us-east-2)…");
   await client.connect();
   console.log("✅ Connected\n");
 
   for (const filename of MIGRATIONS) {
     const filepath = path.join(__dirname, "../supabase/migrations", filename);
     if (!fs.existsSync(filepath)) {
-      console.log(`⏭  ${filename} — file not found, skipping`);
+      console.log(`⏭  ${filename} — not found, skipping`);
       continue;
     }
 
     const sql = fs.readFileSync(filepath, "utf8");
-    console.log(`▶  Running ${filename}…`);
+    process.stdout.write(`▶  ${filename}… `);
     try {
       await client.query(sql);
-      console.log(`   ✅ Done`);
+      console.log("✅");
     } catch (err) {
-      // Ignore "already exists" errors — migration is safe to re-run
-      if (err.code === "42P07" || err.code === "42P16" || err.code === "42710") {
-        console.log(`   ⚠️  Already exists — skipping (${err.message.split("\n")[0]})`);
+      const code = err?.code ?? "";
+      // Already-exists errors are safe to skip
+      if (["42P07","42P16","42710","42701","23505"].includes(code)) {
+        console.log(`⚠️  already exists (skipped)`);
       } else {
-        console.error(`   ❌ Error in ${filename}: ${err.message}`);
-        // Don't stop — continue with remaining migrations
+        console.log(`❌ ${String(err?.message ?? err).split("\n")[0]}`);
       }
     }
   }
@@ -76,4 +66,4 @@ async function run() {
   console.log("\n🎉 All migrations complete.");
 }
 
-run().catch((e) => { console.error(e); process.exit(1); });
+run().catch((e) => { console.error(e.message); process.exit(1); });
