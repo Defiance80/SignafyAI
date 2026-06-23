@@ -1,0 +1,233 @@
+{
+  "name": "SGIM — Social Growth Intelligence Discovery",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sgim-discovery",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "sgim-discovery"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 202,
+        "responseBody": "={ \"status\": \"processing\", \"run_id\": \"{{ $json.body.run_id }}\" }",
+        "options": {}
+      },
+      "id": "respond-202",
+      "name": "Respond 202",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [460, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build Firecrawl search queries from request body\nconst body = $input.first().json.body;\nconst industry = body.industry || '';\nconst audience = body.audience_description || '';\nconst keywords = (body.keywords || []).join(', ');\nconst location = body.location || '';\nconst platforms = body.platforms || ['reddit', 'youtube', 'linkedin'];\nconst focus = body.focus || 'all';\n\n// Build 3–5 targeted queries\nconst queries = [];\n\n// Core industry + pain point query\nqueries.push(`${industry} questions problems complaints ${location}`);\n\n// Keyword-specific query (if keywords provided)\nif (keywords) {\n  queries.push(`${keywords} reddit OR youtube OR forum ${location}`);\n}\n\n// Audience conversation query\nif (audience) {\n  queries.push(`${audience.split(' ').slice(0, 6).join(' ')} advice help question`);\n}\n\n// Trend-focused query\nif (focus === 'trends' || focus === 'all') {\n  queries.push(`${industry} trending 2025 2026 what is growing`);\n}\n\n// Competitor gap query\nif (focus === 'competitor_gaps' || focus === 'all') {\n  queries.push(`${industry} nobody talks about hidden truth missing advice`);\n}\n\n// Local query (if location provided)\nif (location && (focus === 'local' || focus === 'all')) {\n  queries.push(`${industry} ${location} local community recommendations`);\n}\n\nreturn queries.slice(0, 5).map(q => ({ query: q, run_id: body.run_id, org_id: body.org_id }));\n"
+      },
+      "id": "build-queries",
+      "name": "Build Search Queries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v1/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.FIRECRAWL_API_KEY }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "query", "value": "={{ $json.query }}" },
+            { "name": "limit", "value": 8 },
+            { "name": "scrapeOptions", "value": "={ \"formats\": [\"markdown\"] }" }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "firecrawl-search",
+      "name": "Firecrawl Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate all Firecrawl results from each query iteration\nconst allItems = $input.all();\nconst combinedContent = allItems.map((item, i) => {\n  const results = item.json.data || [];\n  return results.map(r => `SOURCE [${i+1}]: ${r.url}\\nTITLE: ${r.title}\\nCONTENT:\\n${(r.markdown || r.content || '').slice(0, 500)}`).join('\\n\\n---\\n\\n');\n}).join('\\n\\n=====\\n\\n');\n\n// Pass org context through\nconst first = allItems[0].json;\nreturn [{ \n  content: combinedContent.slice(0, 12000),\n  run_id: first.run_id || $('Webhook').first().json.body.run_id,\n  org_id: first.org_id || $('Webhook').first().json.body.org_id,\n  body: $('Webhook').first().json.body\n}];\n"
+      },
+      "id": "aggregate-results",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4.1-mini\",\n  \"max_tokens\": 3000,\n  \"temperature\": 0.4,\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a Growth Intelligence Analyst. Analyze online conversations and identify the top 3–5 content opportunity themes for the given business. Focus on where audiences are frustrated, confused, asking questions, or showing buying intent.\\n\\nRespond ONLY with valid JSON in this exact format:\\n{\\n  \\\"opportunities\\\": [\\n    {\\n      \\\"title\\\": \\\"string (10 words max)\\\",\\n      \\\"description\\\": \\\"string (50–80 words, why this is an opportunity)\\\",\\n      \\\"topic\\\": \\\"string\\\",\\n      \\\"signal_count\\\": number,\\n      \\\"audience_match\\\": number (0-100),\\n      \\\"trend_score\\\": number (0-100),\\n      \\\"competition_score\\\": number (0-100, higher=more competition),\\n      \\\"local_relevance\\\": number (0-100),\\n      \\\"lead_potential\\\": number (0-100),\\n      \\\"authority_potential\\\": number (0-100),\\n      \\\"growth_score\\\": number (0-100, weighted average),\\n      \\\"content_formats\\\": [\\\"reel\\\",\\\"blog\\\",\\\"faq\\\",\\\"carousel\\\",\\\"interview\\\",\\\"podcast\\\"],\\n      \\\"hooks\\\": [\\\"hook1\\\", \\\"hook2\\\"]\\n    }\\n  ],\\n  \\\"social_signals\\\": [\\n    {\\n      \\\"source\\\": \\\"reddit|youtube|linkedin|google_news\\\",\\n      \\\"topic\\\": \\\"string\\\",\\n      \\\"question\\\": \\\"string (the actual verbatim-style conversation or search query)\\\",\\n      \\\"sentiment\\\": \\\"positive|negative|neutral|frustrated|excited\\\",\\n      \\\"signal_type\\\": \\\"question|complaint|trend|discussion|buying_intent\\\",\\n      \\\"location\\\": \\\"string or null\\\",\\n      \\\"source_url\\\": \\\"string or null\\\",\\n      \\\"relevance_score\\\": number (0-100),\\n      \\\"engagement_hint\\\": \\\"string (e.g. '847 upvotes', '23 comments')\\\"\\\n    }\\n  ]\\n}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Business context:\\nIndustry: {{ $json.body.industry }}\\nAudience: {{ $json.body.audience_description }}\\nLocation: {{ $json.body.location }}\\nKeywords: {{ ($json.body.keywords || []).join(', ') }}\\nFocus: {{ $json.body.focus }}\\n\\nOnline conversation data collected:\\n{{ $json.content }}\\n\\nIdentify the top 3-5 growth opportunities and 5-8 social signals from this data.\"\n    }\n  ]\n}",
+        "options": {
+          "timeout": 45000
+        }
+      },
+      "id": "gpt-analyze",
+      "name": "GPT-4.1 Analyze",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst gptResponse = $input.first().json;\nconst webhookBody = $('Webhook').first().json.body;\n\n// Parse GPT response\nlet parsed = {};\ntry {\n  const content = gptResponse.choices[0].message.content;\n  parsed = JSON.parse(content);\n} catch (e) {\n  parsed = { opportunities: [], social_signals: [] };\n}\n\nconst payload = {\n  workflow_type: 'growth_intelligence',\n  status: 'complete',\n  run_id: webhookBody.run_id,\n  org_id: webhookBody.org_id,\n  opportunities: (parsed.opportunities || []).map(o => ({\n    ...o,\n    content_formats: Array.isArray(o.content_formats) ? o.content_formats : [],\n    hooks: Array.isArray(o.hooks) ? o.hooks : [],\n    status: 'new',\n  })),\n  social_signals: (parsed.social_signals || []).map(s => ({\n    ...s,\n    location: s.location || null,\n    source_url: s.source_url || null,\n    engagement_hint: s.engagement_hint || null,\n  })),\n};\n\nconst body = JSON.stringify(payload);\nconst secret = process.env.N8N_HMAC_SECRET || '';\nconst signature = crypto.createHmac('sha256', secret).update(body).digest('hex');\n\nreturn [{ body, signature, run_id: webhookBody.run_id }];\n"
+      },
+      "id": "sign-callback",
+      "name": "Parse & Sign Callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/webhooks/n8n",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-signature", "value": "={{ $json.signature }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "callback-success",
+      "name": "POST Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst webhookBody = $('Webhook').first().json.body;\n\nconst payload = {\n  workflow_type: 'growth_intelligence',\n  status: 'failed',\n  run_id: webhookBody.run_id,\n  org_id: webhookBody.org_id,\n  error_message: 'SGIM discovery workflow encountered an error',\n  opportunities: [],\n  social_signals: [],\n};\n\nconst body = JSON.stringify(payload);\nconst secret = process.env.N8N_HMAC_SECRET || '';\nconst signature = crypto.createHmac('sha256', secret).update(body).digest('hex');\n\nreturn [{ body, signature }];\n"
+      },
+      "id": "sign-error",
+      "name": "Sign Error Callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 620]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/webhooks/n8n",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-signature", "value": "={{ $json.signature }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "callback-error",
+      "name": "POST Error Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 620]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          { "node": "Respond 202", "type": "main", "index": 0 },
+          { "node": "Build Search Queries", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Build Search Queries": {
+      "main": [
+        [{ "node": "Firecrawl Search", "type": "main", "index": 0 }]
+      ]
+    },
+    "Firecrawl Search": {
+      "main": [
+        [{ "node": "Aggregate Results", "type": "main", "index": 0 }]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [{ "node": "GPT-4.1 Analyze", "type": "main", "index": 0 }]
+      ]
+    },
+    "GPT-4.1 Analyze": {
+      "main": [
+        [{ "node": "Parse & Sign Callback", "type": "main", "index": 0 }],
+        [{ "node": "Sign Error Callback", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse & Sign Callback": {
+      "main": [
+        [{ "node": "POST Callback", "type": "main", "index": 0 }]
+      ]
+    },
+    "Sign Error Callback": {
+      "main": [
+        [{ "node": "POST Error Callback", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": false,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "signafyai"
+  },
+  "tags": [
+    { "name": "signafyai", "createdAt": "2026-01-01T00:00:00.000Z", "updatedAt": "2026-01-01T00:00:00.000Z" },
+    { "name": "sgim", "createdAt": "2026-01-01T00:00:00.000Z", "updatedAt": "2026-01-01T00:00:00.000Z" }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2026-06-17T00:00:00.000Z",
+  "id": "wf-sgim-discovery"
+}

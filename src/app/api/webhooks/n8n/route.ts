@@ -151,6 +151,27 @@ export async function POST(request: Request) {
       break;
     }
 
+    // ─── Social Growth Intelligence (SGIM) ───────────────────────────────────
+    case "growth_intelligence": {
+      if (body.status === "complete") {
+        const growthBody = body as typeof body & {
+          opportunities?: Record<string, unknown>[];
+          social_signals?: Record<string, unknown>[];
+        };
+        if (Array.isArray(growthBody.opportunities) && growthBody.opportunities.length > 0) {
+          await db.from("growth_opportunities").insert(
+            growthBody.opportunities.map((o) => ({ ...o, org_id: body.org_id, run_id: body.run_id }))
+          );
+        }
+        if (Array.isArray(growthBody.social_signals) && growthBody.social_signals.length > 0) {
+          await db.from("social_signals").insert(
+            growthBody.social_signals.map((s) => ({ ...s, org_id: body.org_id, run_id: body.run_id }))
+          );
+        }
+      }
+      break;
+    }
+
     case "social_classification":
     case "seo_research":
       // Written directly by n8n → Supabase; just acknowledge

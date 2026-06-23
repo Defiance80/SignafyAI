@@ -39,6 +39,11 @@ const NAV_SECTIONS = [
         href: "/social",
         icon: <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M13 7.5c0 3.038-2.462 5-5.5 5a6.7 6.7 0 0 1-2.3-.404L2 13.5l.808-2.896A4.83 4.83 0 0 1 2 7.5C2 4.462 4.462 2 7.5 2S13 4.462 13 7.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>,
       },
+      {
+        label: "Growth Intel",
+        href: "/growth-intelligence",
+        icon: <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" strokeWidth="1.4"/><path d="M5 7.5c0-1.38 1.12-2.5 2.5-2.5S10 6.12 10 7.5 8.88 10 7.5 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><circle cx="7.5" cy="7.5" r="0.8" fill="currentColor"/></svg>,
+      },
     ],
   },
   {
