@@ -96,6 +96,25 @@ function useCalendar(days: number) {
   });
 }
 
+interface SocialAccount {
+  id: string;
+  platform: string;
+  account_name: string;
+  is_active: boolean;
+}
+
+function useSocialAccounts() {
+  return useQuery({
+    queryKey: ["social-accounts"],
+    queryFn: async () => {
+      const res = await fetch("/api/social/accounts");
+      if (!res.ok) return { data: [] as SocialAccount[] };
+      return res.json() as Promise<{ data: SocialAccount[] }>;
+    },
+    staleTime: 120_000,
+  });
+}
+
 // ─── Shared Components ────────────────────────────────────────────────────────
 
 function SearchBar({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
@@ -685,7 +704,7 @@ function OpportunitiesPanel({ onSelect }: { onSelect: (opp: GrowthOpportunity) =
 
 // ─── Signals Panel ────────────────────────────────────────────────────────────
 
-function SignalsPanel() {
+function SignalsPanel({ accounts, onReply }: { accounts: SocialAccount[]; onReply: (sig: SocialSignal) => void }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [source, setSource] = useState("");
@@ -767,12 +786,17 @@ function SignalsPanel() {
                       <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>{relativeTime(sig.created_at)}</span>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                     <div className="text-base font-bold" style={{ color: scoreColor(sig.relevance_score).color, fontFamily: "var(--font-syne)" }}>{sig.relevance_score}</div>
                     <div className="text-[9px]" style={{ color: "var(--color-text-muted)" }}>relevance</div>
+                    <button onClick={(e) => { e.stopPropagation(); onReply(sig); }}
+                      className="text-[10px] px-2.5 py-1 rounded-lg font-medium mt-0.5 flex items-center gap-1"
+                      style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)", color: "white" }}>
+                      ↩ Reply
+                    </button>
                     {sig.source_url && (
                       <a href={sig.source_url} target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()}
-                        className="text-[10px] px-2 py-0.5 rounded mt-1"
+                        className="text-[10px] px-2 py-0.5 rounded"
                         style={{ color: "#a78bfa", background: "rgba(124,58,237,0.1)" }}>View →</a>
                     )}
                   </div>
@@ -788,7 +812,7 @@ function SignalsPanel() {
 
 // ─── Calendar Panel ───────────────────────────────────────────────────────────
 
-function CalendarPanel({ onAddItem }: { onAddItem: () => void }) {
+function CalendarPanel({ onAddItem, accounts, onPublish }: { onAddItem: () => void; accounts: SocialAccount[]; onPublish: (item: CalendarItem) => void }) {
   const [days, setDays] = useState(30);
   const { data, isLoading, refetch } = useCalendar(days);
   const items = data?.data ?? [];
@@ -887,6 +911,13 @@ function CalendarPanel({ onAddItem }: { onAddItem: () => void }) {
                           <option value="in_progress">In Progress</option>
                           <option value="published">Published</option>
                         </select>
+                        {item.status !== "published" && (
+                          <button onClick={(e) => { e.stopPropagation(); onPublish(item); }}
+                            className="text-[10px] px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1"
+                            style={{ background: accounts.some(a => a.platform === (item.platform ?? "") && a.is_active) ? "linear-gradient(135deg,#7c3aed,#4f46e5)" : "var(--color-surface-2)", color: accounts.some(a => a.platform === (item.platform ?? "") && a.is_active) ? "white" : "var(--color-text-muted)", border: accounts.some(a => a.platform === (item.platform ?? "") && a.is_active) ? "none" : "1px solid var(--color-border)" }}>
+                            ↑ Post
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -900,6 +931,377 @@ function CalendarPanel({ onAddItem }: { onAddItem: () => void }) {
   );
 }
 
+// ─── Reply Drawer ─────────────────────────────────────────────────────────────
+
+function ReplyDrawer({
+  signal,
+  accounts,
+  onClose,
+}: {
+  signal: SocialSignal;
+  accounts: SocialAccount[];
+  onClose: () => void;
+}) {
+  const [platform, setPlatform] = useState(signal.source ?? "linkedin");
+  const [reply, setReply] = useState("");
+  const [platformTip, setPlatformTip] = useState("");
+  const [charLimit, setCharLimit] = useState(500);
+  const [generating, setGenerating] = useState(false);
+  const [posting, setPosting] = useState(false);
+  const [postStatus, setPostStatus] = useState<"idle" | "success" | "error">("idle");
+  const [copied, setCopied] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<string>("");
+
+  const connectedForPlatform = accounts.filter((a) => a.platform === platform && a.is_active);
+
+  async function generate() {
+    setGenerating(true);
+    setPostStatus("idle");
+    try {
+      const res = await fetch("/api/growth/generate-reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ signal_id: signal.id, platform }),
+      });
+      const data = await res.json() as { reply: string; platform_tip: string; char_limit: number };
+      setReply(data.reply ?? "");
+      setPlatformTip(data.platform_tip ?? "");
+      setCharLimit(data.char_limit ?? 500);
+    } catch { /* ignore */ } finally { setGenerating(false); }
+  }
+
+  async function post() {
+    if (!reply.trim() || !selectedAccount) return;
+    setPosting(true);
+    setPostStatus("idle");
+    try {
+      const res = await fetch("/api/growth/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: reply, platform, account_id: selectedAccount }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setPostStatus("success");
+    } catch { setPostStatus("error"); } finally { setPosting(false); }
+  }
+
+  function copy() {
+    navigator.clipboard.writeText(reply).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); });
+  }
+
+  const pm = PLATFORM_META[platform];
+  const overLimit = reply.length > charLimit;
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.5)" }} onClick={onClose} />
+      <div className="fixed right-0 top-0 bottom-0 z-50 flex flex-col overflow-hidden"
+        style={{ width: "min(560px,100vw)", background: "var(--color-surface)", borderLeft: "1px solid var(--color-border)", boxShadow: "-16px 0 64px rgba(0,0,0,0.4)" }}>
+
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 flex-shrink-0" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+          <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: "var(--color-text-muted)" }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </button>
+          <div className="flex-1">
+            <h2 className="text-sm font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Reply in Your Voice</h2>
+            <p className="text-[11px]" style={{ color: "var(--color-text-muted)" }}>AI crafts a reply using your brand voice — you review &amp; send</p>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+
+          {/* Original signal */}
+          <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+            <div className="text-[10px] font-semibold mb-2" style={{ color: "var(--color-text-muted)" }}>ORIGINAL POST / COMMENT</div>
+            <div className="px-3 py-3 rounded-xl text-sm leading-relaxed" style={{ background: "var(--color-surface-2)", borderLeft: "3px solid rgba(124,58,237,0.4)", color: "var(--color-text-2)" }}>
+              &ldquo;{signal.question}&rdquo;
+            </div>
+            {signal.engagement_hint && (
+              <p className="text-[10px] mt-1.5" style={{ color: "var(--color-text-muted)" }}>💬 {signal.engagement_hint} · {signal.source}</p>
+            )}
+          </div>
+
+          {/* Platform selector */}
+          <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+            <div className="text-[10px] font-semibold mb-2" style={{ color: "var(--color-text-muted)" }}>REPLY ON PLATFORM</div>
+            <div className="flex gap-1.5 flex-wrap">
+              {["linkedin","tiktok","instagram","facebook","x","reddit","youtube"].map((p) => {
+                const meta = PLATFORM_META[p];
+                const active = platform === p;
+                return (
+                  <button key={p} onClick={() => setPlatform(p)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium capitalize"
+                    style={{ background: active ? `${meta?.color}18` : "var(--color-surface-2)", border: active ? `1px solid ${meta?.color}40` : "1px solid var(--color-border-subtle)", color: active ? meta?.color : "var(--color-text-muted)" }}>
+                    <span>{meta?.icon}</span> {p === "x" ? "X" : p}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Generate button */}
+          <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+            <button onClick={generate} disabled={generating}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+              style={{ background: "linear-gradient(135deg,#7c3aed 0%,#4f46e5 100%)", color: "white", opacity: generating ? 0.7 : 1 }}>
+              {generating
+                ? <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin"/>Generating in your voice…</>
+                : <>{reply ? "↺ Regenerate Reply" : "✦ Generate Reply in My Voice"}</>}
+            </button>
+            {platformTip && (
+              <p className="text-[11px] mt-2 px-1" style={{ color: "#a78bfa" }}>💡 {platformTip}</p>
+            )}
+          </div>
+
+          {/* Reply editor */}
+          {reply && (
+            <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[10px] font-semibold" style={{ color: "var(--color-text-muted)" }}>YOUR REPLY — REVIEW &amp; EDIT</div>
+                <span className="text-[10px] font-mono tabular-nums" style={{ color: overLimit ? "#f87171" : "var(--color-text-muted)" }}>
+                  {reply.length}/{charLimit}
+                </span>
+              </div>
+              <textarea
+                value={reply}
+                onChange={(e) => setReply(e.target.value)}
+                rows={8}
+                className="w-full px-3 py-3 rounded-xl text-sm leading-relaxed resize-y outline-none"
+                style={{ background: "var(--color-surface-2)", border: `1px solid ${overLimit ? "#f87171" : "var(--color-border-subtle)"}`, color: "var(--color-text-1)", minHeight: 140 }}
+              />
+              {overLimit && (
+                <p className="text-[11px] mt-1" style={{ color: "#f87171" }}>Over {platform} character limit — trim before posting</p>
+              )}
+            </div>
+          )}
+
+          {/* Post actions */}
+          {reply && (
+            <div className="px-5 py-4 space-y-3">
+              {/* Account selector */}
+              {connectedForPlatform.length > 0 ? (
+                <div>
+                  <div className="text-[10px] font-semibold mb-2" style={{ color: "var(--color-text-muted)" }}>POST FROM ACCOUNT</div>
+                  <div className="space-y-1.5">
+                    {connectedForPlatform.map((acc) => (
+                      <label key={acc.id} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer"
+                        style={{ background: selectedAccount === acc.id ? `${pm?.color}12` : "var(--color-surface-2)", border: selectedAccount === acc.id ? `1px solid ${pm?.color}40` : "1px solid var(--color-border-subtle)" }}>
+                        <input type="radio" name="account" value={acc.id} checked={selectedAccount === acc.id} onChange={() => setSelectedAccount(acc.id)} className="hidden"/>
+                        <span className="text-sm">{pm?.icon}</span>
+                        <span className="text-sm font-medium flex-1" style={{ color: "var(--color-text-1)" }}>{acc.account_name}</span>
+                        {selectedAccount === acc.id && <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: `${pm?.color}20`, color: pm?.color }}>Selected</span>}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="px-3 py-3 rounded-xl text-xs" style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24" }}>
+                  ⚡ No {platform} account connected yet. Copy the reply to post manually, or connect an account in Settings → Social Accounts.
+                </div>
+              )}
+
+              {postStatus === "success" && (
+                <div className="px-3 py-3 rounded-xl text-sm text-center" style={{ background: "rgba(52,211,153,0.1)", color: "#34d399" }}>
+                  ✓ Reply queued — n8n will post it shortly
+                </div>
+              )}
+              {postStatus === "error" && (
+                <div className="px-3 py-2.5 rounded-xl text-sm" style={{ background: "rgba(248,113,113,0.1)", color: "#f87171" }}>
+                  Failed to post — check your account connection in Settings
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button onClick={copy} className="flex-1 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5"
+                  style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", color: copied ? "#34d399" : "var(--color-text-2)" }}>
+                  {copied ? "✓ Copied!" : "📋 Copy Reply"}
+                </button>
+                {connectedForPlatform.length > 0 && (
+                  <button onClick={post} disabled={posting || !selectedAccount || overLimit}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                    style={{ background: "linear-gradient(135deg,#7c3aed 0%,#4f46e5 100%)", color: "white", opacity: (posting || !selectedAccount || overLimit) ? 0.5 : 1 }}>
+                    {posting ? "Posting…" : `Post to ${platform === "x" ? "X" : platform}`}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Publish Modal ─────────────────────────────────────────────────────────────
+
+function PublishModal({
+  item,
+  accounts,
+  onClose,
+  onPublished,
+}: {
+  item: CalendarItem;
+  accounts: SocialAccount[];
+  onClose: () => void;
+  onPublished: () => void;
+}) {
+  const itemPlatform = item.platform ?? "instagram";
+  const [content, setContent] = useState(item.title);
+  const [platform, setPlatform] = useState(itemPlatform);
+  const [selectedAccount, setSelectedAccount] = useState("");
+  const [scheduleMode, setScheduleMode] = useState<"now" | "scheduled">("now");
+  const [scheduledAt, setScheduledAt] = useState(
+    item.scheduled_date ? `${item.scheduled_date}T09:00` : new Date(Date.now() + 86400000).toISOString().slice(0, 16)
+  );
+  const [posting, setPosting] = useState(false);
+  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const CHAR_LIMITS: Record<string, number> = { linkedin: 3000, tiktok: 2200, instagram: 2200, facebook: 63206, x: 280, twitter: 280, reddit: 40000, youtube: 5000 };
+  const limit = CHAR_LIMITS[platform] ?? 2200;
+  const overLimit = content.length > limit;
+  const connectedAccounts = accounts.filter((a) => a.platform === platform && a.is_active);
+  const pm = PLATFORM_META[platform];
+
+  async function submit() {
+    if (!content.trim() || !selectedAccount) return;
+    setPosting(true);
+    setStatus("idle");
+    try {
+      const res = await fetch("/api/growth/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content,
+          platform,
+          account_id: selectedAccount,
+          calendar_item_id: item.id,
+          scheduled_at: scheduleMode === "scheduled" ? new Date(scheduledAt).toISOString() : null,
+        }),
+      });
+      const data = await res.json() as { message?: string; error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Failed");
+      setStatus("success");
+      setTimeout(() => { onPublished(); onClose(); }, 1800);
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : "Failed");
+      setStatus("error");
+    } finally { setPosting(false); }
+  }
+
+  const inputStyle = { background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "var(--color-text-1)" };
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50" style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose} />
+      <div className="fixed left-1/2 top-1/2 z-[60] w-full max-w-lg max-h-[90dvh] overflow-y-auto"
+        style={{ transform: "translate(-50%,-50%)", background: "var(--color-surface)", borderRadius: 20, border: "1px solid var(--color-border)", boxShadow: "0 24px 80px rgba(0,0,0,0.5)", padding: 24 }}>
+
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <h2 className="text-base font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Publish to Social</h2>
+            <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>Post this calendar item to your connected accounts</p>
+          </div>
+          <button onClick={onClose} style={{ color: "var(--color-text-muted)" }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {/* Platform */}
+          <div>
+            <label className="text-[10px] font-semibold block mb-2" style={{ color: "var(--color-text-muted)" }}>PLATFORM</label>
+            <div className="flex gap-1.5 flex-wrap">
+              {["linkedin","tiktok","instagram","facebook","x"].map((p) => {
+                const meta = PLATFORM_META[p];
+                const active = platform === p;
+                return (
+                  <button key={p} onClick={() => { setPlatform(p); setSelectedAccount(""); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium capitalize"
+                    style={{ background: active ? `${meta?.color}18` : "var(--color-surface-2)", border: active ? `1px solid ${meta?.color}40` : "1px solid var(--color-border-subtle)", color: active ? meta?.color : "var(--color-text-muted)" }}>
+                    {meta?.icon} {p === "x" ? "X" : p}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Content editor */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[10px] font-semibold" style={{ color: "var(--color-text-muted)" }}>POST CONTENT</label>
+              <span className="text-[10px] font-mono" style={{ color: overLimit ? "#f87171" : "var(--color-text-muted)" }}>{content.length}/{limit}</span>
+            </div>
+            <textarea value={content} onChange={(e) => setContent(e.target.value)} rows={6}
+              className="w-full px-3 py-2.5 rounded-xl text-sm leading-relaxed resize-y outline-none"
+              style={{ ...inputStyle, border: `1px solid ${overLimit ? "#f87171" : "var(--color-border-subtle)"}`, minHeight: 120 }} />
+            {overLimit && <p className="text-[11px] mt-1" style={{ color: "#f87171" }}>Over {platform} character limit — trim before posting</p>}
+          </div>
+
+          {/* Account selector */}
+          {connectedAccounts.length > 0 ? (
+            <div>
+              <label className="text-[10px] font-semibold block mb-2" style={{ color: "var(--color-text-muted)" }}>POST FROM</label>
+              <div className="space-y-1.5">
+                {connectedAccounts.map((acc) => (
+                  <label key={acc.id} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer"
+                    style={{ background: selectedAccount === acc.id ? `${pm?.color}12` : "var(--color-surface-2)", border: selectedAccount === acc.id ? `1px solid ${pm?.color}40` : "1px solid var(--color-border-subtle)" }}>
+                    <input type="radio" name="pub-account" value={acc.id} checked={selectedAccount === acc.id} onChange={() => setSelectedAccount(acc.id)} className="hidden"/>
+                    <span>{pm?.icon}</span>
+                    <span className="text-sm flex-1" style={{ color: "var(--color-text-1)" }}>{acc.account_name}</span>
+                    {selectedAccount === acc.id && <span className="w-2 h-2 rounded-full" style={{ background: pm?.color }} />}
+                  </label>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="px-3 py-3 rounded-xl text-xs" style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24" }}>
+              No {platform} account connected. Go to Settings → Social Accounts to connect one.
+            </div>
+          )}
+
+          {/* Schedule toggle */}
+          {connectedAccounts.length > 0 && (
+            <div>
+              <label className="text-[10px] font-semibold block mb-2" style={{ color: "var(--color-text-muted)" }}>WHEN TO POST</label>
+              <div className="flex gap-1.5 mb-2">
+                {[{ id: "now" as const, label: "Post Now" }, { id: "scheduled" as const, label: "Schedule" }].map(({ id, label }) => (
+                  <button key={id} onClick={() => setScheduleMode(id)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                    style={{ background: scheduleMode === id ? "rgba(124,58,237,0.15)" : "var(--color-surface-2)", border: scheduleMode === id ? "1px solid rgba(124,58,237,0.3)" : "1px solid var(--color-border-subtle)", color: scheduleMode === id ? "#a78bfa" : "var(--color-text-muted)" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {scheduleMode === "scheduled" && (
+                <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl text-sm outline-none" style={inputStyle} />
+              )}
+            </div>
+          )}
+
+          {status === "success" && (
+            <div className="py-3 rounded-xl text-sm text-center font-medium" style={{ background: "rgba(52,211,153,0.1)", color: "#34d399" }}>
+              ✓ {scheduleMode === "scheduled" ? "Scheduled!" : "Publishing now via n8n…"}
+            </div>
+          )}
+          {status === "error" && <p className="text-xs px-3 py-2 rounded-xl" style={{ background: "rgba(248,113,113,0.1)", color: "#f87171" }}>{errorMsg}</p>}
+
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}>Cancel</button>
+            <button onClick={submit} disabled={posting || !selectedAccount || !content.trim() || overLimit}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+              style={{ background: "linear-gradient(135deg,#7c3aed 0%,#4f46e5 100%)", color: "white", opacity: (posting || !selectedAccount || !content.trim() || overLimit) ? 0.5 : 1 }}>
+              {posting ? "Publishing…" : scheduleMode === "scheduled" ? "Schedule Post" : "Publish Now"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function GrowthIntelligencePage() {
@@ -908,8 +1310,13 @@ export default function GrowthIntelligencePage() {
   const [showDiscovery, setShowDiscovery] = useState(false);
   const [selectedOpp, setSelectedOpp] = useState<GrowthOpportunity | null>(null);
   const [addToCalOpp, setAddToCalOpp] = useState<GrowthOpportunity | null>(null);
+  const [replySignal, setReplySignal] = useState<SocialSignal | null>(null);
+  const [publishItem, setPublishItem] = useState<CalendarItem | null>(null);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
+
+  const { data: accountsData } = useSocialAccounts();
+  const accounts = accountsData?.data ?? [];
 
   const { data: oppData } = useOpportunities();
   const { data: sigData } = useSignals();
@@ -985,6 +1392,28 @@ export default function GrowthIntelligencePage() {
         </button>
       </div>
 
+      {/* Connected platforms bar */}
+      {accounts.length > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl animate-fade-up"
+          style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.03s" }}>
+          <span className="text-[10px] font-semibold flex-shrink-0" style={{ color: "var(--color-text-muted)" }}>CONNECTED</span>
+          <div className="flex gap-2 flex-wrap flex-1">
+            {accounts.filter(a => a.is_active).map((acc) => {
+              const meta = PLATFORM_META[acc.platform];
+              return (
+                <div key={acc.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium"
+                  style={{ background: `${meta?.color}12`, color: meta?.color, border: `1px solid ${meta?.color}25` }}>
+                  <span>{meta?.icon}</span> {acc.account_name}
+                </div>
+              );
+            })}
+          </div>
+          <span className="text-[10px] flex-shrink-0" style={{ color: "var(--color-text-muted)" }}>
+            {accounts.filter(a => a.is_active).length} active
+          </span>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 animate-fade-up" style={{ animationDelay: "0.05s" }}>
         {STATS.map((s, i) => (
@@ -1019,8 +1448,8 @@ export default function GrowthIntelligencePage() {
       {/* Tab content */}
       <div className="animate-fade-up" style={{ animationDelay: "0.12s" }}>
         {activeTab === "opportunities" && <OpportunitiesPanel onSelect={(o) => setSelectedOpp(o)} />}
-        {activeTab === "signals"       && <SignalsPanel />}
-        {activeTab === "calendar"      && <CalendarPanel onAddItem={() => { /* todo: open add modal */ }} />}
+        {activeTab === "signals"       && <SignalsPanel accounts={accounts} onReply={(s) => setReplySignal(s)} />}
+        {activeTab === "calendar"      && <CalendarPanel accounts={accounts} onAddItem={() => { /* todo: open add modal */ }} onPublish={(item) => setPublishItem(item)} />}
       </div>
 
       {/* Modals + Drawers */}
@@ -1037,6 +1466,21 @@ export default function GrowthIntelligencePage() {
           opp={addToCalOpp}
           onClose={() => setAddToCalOpp(null)}
           onAdded={() => { qc.invalidateQueries({ queryKey: ["growth-calendar"] }); setActiveTab("calendar"); }}
+        />
+      )}
+      {replySignal && (
+        <ReplyDrawer
+          signal={replySignal}
+          accounts={accounts}
+          onClose={() => setReplySignal(null)}
+        />
+      )}
+      {publishItem && (
+        <PublishModal
+          item={publishItem}
+          accounts={accounts}
+          onClose={() => setPublishItem(null)}
+          onPublished={() => { qc.invalidateQueries({ queryKey: ["growth-calendar"] }); }}
         />
       )}
     </div>

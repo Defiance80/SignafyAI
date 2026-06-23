@@ -139,6 +139,26 @@ export function triggerSeoResearch(input: SeoResearchInput) {
   return trigger("/webhook/seo-research", input);
 }
 
+// ─── Social Post (Growth Intel outbound publishing) ───────────────────────────
+
+export interface SocialPostInput {
+  run_id: string;
+  org_id: string;
+  platform: string;
+  account_id: string;
+  content: string;
+  hashtags?: string[];
+  media_url?: string | null;
+  scheduled_at?: string | null;
+  content_piece_id: string;
+  calendar_item_id?: string | null;
+  callback_url: string;
+}
+
+export function triggerSocialPost(input: SocialPostInput) {
+  return trigger("/webhook/social-post", input);
+}
+
 /** Verify that an inbound callback from n8n has a valid HMAC signature */
 export function verifyN8nSignature(payload: string, signature: string): boolean {
   const expected = sign(payload);
