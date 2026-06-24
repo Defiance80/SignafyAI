@@ -1054,22 +1054,35 @@ function LeadsPanel({ onSelectLead }: { onSelectLead: (id: string) => void }) {
   }));
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3">
-        <SearchBar value={searchInput} onChange={(v) => { setSearchInput(v); if (!v) setSearch(""); }}
-          placeholder="Search name, company, email..." />
-        <div className="flex gap-1.5 flex-wrap">
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <SearchBar value={searchInput} onChange={(v) => { setSearchInput(v); if (!v) setSearch(""); }}
+            placeholder="Search name, company, email..." />
+        </div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {["all","new","contacted","qualified","converted","lost"].map((f) => (
-            <button key={f} onClick={() => { setStatusFilter(f); setPage(1); }} className="px-3 py-2 rounded-xl text-xs font-medium capitalize"
-              style={{ background: statusFilter === f ? "rgba(124,58,237,0.15)" : "var(--color-surface)", border: statusFilter === f ? "1px solid rgba(124,58,237,0.3)" : "1px solid var(--color-border)", color: statusFilter === f ? "#a78bfa" : "var(--color-text-2)" }}>
+            <button key={f} onClick={() => { setStatusFilter(f); setPage(1); }}
+              style={{
+                padding: "7px 14px", borderRadius: 10, fontSize: 12, fontWeight: 500, cursor: "pointer",
+                textTransform: "capitalize", transition: "all 0.15s",
+                background: statusFilter === f ? "rgba(124,58,237,0.15)" : "var(--color-surface)",
+                border: statusFilter === f ? "1px solid rgba(124,58,237,0.3)" : "1px solid var(--color-border)",
+                color: statusFilter === f ? "#a78bfa" : "var(--color-text-2)",
+              }}>
               {f === "all" ? "All" : STATUS_MAP[f as LeadStatus]?.label ?? f}
             </button>
           ))}
         </div>
-        <div className="flex rounded-xl overflow-hidden" style={{ border: "1px solid var(--color-border)" }}>
+        <div style={{ display: "flex", borderRadius: 10, overflow: "hidden", border: "1px solid var(--color-border)" }}>
           {(["table","kanban"] as const).map((v) => (
-            <button key={v} onClick={() => setView(v)} className="px-3 py-2 text-xs font-medium capitalize"
-              style={{ background: view === v ? "rgba(124,58,237,0.15)" : "var(--color-surface)", color: view === v ? "#a78bfa" : "var(--color-text-2)" }}>
+            <button key={v} onClick={() => setView(v)}
+              style={{
+                padding: "7px 14px", fontSize: 12, fontWeight: 500, cursor: "pointer",
+                textTransform: "capitalize" as const, transition: "background 0.15s",
+                background: view === v ? "rgba(124,58,237,0.15)" : "var(--color-surface)",
+                color: view === v ? "#a78bfa" : "var(--color-text-2)",
+              }}>
               {v}
             </button>
           ))}
@@ -1077,16 +1090,22 @@ function LeadsPanel({ onSelectLead }: { onSelectLead: (id: string) => void }) {
       </div>
 
       {view === "table" ? (
-        <div className="rounded-2xl overflow-hidden" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+        <div style={{ borderRadius: 16, overflow: "hidden", background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", fontSize: 14, borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
                   {[{key:"name",label:"Name"},{key:"company",label:"Company"},{key:"platform",label:"Platform"},{key:"score",label:"Score"},{key:"status",label:"Status"},{key:"industry",label:"Industry"},{key:"last_activity",label:"Last Activity"},{key:"_actions",label:""}].map(({ key, label }) => (
-                    <th key={key} className={`text-left px-5 py-3.5 text-xs font-semibold ${key !== "_actions" ? "cursor-pointer select-none" : ""}`}
-                      style={{ color: sort.by === key ? "#a78bfa" : "var(--color-text-muted)" }}
+                    <th key={key}
+                      style={{
+                        textAlign: "left", padding: "14px 20px", fontSize: 11, fontWeight: 600,
+                        letterSpacing: "0.03em", textTransform: "uppercase", whiteSpace: "nowrap",
+                        cursor: key !== "_actions" ? "pointer" : "default",
+                        userSelect: key !== "_actions" ? "none" : "auto",
+                        color: sort.by === key ? "#a78bfa" : "var(--color-text-muted)",
+                      }}
                       onClick={() => key !== "_actions" && handleSort(key)}>
-                      {label}{sort.by === key && <span className="ml-1">{sort.dir === "asc" ? "↑" : "↓"}</span>}
+                      {label}{sort.by === key && <span style={{ marginLeft: 4 }}>{sort.dir === "asc" ? "↑" : "↓"}</span>}
                     </th>
                   ))}
                 </tr>
@@ -1094,10 +1113,10 @@ function LeadsPanel({ onSelectLead }: { onSelectLead: (id: string) => void }) {
               <tbody>
                 {isLoading ? Array.from({ length: 6 }).map((_, i) => (
                   <tr key={i} style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-                    {Array.from({ length: 8 }).map((__, j) => <td key={j} className="px-5 py-3.5"><div className="h-4 rounded" style={{ background: "var(--color-surface-2)", width: j === 0 ? 120 : 60 }} /></td>)}
+                    {Array.from({ length: 8 }).map((__, j) => <td key={j} style={{ padding: "14px 20px" }}><div style={{ height: 16, borderRadius: 6, background: "var(--color-surface-2)", width: j === 0 ? 120 : 60 }} /></td>)}
                   </tr>
                 )) : leads.length === 0 ? (
-                  <tr><td colSpan={8} className="px-5 py-12 text-center text-sm" style={{ color: "var(--color-text-muted)" }}>
+                  <tr><td colSpan={8} style={{ padding: "48px 20px", textAlign: "center", fontSize: 14, color: "var(--color-text-muted)" }}>
                     {search ? "No leads match your search." : "No leads yet. Run discovery to find prospects."}
                   </td></tr>
                 ) : leads.map((lead) => {
@@ -1105,20 +1124,20 @@ function LeadsPanel({ onSelectLead }: { onSelectLead: (id: string) => void }) {
                   const st = STATUS_MAP[lead.status];
                   const pc = lead.platform ? PLATFORM_COLORS[lead.platform] : "#6b7280";
                   return (
-                    <tr key={lead.id} className="transition-colors cursor-pointer" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}
+                    <tr key={lead.id} style={{ borderBottom: "1px solid var(--color-border-subtle)", cursor: "pointer", transition: "background 0.15s" }}
                       onMouseEnter={(e) => { (e.currentTarget).style.background = "var(--color-surface-2)"; }}
                       onMouseLeave={(e) => { (e.currentTarget).style.background = "transparent"; }}
                       onClick={() => onSelectLead(lead.id)}>
-                      <td className="px-5 py-3.5 font-medium" style={{ color: "var(--color-text-1)" }}>{lead.name}</td>
-                      <td className="px-5 py-3.5" style={{ color: "var(--color-text-2)" }}>{lead.company ?? "—"}</td>
-                      <td className="px-5 py-3.5">{lead.platform ? <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: `${pc}18`, color: pc }}>{lead.platform.toUpperCase()}</span> : "—"}</td>
-                      <td className="px-5 py-3.5"><ScoreBar score={lead.score} /></td>
-                      <td className="px-5 py-3.5"><span className="text-xs font-semibold px-2.5 py-1 rounded-lg" style={{ background: st.bg, color: st.color }}>{st.label}</span></td>
-                      <td className="px-5 py-3.5 text-xs" style={{ color: "var(--color-text-2)" }}>{lead.industry ?? "—"}</td>
-                      <td className="px-5 py-3.5 text-xs" style={{ color: "var(--color-text-muted)" }}>{lead.last_activity ? relativeTime(lead.last_activity) : "—"}</td>
-                      <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
+                      <td style={{ padding: "14px 20px", fontWeight: 500, color: "var(--color-text-1)" }}>{lead.name}</td>
+                      <td style={{ padding: "14px 20px", color: "var(--color-text-2)" }}>{lead.company ?? "—"}</td>
+                      <td style={{ padding: "14px 20px" }}>{lead.platform ? <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 6px", borderRadius: 6, background: `${pc}18`, color: pc }}>{lead.platform.toUpperCase()}</span> : "—"}</td>
+                      <td style={{ padding: "14px 20px" }}><ScoreBar score={lead.score} /></td>
+                      <td style={{ padding: "14px 20px" }}><span style={{ fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 8, background: st.bg, color: st.color }}>{st.label}</span></td>
+                      <td style={{ padding: "14px 20px", fontSize: 13, color: "var(--color-text-2)" }}>{lead.industry ?? "—"}</td>
+                      <td style={{ padding: "14px 20px", fontSize: 12, color: "var(--color-text-muted)" }}>{lead.last_activity ? relativeTime(lead.last_activity) : "—"}</td>
+                      <td style={{ padding: "14px 20px" }} onClick={(e) => e.stopPropagation()}>
                         <button onClick={(e) => { e.stopPropagation(); if (confirm("Delete this lead?")) deleteLead.mutate(lead.id); }}
-                          className="p-1.5 rounded-lg" style={{ color: "var(--color-text-muted)" }}
+                          style={{ padding: "6px", borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", color: "var(--color-text-muted)", transition: "color 0.15s" }}
                           onMouseEnter={(e) => { (e.currentTarget).style.color = "#f87171"; }}
                           onMouseLeave={(e) => { (e.currentTarget).style.color = "var(--color-text-muted)"; }}>
                           <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 3h9M5 3V2h3v1M10 3l-.5 8H3.5L3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -1131,39 +1150,39 @@ function LeadsPanel({ onSelectLead }: { onSelectLead: (id: string) => void }) {
             </table>
           </div>
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: "1px solid var(--color-border-subtle)" }}>
-              <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>{(page - 1) * 25 + 1}–{Math.min(page * 25, total)} of {total}</span>
-              <div className="flex gap-2">
-                <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ background: "var(--color-surface-2)", color: "var(--color-text-2)", border: "1px solid var(--color-border-subtle)", opacity: page <= 1 ? 0.4 : 1 }}>Previous</button>
-                <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ background: "var(--color-surface-2)", color: "var(--color-text-2)", border: "1px solid var(--color-border-subtle)", opacity: page >= totalPages ? 0.4 : 1 }}>Next</button>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px", borderTop: "1px solid var(--color-border-subtle)" }}>
+              <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{(page - 1) * 25 + 1}–{Math.min(page * 25, total)} of {total}</span>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: page <= 1 ? "not-allowed" : "pointer", background: "var(--color-surface-2)", color: "var(--color-text-2)", border: "1px solid var(--color-border-subtle)", opacity: page <= 1 ? 0.4 : 1 }}>Previous</button>
+                <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: page >= totalPages ? "not-allowed" : "pointer", background: "var(--color-surface-2)", color: "var(--color-text-2)", border: "1px solid var(--color-border-subtle)", opacity: page >= totalPages ? 0.4 : 1 }}>Next</button>
               </div>
             </div>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16 }}>
           {kanbanGroups.map(({ status, leads: g }) => {
             const style = STATUS_MAP[status];
             return (
-              <div key={status} className="rounded-2xl overflow-hidden" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
-                <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-                  <span className="text-xs font-semibold" style={{ color: style.color }}>{style.label}</span>
-                  <span className="text-xs font-bold px-1.5 py-0.5 rounded-md" style={{ background: style.bg, color: style.color }}>{g.length}</span>
+              <div key={status} style={{ borderRadius: 16, overflow: "hidden", background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
+                <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--color-border-subtle)" }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: style.color }}>{style.label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 6px", borderRadius: 6, background: style.bg, color: style.color }}>{g.length}</span>
                 </div>
-                <div className="p-2 space-y-2 min-h-24">
-                  {g.length === 0 ? <div className="text-center py-6 text-xs" style={{ color: "var(--color-text-muted)" }}>Empty</div> :
+                <div style={{ padding: 8, display: "flex", flexDirection: "column", gap: 8, minHeight: 96 }}>
+                  {g.length === 0 ? <div style={{ textAlign: "center", padding: "24px 0", fontSize: 12, color: "var(--color-text-muted)" }}>Empty</div> :
                     g.map((lead) => {
                       const sc = scoreColor(lead.score);
                       return (
-                        <div key={lead.id} onClick={() => onSelectLead(lead.id)} className="rounded-xl p-3 cursor-pointer transition-all"
-                          style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)" }}
-                          onMouseEnter={(e) => { (e.currentTarget).style.border = `1px solid ${style.color}40`; }}
-                          onMouseLeave={(e) => { (e.currentTarget).style.border = "1px solid var(--color-border-subtle)"; }}>
-                          <div className="text-xs font-medium mb-0.5" style={{ color: "var(--color-text-1)" }}>{lead.name}</div>
-                          {lead.company && <div className="text-[10px] mb-2" style={{ color: "var(--color-text-muted)" }}>{lead.company}</div>}
-                          <div className="flex items-center justify-between">
+                        <div key={lead.id} onClick={() => onSelectLead(lead.id)}
+                          style={{ borderRadius: 10, padding: 12, cursor: "pointer", transition: "border-color 0.15s", background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)" }}
+                          onMouseEnter={(e) => { (e.currentTarget).style.borderColor = `${style.color}40`; }}
+                          onMouseLeave={(e) => { (e.currentTarget).style.borderColor = "var(--color-border-subtle)"; }}>
+                          <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 2, color: "var(--color-text-1)" }}>{lead.name}</div>
+                          {lead.company && <div style={{ fontSize: 11, marginBottom: 8, color: "var(--color-text-muted)" }}>{lead.company}</div>}
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                             <PlatformBadge platform={lead.platform} />
-                            <span className="text-[10px] font-bold" style={{ color: sc.color }}>{lead.score}</span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: sc.color }}>{lead.score}</span>
                           </div>
                         </div>
                       );
@@ -1927,34 +1946,45 @@ export default function LeadsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
         {STATS[activeTab].map((s, i) => (
-          <div key={s.label} className="rounded-2xl p-5 animate-fade-up relative overflow-hidden transition-all duration-300"
-            style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: `${i * 0.07}s` }}
+          <div key={s.label}
+            className="animate-fade-up"
+            style={{
+              borderRadius: 16, padding: "22px 24px", position: "relative", overflow: "hidden",
+              background: "var(--color-surface)", border: "1px solid var(--color-border)",
+              animationDelay: `${i * 0.07}s`, transition: "all 0.3s",
+            }}
             onMouseEnter={(e) => { (e.currentTarget).style.border = `1px solid ${s.color}33`; (e.currentTarget).style.boxShadow = `0 8px 24px ${s.color}15`; }}
             onMouseLeave={(e) => { (e.currentTarget).style.border = "1px solid var(--color-border)"; (e.currentTarget).style.boxShadow = "none"; }}>
-            <div className="absolute top-0 right-0 w-24 h-24 rounded-full pointer-events-none opacity-30" style={{ background: `radial-gradient(circle, ${s.color}25 0%, transparent 70%)`, transform: "translate(25%,-25%)" }} />
-            <div className="text-2xl font-bold mb-1" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>{s.value}</div>
-            <div className="text-xs" style={{ color: "var(--color-text-muted)" }}>{s.label}</div>
+            <div style={{ position: "absolute", top: 0, right: 0, width: 80, height: 80, borderRadius: "50%", pointerEvents: "none", opacity: 0.3, background: `radial-gradient(circle, ${s.color}25 0%, transparent 70%)`, transform: "translate(25%,-25%)" }} />
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 8, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.92)" }}>{s.value}</div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.38)", letterSpacing: "0.02em" }}>{s.label}</div>
           </div>
         ))}
       </div>
 
       {/* Tab navigation */}
-      <div className="flex gap-1 p-1 rounded-2xl" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", width: "fit-content" }}>
+      <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: 16, background: "var(--color-surface)", border: "1px solid var(--color-border)", width: "fit-content" }}>
         {TABS.map(({ id, label, icon }) => (
-          <button key={id} onClick={() => setActiveTab(id)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all"
-            style={{ background: activeTab === id ? "rgba(124,58,237,0.15)" : "transparent", color: activeTab === id ? "#a78bfa" : "var(--color-text-2)", border: activeTab === id ? "1px solid rgba(124,58,237,0.25)" : "1px solid transparent" }}>
+          <button key={id} onClick={() => setActiveTab(id)}
+            style={{
+              display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 12,
+              fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.15s",
+              background: activeTab === id ? "rgba(124,58,237,0.15)" : "transparent",
+              color: activeTab === id ? "#a78bfa" : "var(--color-text-2)",
+              border: activeTab === id ? "1px solid rgba(124,58,237,0.25)" : "1px solid transparent",
+            }}>
             <span>{icon}</span>
             <span>{label}</span>
             {id === "prospects" && businesses.length > 0 && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-0.5" style={{ background: "rgba(124,58,237,0.2)", color: "#a78bfa" }}>{businesses.length}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 999, background: "rgba(124,58,237,0.2)", color: "#a78bfa" }}>{businesses.length}</span>
             )}
             {id === "intent" && signals.length > 0 && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-0.5" style={{ background: "rgba(124,58,237,0.2)", color: "#a78bfa" }}>{signals.length}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 999, background: "rgba(124,58,237,0.2)", color: "#a78bfa" }}>{signals.length}</span>
             )}
             {id === "assets" && assets.length > 0 && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-0.5" style={{ background: "rgba(124,58,237,0.2)", color: "#a78bfa" }}>{assets.length}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 999, background: "rgba(124,58,237,0.2)", color: "#a78bfa" }}>{assets.length}</span>
             )}
           </button>
         ))}
