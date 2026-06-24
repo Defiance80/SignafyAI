@@ -96,45 +96,42 @@ export default function SettingsPage() {
       </div>
 
       {/* Profile */}
-      <div className="rounded-2xl p-6 animate-fade-up" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.07s" }}>
-        <h2 className="text-sm font-semibold mb-4" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Profile</h2>
-        <div className="flex items-start gap-5">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold flex-shrink-0" style={{ background: "rgba(124,58,237,0.15)", color: "#a78bfa" }}>{userInitial}</div>
-          <div className="flex-1 space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="animate-fade-up" style={{ borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.07s" }}>
+        <h2 style={{ fontSize: 13, fontWeight: 700, marginBottom: 20, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.5)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Profile</h2>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 20 }}>
+          <div style={{ width: 60, height: 60, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700, flexShrink: 0, background: "rgba(124,58,237,0.15)", color: "#a78bfa" }}>{userInitial}</div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div>
-                <label className="text-xs font-medium block mb-1" style={{ color: "var(--color-text-muted)" }}>Name</label>
+                <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.35)" }}>Name</label>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl text-sm outline-none"
-                  style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "var(--color-text-1)" }}
+                  style={{ width: "100%", padding: "10px 14px", borderRadius: 10, fontSize: 14, outline: "none", background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "rgba(255,255,255,0.88)" }}
                 />
               </div>
               <div>
-                <label className="text-xs font-medium block mb-1" style={{ color: "var(--color-text-muted)" }}>Email</label>
+                <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.35)" }}>Email</label>
                 <input
                   value={me?.user.email ?? ""}
                   readOnly
-                  className="w-full px-3 py-2 rounded-xl text-sm outline-none"
-                  style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "var(--color-text-muted)", cursor: "default" }}
+                  style={{ width: "100%", padding: "10px 14px", borderRadius: 10, fontSize: 14, outline: "none", background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "rgba(255,255,255,0.35)", cursor: "default" }}
                 />
               </div>
             </div>
             <div>
-              <label className="text-xs font-medium block mb-1" style={{ color: "var(--color-text-muted)" }}>Workspace name</label>
+              <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.35)" }}>Workspace name</label>
               <input
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl text-sm outline-none"
-                style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "var(--color-text-1)" }}
+                style={{ width: "100%", padding: "10px 14px", borderRadius: 10, fontSize: 14, outline: "none", background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "rgba(255,255,255,0.88)" }}
               />
             </div>
             <button
               onClick={handleSaveProfile}
               disabled={savingProfile}
-              className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
               style={{
+                alignSelf: "flex-start", padding: "10px 20px", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: savingProfile ? "not-allowed" : "pointer", transition: "all 0.15s",
                 background: profileSaved ? "rgba(52,211,153,0.12)" : "rgba(124,58,237,0.12)",
                 border: profileSaved ? "1px solid rgba(52,211,153,0.25)" : "1px solid rgba(124,58,237,0.25)",
                 color: profileSaved ? "#34d399" : "#a78bfa",
@@ -148,24 +145,24 @@ export default function SettingsPage() {
 
       {/* Usage */}
       {me && (
-        <div className="rounded-2xl p-6 animate-fade-up" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.11s" }}>
-          <h2 className="text-sm font-semibold mb-4" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Usage this month</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="animate-fade-up" style={{ borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.11s" }}>
+          <h2 style={{ fontSize: 13, fontWeight: 700, marginBottom: 20, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.5)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Usage this month</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             {[
               { label: "Leads", used: me.org.usage_leads_mo, limit: me.org.limits_leads_mo, color: "#6d28d9" },
               { label: "Content pieces", used: me.org.usage_content_mo, limit: me.org.limits_content_mo, color: "#0891b2" },
             ].map((u) => {
               const pct = Math.min(100, Math.round((u.used / u.limit) * 100));
               return (
-                <div key={u.label} className="rounded-xl p-4" style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)" }}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>{u.label}</span>
-                    <span className="text-xs font-semibold" style={{ color: "var(--color-text-1)" }}>{u.used.toLocaleString()} / {u.limit.toLocaleString()}</span>
+                <div key={u.label} style={{ borderRadius: 12, padding: "18px 20px", background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.45)" }}>{u.label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>{u.used.toLocaleString()} / {u.limit.toLocaleString()}</span>
                   </div>
-                  <div className="w-full h-1.5 rounded-full" style={{ background: "var(--color-border)" }}>
-                    <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, background: pct > 80 ? "#f87171" : u.color }} />
+                  <div style={{ width: "100%", height: 5, borderRadius: 999, background: "rgba(255,255,255,0.06)" }}>
+                    <div style={{ height: 5, borderRadius: 999, transition: "all 0.3s", width: `${pct}%`, background: pct > 80 ? "#f87171" : u.color }} />
                   </div>
-                  <span className="text-[10px] mt-1 block" style={{ color: "var(--color-text-muted)" }}>{pct}% used</span>
+                  <span style={{ fontSize: 11, marginTop: 6, display: "block", color: "rgba(255,255,255,0.3)" }}>{pct}% used</span>
                 </div>
               );
             })}
@@ -174,49 +171,48 @@ export default function SettingsPage() {
       )}
 
       {/* Brand Voice */}
-      <div className="rounded-2xl p-6 animate-fade-up" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.14s" }}>
-        <h2 className="text-sm font-semibold mb-4" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Brand Voice</h2>
-        <div className="space-y-3">
+      <div className="animate-fade-up" style={{ borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.14s" }}>
+        <h2 style={{ fontSize: 13, fontWeight: 700, marginBottom: 20, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.5)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Brand Voice</h2>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
-            <label className="text-xs font-medium block mb-1" style={{ color: "var(--color-text-muted)" }}>Tone</label>
-            <div className="flex flex-wrap gap-2">
+            <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 8, color: "rgba(255,255,255,0.35)" }}>Tone</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {["Professional", "Warm", "Consultative", "Bold", "Casual"].map((t, i) => (
-                <span key={t} className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all" style={{
+                <span key={t} style={{
+                  padding: "7px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.15s",
                   background: i < 3 ? "rgba(124,58,237,0.15)" : "var(--color-surface-2)",
                   border: i < 3 ? "1px solid rgba(124,58,237,0.3)" : "1px solid var(--color-border-subtle)",
-                  color: i < 3 ? "#a78bfa" : "var(--color-text-muted)",
+                  color: i < 3 ? "#a78bfa" : "rgba(255,255,255,0.38)",
                 }}>{t}</span>
               ))}
             </div>
           </div>
           <div>
-            <label className="text-xs font-medium block mb-1" style={{ color: "var(--color-text-muted)" }}>Brand description</label>
+            <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 8, color: "rgba(255,255,255,0.35)" }}>Brand description</label>
             <textarea
               defaultValue="We help marketing agencies and DTC brands scale with AI-powered lead generation, content creation, and social management."
               rows={3}
-              className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
-              style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "var(--color-text-1)" }}
+              style={{ width: "100%", padding: "10px 14px", borderRadius: 10, fontSize: 14, outline: "none", resize: "none", background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "rgba(255,255,255,0.88)", lineHeight: 1.6 }}
             />
           </div>
         </div>
       </div>
 
       {/* Notifications */}
-      <div className="rounded-2xl p-6 animate-fade-up" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.21s" }}>
-        <h2 className="text-sm font-semibold mb-4" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Notifications</h2>
-        <div className="space-y-3">
+      <div className="animate-fade-up" style={{ borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.21s" }}>
+        <h2 style={{ fontSize: 13, fontWeight: 700, marginBottom: 20, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.5)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Notifications</h2>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {NOTIFICATIONS.map((n) => (
-            <div key={n.key} className="flex items-center justify-between p-3.5 rounded-xl" style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)" }}>
-              <div>
-                <div className="text-sm font-medium" style={{ color: "var(--color-text-1)" }}>{n.label}</div>
-                <div className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>{n.description}</div>
+            <div key={n.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderRadius: 12, background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)" }}>
+              <div style={{ flex: 1, minWidth: 0, paddingRight: 16 }}>
+                <div style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.88)", marginBottom: 2 }}>{n.label}</div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>{n.description}</div>
               </div>
               <button
                 onClick={() => toggleNotif(n.key)}
-                className="w-10 h-6 rounded-full relative transition-all flex-shrink-0"
-                style={{ background: notifs[n.key] ? "#7c3aed" : "var(--color-border)" }}
+                style={{ width: 40, height: 24, borderRadius: 999, position: "relative", transition: "all 0.2s", flexShrink: 0, border: "none", cursor: "pointer", background: notifs[n.key] ? "#7c3aed" : "rgba(255,255,255,0.1)" }}
               >
-                <div className="w-4 h-4 rounded-full bg-white absolute top-1 transition-all" style={{ left: notifs[n.key] ? 20 : 4 }} />
+                <div style={{ width: 16, height: 16, borderRadius: "50%", background: "white", position: "absolute", top: 4, transition: "all 0.2s", left: notifs[n.key] ? 20 : 4 }} />
               </button>
             </div>
           ))}
@@ -224,29 +220,28 @@ export default function SettingsPage() {
       </div>
 
       {/* Billing */}
-      <div className="rounded-2xl p-6 animate-fade-up relative overflow-hidden" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.28s" }}>
-        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 80% 50%, rgba(109,40,217,0.06) 0%, transparent 70%)" }} />
-        <div className="relative">
-          <h2 className="text-sm font-semibold mb-4" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Plan & Billing</h2>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-xl" style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)" }}>
+      <div className="animate-fade-up" style={{ borderRadius: 16, padding: "28px 32px", position: "relative", overflow: "hidden", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.28s" }}>
+        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse at 80% 50%, rgba(109,40,217,0.06) 0%, transparent 70%)" }} />
+        <div style={{ position: "relative" }}>
+          <h2 style={{ fontSize: 13, fontWeight: 700, marginBottom: 20, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.5)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Plan & Billing</h2>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "18px 22px", borderRadius: 12, background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", flexWrap: "wrap" }}>
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-bold capitalize" style={{ color: "var(--color-text-1)" }}>{plan} Plan</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold capitalize" style={{ background: `${planColor}20`, color: planColor }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <span style={{ fontSize: 15, fontWeight: 700, textTransform: "capitalize", color: "rgba(255,255,255,0.92)" }}>{plan} Plan</span>
+                <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 6, fontWeight: 600, textTransform: "capitalize", background: `${planColor}20`, color: planColor }}>
                   {me?.org.subscription_status ?? "active"}
                 </span>
               </div>
-              <div className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.38)" }}>
                 {price > 0 ? `$${price}/month` : "Free forever"} ·{" "}
                 {me?.org.usage_leads_mo ?? 0} of {me?.org.limits_leads_mo ?? 25} leads used this month
               </div>
             </div>
-            <div className="flex flex-col gap-2">
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {plan === "free" ? (
                 <a
                   href="/onboarding"
-                  className="px-4 py-2 rounded-xl text-sm font-medium text-center transition-all"
-                  style={{ background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)", color: "white", boxShadow: "0 4px 12px rgba(124,58,237,0.3)" }}
+                  style={{ padding: "10px 20px", borderRadius: 10, fontSize: 14, fontWeight: 600, textAlign: "center", textDecoration: "none", transition: "all 0.15s", background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)", color: "white", boxShadow: "0 4px 12px rgba(124,58,237,0.3)" }}
                 >
                   Upgrade Plan
                 </a>
@@ -254,14 +249,13 @@ export default function SettingsPage() {
                 <button
                   onClick={handleManagePlan}
                   disabled={isBillingLoading}
-                  className="px-4 py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-60"
-                  style={{ background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)", color: "#a78bfa" }}
+                  style={{ padding: "10px 20px", borderRadius: 10, fontSize: 14, fontWeight: 600, transition: "all 0.15s", cursor: isBillingLoading ? "not-allowed" : "pointer", opacity: isBillingLoading ? 0.6 : 1, border: "1px solid rgba(124,58,237,0.3)", background: "rgba(124,58,237,0.15)", color: "#a78bfa" }}
                 >
                   {isBillingLoading ? "Opening…" : "Manage Plan"}
                 </button>
               )}
               {billingError && (
-                <p className="text-xs" style={{ color: "#f87171" }}>{billingError}</p>
+                <p style={{ fontSize: 13, color: "#f87171" }}>{billingError}</p>
               )}
             </div>
           </div>

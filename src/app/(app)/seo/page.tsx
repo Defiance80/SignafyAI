@@ -150,38 +150,41 @@ export default function SeoPage() {
       )}
 
       {/* Clusters */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-up" style={{ animationDelay: "0.15s" }}>
+      <div className="animate-fade-up" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, animationDelay: "0.15s" }}>
         {clusters.map((c) => (
           <div
             key={c.name}
-            className="rounded-2xl p-5 transition-all duration-300 relative overflow-hidden"
-            style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
+            style={{
+              borderRadius: 16, padding: "22px 24px", position: "relative", overflow: "hidden",
+              background: "var(--color-surface)", border: "1px solid var(--color-border)",
+              transition: "all 0.3s",
+            }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.border = `1px solid ${c.color}33`; (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 24px ${c.color}15`; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.border = "1px solid var(--color-border)"; (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
           >
-            <div className="absolute top-0 right-0 w-20 h-20 rounded-full pointer-events-none opacity-30" style={{ background: `radial-gradient(circle, ${c.color}25 0%, transparent 70%)`, transform: "translate(25%, -25%)" }} />
-            <div className="text-xs font-semibold mb-1" style={{ color: c.color }}>{c.name}</div>
-            <div className="text-xl font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>{c.volume}</div>
-            <div className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>{c.keywords} keywords</div>
+            <div style={{ position: "absolute", top: 0, right: 0, width: 80, height: 80, borderRadius: "50%", pointerEvents: "none", opacity: 0.3, background: `radial-gradient(circle, ${c.color}25 0%, transparent 70%)`, transform: "translate(25%, -25%)" }} />
+            <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 8, color: c.color, letterSpacing: "0.04em", textTransform: "uppercase" }}>{c.name}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 6, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.92)" }}>{c.volume}</div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{c.keywords} keywords</div>
           </div>
         ))}
       </div>
 
       {/* Keywords Table */}
-      <div className="rounded-2xl overflow-hidden animate-fade-up" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.2s" }}>
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-          <h2 className="text-sm font-semibold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>
+      <div className="animate-fade-up" style={{ borderRadius: 16, overflow: "hidden", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.2s" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 28px", borderBottom: "1px solid var(--color-border-subtle)" }}>
+          <h2 style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.9)" }}>
             Keyword Opportunities
-            {lastTopic && <span className="ml-2 text-xs font-normal" style={{ color: "var(--color-text-muted)" }}>for &ldquo;{lastTopic}&rdquo;</span>}
+            {lastTopic && <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 400, color: "rgba(255,255,255,0.35)" }}>for &ldquo;{lastTopic}&rdquo;</span>}
           </h2>
-          <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>{filtered.length} keywords</span>
+          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{filtered.length} keywords</span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
                 {["Keyword", "Volume", "Difficulty", "CPC", "Trend"].map((h) => (
-                  <th key={h} className="text-left px-6 py-3 text-xs font-semibold" style={{ color: "var(--color-text-muted)" }}>{h}</th>
+                  <th key={h} style={{ textAlign: "left", padding: "14px 24px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: "0.04em", textTransform: "uppercase" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -191,17 +194,16 @@ export default function SeoPage() {
                 return (
                   <tr
                     key={kw.keyword}
-                    className="transition-colors cursor-default"
-                    style={{ borderBottom: "1px solid var(--color-border-subtle)" }}
+                    style={{ borderBottom: "1px solid var(--color-border-subtle)", cursor: "default", transition: "background 0.15s" }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                   >
-                    <td className="px-6 py-3 font-medium" style={{ color: "var(--color-text-1)" }}>{kw.keyword}</td>
-                    <td className="px-6 py-3" style={{ color: "var(--color-text-2)" }}>{kw.volume.toLocaleString()}</td>
-                    <td className="px-6 py-3"><span className="text-xs font-semibold px-2 py-1 rounded-lg" style={{ background: d.bg, color: d.color }}>{kw.difficulty}</span></td>
-                    <td className="px-6 py-3" style={{ color: "var(--color-text-2)" }}>{kw.cpc}</td>
-                    <td className="px-6 py-3">
-                      <span style={{ color: kw.trend === "up" ? "#34d399" : kw.trend === "down" ? "#f87171" : "var(--color-text-muted)" }}>
+                    <td style={{ padding: "15px 24px", fontWeight: 500, color: "rgba(255,255,255,0.88)" }}>{kw.keyword}</td>
+                    <td style={{ padding: "15px 24px", color: "rgba(255,255,255,0.55)" }}>{kw.volume.toLocaleString()}</td>
+                    <td style={{ padding: "15px 24px" }}><span style={{ fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 8, background: d.bg, color: d.color }}>{kw.difficulty}</span></td>
+                    <td style={{ padding: "15px 24px", color: "rgba(255,255,255,0.55)" }}>{kw.cpc}</td>
+                    <td style={{ padding: "15px 24px" }}>
+                      <span style={{ fontSize: 13, color: kw.trend === "up" ? "#34d399" : kw.trend === "down" ? "#f87171" : "rgba(255,255,255,0.35)" }}>
                         {kw.trend === "up" ? "↑ Up" : kw.trend === "down" ? "↓ Down" : "→ Stable"}
                       </span>
                     </td>
@@ -211,8 +213,8 @@ export default function SeoPage() {
             </tbody>
           </table>
           {filtered.length === 0 && (
-            <div className="px-6 py-10 text-center">
-              <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>No keywords match your search.</p>
+            <div style={{ padding: "40px 28px", textAlign: "center" }}>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.3)" }}>No keywords match your search.</p>
             </div>
           )}
         </div>

@@ -46,7 +46,12 @@
 }
 
 /* ── Reset ──────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* In CSS Cascade 5 (Tailwind v4), unlayered CSS beats @layer utilities
+   regardless of specificity. Putting the reset in @layer base lets
+   p-4, p-5, p-6, mx-auto, space-y-*, mb-*, mt-* all work correctly. */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+}
 
 html {
   scroll-behavior: smooth;
@@ -69,18 +74,21 @@ body {
 }
 
 /* ── Headings ───────────────────────────────────────────────── */
-h1, h2, h3, h4, h5, h6 {
-  font-family:     var(--font-sans);
-  font-weight:     600;
-  letter-spacing:  -0.03em;
-  line-height:     1.18;
-  color:           var(--color-text-1);
-}
+/* Also layered so Tailwind text-sm / text-xs on h2/h3 panel labels work. */
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    font-family:     var(--font-sans);
+    font-weight:     600;
+    letter-spacing:  -0.03em;
+    line-height:     1.18;
+    color:           var(--color-text-1);
+  }
 
-h1 { font-size: clamp(28px, 4vw, 42px); font-weight: 700; }
-h2 { font-size: clamp(22px, 3vw, 32px); }
-h3 { font-size: clamp(17px, 2vw, 22px); }
-h4 { font-size: 17px; }
+  h1 { font-size: clamp(28px, 4vw, 42px); font-weight: 700; }
+  h2 { font-size: clamp(22px, 3vw, 32px); }
+  h3 { font-size: clamp(17px, 2vw, 22px); }
+  h4 { font-size: 17px; }
+}
 
 /* Display headings use Syne (wordmarks, hero text) */
 .font-display,

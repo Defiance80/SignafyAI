@@ -148,31 +148,29 @@ export default function BacklinksPage() {
 
       {/* Discovery Tab */}
       {tab === "discover" && (
-        <div className="space-y-6 animate-fade-up">
+        <div className="animate-fade-up" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Discovery form */}
-          <div className="rounded-2xl p-6" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
-            <h2 className="text-sm font-semibold mb-4" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Find Link Building Opportunities</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div style={{ borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 20, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.9)" }}>Find Link Building Opportunities</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
               <div>
-                <label className="text-xs font-medium block mb-1.5" style={{ color: "var(--color-text-muted)" }}>Your domain</label>
+                <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.35)" }}>Your domain</label>
                 <input
                   value={domain}
                   onChange={(e) => setDomain(e.target.value)}
                   placeholder="yourdomain.com"
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                  style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "var(--color-text-1)" }}
+                  style={{ width: "100%", padding: "11px 14px", borderRadius: 10, fontSize: 14, outline: "none", background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "rgba(255,255,255,0.88)" }}
                   onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(124,58,237,0.4)"; }}
                   onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--color-border-subtle)"; }}
                 />
               </div>
               <div>
-                <label className="text-xs font-medium block mb-1.5" style={{ color: "var(--color-text-muted)" }}>Niche / Industry (optional)</label>
+                <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.35)" }}>Niche / Industry (optional)</label>
                 <input
                   value={niche}
                   onChange={(e) => setNiche(e.target.value)}
                   placeholder="e.g. marketing software, DTC fashion"
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                  style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "var(--color-text-1)" }}
+                  style={{ width: "100%", padding: "11px 14px", borderRadius: 10, fontSize: 14, outline: "none", background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "rgba(255,255,255,0.88)" }}
                   onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(124,58,237,0.4)"; }}
                   onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--color-border-subtle)"; }}
                 />
@@ -180,7 +178,7 @@ export default function BacklinksPage() {
             </div>
 
             {error && (
-              <div className="mb-4 rounded-xl px-4 py-2.5 text-sm" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }}>
+              <div style={{ marginBottom: 14, borderRadius: 10, padding: "12px 16px", fontSize: 14, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }}>
                 {error}
               </div>
             )}
@@ -188,8 +186,8 @@ export default function BacklinksPage() {
             <button
               onClick={handleDiscover}
               disabled={isDiscovering}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)", color: "white", boxShadow: "0 4px 12px rgba(124,58,237,0.3)" }}
+              className="flex items-center"
+              style={{ gap: 8, padding: "11px 22px", borderRadius: 10, fontSize: 14, fontWeight: 600, transition: "all 0.15s", cursor: isDiscovering ? "not-allowed" : "pointer", opacity: isDiscovering ? 0.7 : 1, border: "none", background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)", color: "white", boxShadow: "0 4px 12px rgba(124,58,237,0.3)" }}
             >
               {isDiscovering ? (
                 <><svg className="animate-spin" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" stroke="rgba(255,255,255,0.3)" strokeWidth="2"/><path d="M7 2a5 5 0 0 1 5 5" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg> Discovering…</>
@@ -201,43 +199,46 @@ export default function BacklinksPage() {
 
           {/* Opportunities */}
           {opportunities.length > 0 && (
-            <div className="rounded-2xl overflow-hidden" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
-              <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-                <h2 className="text-sm font-semibold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>
+            <div style={{ borderRadius: 16, overflow: "hidden", background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
+              <div style={{ padding: "18px 28px", borderBottom: "1px solid var(--color-border-subtle)" }}>
+                <h2 style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.9)" }}>
                   {opportunities.length} Opportunities Found
                 </h2>
               </div>
-              <div className="divide-y" style={{ borderColor: "var(--color-border-subtle)" }}>
+              <div>
                 {opportunities.map((opp, i) => (
                   <div
                     key={i}
-                    className="flex items-start gap-4 px-6 py-4 transition-colors"
+                    className="flex items-start transition-colors"
+                    style={{ gap: 16, padding: "16px 28px", borderBottom: "1px solid var(--color-border-subtle)" }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                   >
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-xs font-bold" style={{ background: "rgba(124,58,237,0.12)", color: "#a78bfa" }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 700, background: "rgba(124,58,237,0.12)", color: "#a78bfa" }}>
                       {opp.domain_authority}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="text-sm font-semibold" style={{ color: "var(--color-text-1)" }}>{opp.site_name}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: "var(--color-surface-2)", color: "var(--color-text-muted)" }}>{TYPE_LABELS[opp.type] ?? opp.type}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: "rgba(52,211,153,0.1)", color: "#34d399" }}>{opp.relevance}% match</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.9)" }}>{opp.site_name}</span>
+                        <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, background: "var(--color-surface-2)", color: "rgba(255,255,255,0.38)" }}>{TYPE_LABELS[opp.type] ?? opp.type}</span>
+                        <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, background: "rgba(52,211,153,0.1)", color: "#34d399" }}>{opp.relevance}% match</span>
                       </div>
-                      <div className="text-xs mb-1" style={{ color: "var(--color-text-muted)" }}>
+                      <div style={{ fontSize: 13, marginBottom: 3, color: "rgba(255,255,255,0.38)" }}>
                         {opp.site_url} · {opp.estimated_traffic} traffic · DA {opp.domain_authority}
                       </div>
                       {opp.notes && (
-                        <p className="text-xs" style={{ color: "var(--color-text-2)" }}>{opp.notes}</p>
+                        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>{opp.notes}</p>
                       )}
                     </div>
                     <button
                       onClick={() => handleRequest(opp)}
                       disabled={requesting === opp.site_url || requested.has(opp.site_url)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex-shrink-0 disabled:opacity-60"
-                      style={requested.has(opp.site_url)
-                        ? { background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.25)", color: "#34d399" }
-                        : { background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.25)", color: "#a78bfa" }}
+                      style={{
+                        padding: "8px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: "pointer", flexShrink: 0, transition: "all 0.15s",
+                        ...(requested.has(opp.site_url)
+                          ? { background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.25)", color: "#34d399" }
+                          : { background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.25)", color: "#a78bfa" })
+                      }}
                     >
                       {requesting === opp.site_url ? "Saving…" : requested.has(opp.site_url) ? "Requested ✓" : "Request Link"}
                     </button>
@@ -252,13 +253,13 @@ export default function BacklinksPage() {
       {/* Tracker Tab */}
       {tab === "tracker" && (
         <div className="animate-fade-up">
-          <div className="rounded-2xl overflow-hidden" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
-            <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-              <h2 className="text-sm font-semibold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Tracked Backlinks</h2>
+          <div style={{ borderRadius: 16, overflow: "hidden", background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 28px", borderBottom: "1px solid var(--color-border-subtle)" }}>
+              <h2 style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.9)" }}>Tracked Backlinks</h2>
               <button
                 onClick={() => setTab("discover")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                style={{ background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.25)", color: "#a78bfa" }}
+                className="flex items-center"
+                style={{ gap: 6, padding: "8px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.15s", border: "none", background: "rgba(124,58,237,0.12)", outline: "1px solid rgba(124,58,237,0.25)", color: "#a78bfa" }}
               >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
                 Add Links
@@ -266,43 +267,44 @@ export default function BacklinksPage() {
             </div>
 
             {isLoading ? (
-              <div className="p-4 space-y-3">
-                {[1, 2, 3].map((i) => <div key={i} className="h-14 animate-pulse rounded-xl" style={{ background: "var(--color-surface-2)" }} />)}
+              <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {[1, 2, 3].map((i) => <div key={i} style={{ height: 56, borderRadius: 10, background: "var(--color-surface-2)" }} className="animate-pulse" />)}
               </div>
             ) : backlinks.length === 0 ? (
-              <div className="px-6 py-12 text-center">
-                <div className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: "rgba(124,58,237,0.1)", color: "#a78bfa" }}>
+              <div style={{ padding: "48px 28px", textAlign: "center" }}>
+                <div style={{ width: 48, height: 48, borderRadius: 12, margin: "0 auto 14px", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(124,58,237,0.1)", color: "#a78bfa" }}>
                   <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
                     <path d="M9 13l-2 2a3.5 3.5 0 0 1-4.95-4.95l4-4A3.5 3.5 0 0 1 11.5 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                     <path d="M13 9l2-2a3.5 3.5 0 0 1 4.95 4.95l-4 4A3.5 3.5 0 0 1 10.5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                   </svg>
                 </div>
-                <p className="text-sm font-semibold mb-1" style={{ color: "var(--color-text-1)" }}>No backlinks tracked yet</p>
-                <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>Discover opportunities above and start building your link profile.</p>
+                <p style={{ fontSize: 15, fontWeight: 600, color: "rgba(255,255,255,0.88)", marginBottom: 4 }}>No backlinks tracked yet</p>
+                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.35)" }}>Discover opportunities above and start building your link profile.</p>
               </div>
             ) : (
-              <div className="divide-y" style={{ borderColor: "var(--color-border-subtle)" }}>
+              <div>
                 {backlinks.map((bl) => {
                   const s = STATUS_STYLES[bl.status] ?? STATUS_STYLES.pending;
                   return (
                     <div
                       key={bl.id}
-                      className="flex items-center gap-4 px-6 py-4 transition-colors"
+                      className="flex items-center transition-colors"
+                      style={{ gap: 16, padding: "15px 28px", borderBottom: "1px solid var(--color-border-subtle)" }}
                       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
                       onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                          <span className="text-sm font-medium truncate" style={{ color: "var(--color-text-1)" }}>{bl.url}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 14, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "rgba(255,255,255,0.88)" }}>{bl.url}</span>
                           {bl.domain_authority != null && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-md flex-shrink-0" style={{ background: "rgba(124,58,237,0.12)", color: "#a78bfa" }}>DA {bl.domain_authority}</span>
+                            <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, flexShrink: 0, background: "rgba(124,58,237,0.12)", color: "#a78bfa" }}>DA {bl.domain_authority}</span>
                           )}
                         </div>
                         {bl.anchor_text && (
-                          <div className="text-xs" style={{ color: "var(--color-text-muted)" }}>Anchor: &ldquo;{bl.anchor_text}&rdquo;</div>
+                          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.38)" }}>Anchor: &ldquo;{bl.anchor_text}&rdquo;</div>
                         )}
                       </div>
-                      <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg flex-shrink-0" style={{ background: s.bg, color: s.color }}>{s.label}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 8, flexShrink: 0, background: s.bg, color: s.color }}>{s.label}</span>
                     </div>
                   );
                 })}

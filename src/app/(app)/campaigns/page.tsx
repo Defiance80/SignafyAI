@@ -173,46 +173,50 @@ export default function CampaignsPage() {
 
       {/* Campaign Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => <div key={i} className="h-44 rounded-2xl animate-pulse" style={{ background: "var(--color-surface)" }} />)}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+          {[1, 2, 3].map((i) => <div key={i} style={{ height: 180, borderRadius: 16, background: "var(--color-surface)" }} className="animate-pulse" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-2xl p-12 text-center" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
-          <div className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: "rgba(124,58,237,0.1)", color: "#a78bfa" }}>
+        <div style={{ borderRadius: 16, padding: "48px 32px", textAlign: "center", background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, margin: "0 auto 14px", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(124,58,237,0.1)", color: "#a78bfa" }}>
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 4v14M4 11h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </div>
-          <p className="text-sm font-semibold mb-1" style={{ color: "var(--color-text-1)" }}>No campaigns yet</p>
-          <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>Create your first campaign to get started.</p>
+          <p style={{ fontSize: 15, fontWeight: 600, color: "rgba(255,255,255,0.88)", marginBottom: 4 }}>No campaigns yet</p>
+          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.3)" }}>Create your first campaign to get started.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
           {filtered.map((c, i) => {
             const s = STATUS_STYLES[c.status] ?? STATUS_STYLES.draft;
             const color = CAMPAIGN_COLORS[i % CAMPAIGN_COLORS.length];
             return (
               <div
                 key={c.id}
-                className="rounded-2xl p-5 animate-fade-up transition-all duration-300 relative overflow-hidden"
-                style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: `${0.15 + i * 0.07}s` }}
+                className="animate-fade-up"
+                style={{
+                  borderRadius: 16, padding: "24px 26px", position: "relative", overflow: "hidden",
+                  background: "var(--color-surface)", border: "1px solid var(--color-border)",
+                  animationDelay: `${0.15 + i * 0.07}s`, transition: "all 0.3s",
+                }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.border = `1px solid ${color}33`; (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 24px ${color}12`; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.border = "1px solid var(--color-border)"; (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
               >
-                <div className="absolute top-0 right-0 w-20 h-20 rounded-full pointer-events-none opacity-20" style={{ background: `radial-gradient(circle, ${color}30 0%, transparent 70%)`, transform: "translate(25%, -25%)" }} />
-                <div className="flex items-start justify-between mb-3">
-                  <h3 className="text-sm font-semibold pr-2" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>{c.name}</h3>
-                  <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg flex-shrink-0 capitalize" style={{ background: s.bg, color: s.color }}>{c.status}</span>
+                <div style={{ position: "absolute", top: 0, right: 0, width: 80, height: 80, borderRadius: "50%", pointerEvents: "none", opacity: 0.2, background: `radial-gradient(circle, ${color}30 0%, transparent 70%)`, transform: "translate(25%, -25%)" }} />
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, paddingRight: 10, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.9)", margin: 0, lineHeight: 1.35 }}>{c.name}</h3>
+                  <span style={{ fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 8, flexShrink: 0, textTransform: "capitalize", background: s.bg, color: s.color }}>{c.status}</span>
                 </div>
-                <div className="text-xs mb-4 space-y-1.5" style={{ color: "var(--color-text-muted)" }}>
+                <div style={{ fontSize: 13, marginBottom: 16, color: "rgba(255,255,255,0.38)", display: "flex", flexDirection: "column", gap: 6 }}>
                   <div>{formatDates(c.start_date, c.end_date)}</div>
-                  <div className="flex gap-3">
-                    <span>Budget: <span style={{ color: "var(--color-text-2)" }}>{formatBudget(c.budget)}</span></span>
-                    {c.budget_spent != null && <span>Spent: <span style={{ color: "var(--color-text-2)" }}>{formatBudget(c.budget_spent)}</span></span>}
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <span>Budget: <span style={{ color: "rgba(255,255,255,0.6)" }}>{formatBudget(c.budget)}</span></span>
+                    {c.budget_spent != null && <span>Spent: <span style={{ color: "rgba(255,255,255,0.6)" }}>{formatBudget(c.budget_spent)}</span></span>}
                   </div>
                 </div>
-                <div className="flex items-end justify-between">
-                  <div className="flex gap-1.5 flex-wrap">
+                <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {c.channels.map((ch) => (
-                      <span key={ch} className="text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: "var(--color-surface-2)", color: "var(--color-text-muted)", border: "1px solid var(--color-border-subtle)" }}>{ch}</span>
+                      <span key={ch} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 6, background: "var(--color-surface-2)", color: "rgba(255,255,255,0.38)", border: "1px solid var(--color-border-subtle)" }}>{ch}</span>
                     ))}
                   </div>
                   <Sparkline color={color} />
@@ -230,7 +234,7 @@ export default function CampaignsPage() {
           style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
         >
-          <div className="w-full max-w-lg rounded-2xl p-6 space-y-5 max-h-[90vh] overflow-y-auto" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
+          <div style={{ width: "100%", maxWidth: 560, borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)", maxHeight: "90vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>New Campaign</h2>
               <button onClick={() => setShowModal(false)} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style={{ background: "var(--color-surface-2)", color: "var(--color-text-muted)" }}>
@@ -238,7 +242,7 @@ export default function CampaignsPage() {
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
                 <label className="text-xs font-medium block mb-1.5" style={{ color: "var(--color-text-muted)" }}>Campaign name *</label>
                 <input

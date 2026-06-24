@@ -108,56 +108,60 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Metrics */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
         {METRICS.map((m, i) => (
           <div
             key={m.label}
-            className="rounded-2xl p-5 animate-fade-up relative overflow-hidden transition-all duration-300"
-            style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: `${i * 0.07}s` }}
+            className="animate-fade-up"
+            style={{
+              borderRadius: 16, padding: "26px 28px", position: "relative", overflow: "hidden",
+              background: "var(--color-surface)", border: "1px solid var(--color-border)",
+              animationDelay: `${i * 0.07}s`, transition: "all 0.3s",
+            }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.border = `1px solid ${m.color}33`; (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 24px ${m.color}15`; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.border = "1px solid var(--color-border)"; (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
           >
-            <div className="absolute top-0 right-0 w-24 h-24 rounded-full pointer-events-none opacity-30" style={{ background: `radial-gradient(circle, ${m.color}25 0%, transparent 70%)`, transform: "translate(25%, -25%)" }} />
-            <div className="text-xs mb-3" style={{ color: "var(--color-text-muted)" }}>{m.label}</div>
-            <div className={`text-2xl font-bold ${loading ? "animate-pulse" : ""}`} style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>{m.value}</div>
+            <div style={{ position: "absolute", top: 0, right: 0, width: 96, height: 96, borderRadius: "50%", pointerEvents: "none", opacity: 0.3, background: `radial-gradient(circle, ${m.color}25 0%, transparent 70%)`, transform: "translate(25%, -25%)" }} />
+            <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 12, color: "rgba(255,255,255,0.38)", letterSpacing: "0.03em" }}>{m.label}</div>
+            <div className={loading ? "animate-pulse" : ""} style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.92)" }}>{m.value}</div>
           </div>
         ))}
       </div>
 
       {/* Chart */}
       {chartData.length > 0 && (
-        <div className="rounded-2xl p-6 animate-fade-up" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.2s" }}>
-          <h2 className="text-sm font-semibold mb-4" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>
-            Reach Trend — <span className="font-normal" style={{ color: "var(--color-text-muted)" }}>{ranges.find(r => r.value === range)?.label}</span>
+        <div className="animate-fade-up" style={{ borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.2s" }}>
+          <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 18, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.9)" }}>
+            Reach Trend — <span style={{ fontWeight: 400, color: "rgba(255,255,255,0.38)" }}>{ranges.find(r => r.value === range)?.label}</span>
           </h2>
           <DynamicAreaChart data={chartData} />
         </div>
       )}
 
       {loading && (
-        <div className="rounded-2xl p-6 animate-pulse" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", height: 240 }} />
+        <div className="animate-pulse" style={{ borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)", height: 240 }} />
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 24 }}>
         {/* Platform Breakdown */}
-        <div className="rounded-2xl p-6 animate-fade-up" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.25s" }}>
-          <h2 className="text-sm font-semibold mb-4" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Platform Breakdown</h2>
+        <div className="animate-fade-up" style={{ borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.25s" }}>
+          <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 18, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.9)" }}>Platform Breakdown</h2>
           {platforms.length === 0 ? (
-            <p className="text-sm py-8 text-center" style={{ color: "var(--color-text-muted)" }}>
+            <p style={{ fontSize: 14, padding: "32px 0", textAlign: "center", color: "rgba(255,255,255,0.3)" }}>
               Connect social accounts to see platform breakdown.
             </p>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {platforms.map((p) => {
                 const color = PLATFORM_COLORS[p.name] ?? "#7c3aed";
                 return (
                   <div key={p.name}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-sm font-medium" style={{ color: "var(--color-text-1)" }}>{p.name}</span>
-                      <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>{fmt(p.reach)} reach · {p.leads} leads</span>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.88)" }}>{p.name}</span>
+                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{fmt(p.reach)} reach · {p.leads} leads</span>
                     </div>
-                    <div className="w-full h-2 rounded-full" style={{ background: "var(--color-surface-2)" }}>
-                      <div className="h-2 rounded-full transition-all" style={{ width: `${p.pct}%`, background: color }} />
+                    <div style={{ width: "100%", height: 6, borderRadius: 999, background: "var(--color-surface-2)" }}>
+                      <div style={{ height: 6, borderRadius: 999, transition: "all 0.3s", width: `${p.pct}%`, background: color }} />
                     </div>
                   </div>
                 );
@@ -167,33 +171,34 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Top Content */}
-        <div className="rounded-2xl animate-fade-up" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.3s" }}>
-          <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-            <h2 className="text-sm font-semibold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Top Performing Content</h2>
+        <div className="animate-fade-up" style={{ borderRadius: 16, background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.3s", overflow: "hidden" }}>
+          <div style={{ padding: "20px 28px", borderBottom: "1px solid var(--color-border-subtle)" }}>
+            <h2 style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.9)" }}>Top Performing Content</h2>
           </div>
           {topContent.length === 0 ? (
-            <div className="px-6 py-10 text-center">
-              <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>Generate and publish content to track performance.</p>
+            <div style={{ padding: "40px 28px", textAlign: "center" }}>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.3)" }}>Generate and publish content to track performance.</p>
             </div>
           ) : (
-            <div className="divide-y" style={{ borderColor: "var(--color-border-subtle)" }}>
+            <div>
               {topContent.slice(0, 5).map((c, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-4 px-6 py-3.5 transition-colors"
+                  className="flex items-center transition-colors"
+                  style={{ padding: "16px 28px", gap: 16, borderBottom: "1px solid var(--color-border-subtle)" }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                 >
-                  <span className="text-lg font-bold w-6 text-center" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-muted)" }}>{i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate" style={{ color: "var(--color-text-1)" }}>
+                  <span style={{ fontSize: 18, fontWeight: 800, width: 24, textAlign: "center", flexShrink: 0, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.22)" }}>{i + 1}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.88)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {c.title ?? (c.body ? c.body.slice(0, 60) + "…" : "Untitled")}
                     </div>
-                    <div className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>{c.platform} · {c.type ?? "Content"}</div>
+                    <div style={{ fontSize: 12, marginTop: 2, color: "rgba(255,255,255,0.35)" }}>{c.platform} · {c.type ?? "Content"}</div>
                   </div>
                   {c.engagement_prediction != null && (
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-xs" style={{ color: "#34d399" }}>{c.engagement_prediction.toFixed(1)}% eng.</div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <div style={{ fontSize: 12, color: "#34d399" }}>{c.engagement_prediction.toFixed(1)}% eng.</div>
                     </div>
                   )}
                 </div>

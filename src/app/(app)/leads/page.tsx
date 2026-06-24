@@ -124,81 +124,80 @@ function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }
       <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.5)" }} onClick={onClose} />
       <div className="fixed right-0 top-0 bottom-0 z-50 flex flex-col overflow-hidden"
         style={{ width: "min(520px, 100vw)", background: "var(--color-surface)", borderLeft: "1px solid var(--color-border)", boxShadow: "-16px 0 64px rgba(0,0,0,0.4)" }}>
-        <div className="flex items-center gap-3 px-6 py-5" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-          <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: "var(--color-text-muted)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 24px", borderBottom: "1px solid var(--color-border-subtle)" }}>
+          <button onClick={onClose} style={{ padding: 6, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.4)" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </button>
-          <div className="flex-1">
-            {isLoading ? <div className="h-5 w-40 rounded" style={{ background: "var(--color-surface-2)" }} /> :
-              <h2 className="text-base font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>{lead?.name}</h2>}
+          <div style={{ flex: 1 }}>
+            {isLoading ? <div style={{ height: 20, width: 160, borderRadius: 6, background: "var(--color-surface-2)" }} /> :
+              <h2 style={{ fontSize: 16, fontWeight: 700, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.92)", margin: 0 }}>{lead?.name}</h2>}
           </div>
         </div>
         {isLoading ? (
-          <div className="flex-1 flex items-center justify-center" style={{ color: "var(--color-text-muted)" }}>Loading lead...</div>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.35)" }}>Loading lead...</div>
         ) : !lead ? (
-          <div className="flex-1 flex items-center justify-center" style={{ color: "var(--color-text-muted)" }}>Lead not found</div>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.35)" }}>Lead not found</div>
         ) : (
-          <div className="flex-1 overflow-y-auto">
-            <div className="px-6 py-5 space-y-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-              <div className="flex items-center gap-3 flex-wrap">
+          <div style={{ flex: 1, overflowY: "auto" }}>
+            <div style={{ padding: "22px 24px", borderBottom: "1px solid var(--color-border-subtle)", display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <ScoreBar score={lead.score} />
-                <div className="flex gap-2 flex-wrap">
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {(Object.keys(STATUS_MAP) as LeadStatus[]).map((s) => {
                     const style = STATUS_MAP[s];
                     const isActive = lead.status === s;
                     return (
                       <button key={s} onClick={() => handleStatusChange(s)}
-                        className="text-xs font-semibold px-2.5 py-1 rounded-lg transition-all"
-                        style={{ background: isActive ? style.bg : "var(--color-surface-2)", color: isActive ? style.color : "var(--color-text-muted)", border: isActive ? `1px solid ${style.color}40` : "1px solid var(--color-border-subtle)", opacity: updateLead.isPending ? 0.6 : 1 }}>
+                        style={{ fontSize: 12, fontWeight: 600, padding: "5px 12px", borderRadius: 8, transition: "all 0.15s", cursor: "pointer", border: "none", background: isActive ? style.bg : "var(--color-surface-2)", color: isActive ? style.color : "rgba(255,255,255,0.38)", outline: isActive ? `1px solid ${style.color}40` : "1px solid var(--color-border-subtle)", opacity: updateLead.isPending ? 0.6 : 1 }}>
                         {style.label}
                       </button>
                     );
                   })}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                {lead.company && <div><div className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>Company</div><div className="text-sm font-medium" style={{ color: "var(--color-text-1)" }}>{lead.company}</div></div>}
-                {lead.email && <div><div className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>Email</div><a href={`mailto:${lead.email}`} className="text-sm font-medium" style={{ color: "#a78bfa" }}>{lead.email}</a></div>}
-                {lead.phone && <div><div className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>Phone</div><div className="text-sm" style={{ color: "var(--color-text-2)" }}>{lead.phone}</div></div>}
-                {lead.platform && <div><div className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>Platform</div><PlatformBadge platform={lead.platform} /></div>}
-                {lead.industry && <div><div className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>Industry</div><div className="text-sm" style={{ color: "var(--color-text-2)" }}>{lead.industry}</div></div>}
-                {lead.location && <div><div className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>Location</div><div className="text-sm" style={{ color: "var(--color-text-2)" }}>{lead.location}</div></div>}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                {lead.company && <div><div style={{ fontSize: 11, marginBottom: 3, color: "rgba(255,255,255,0.32)", fontWeight: 500 }}>Company</div><div style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.88)" }}>{lead.company}</div></div>}
+                {lead.email && <div><div style={{ fontSize: 11, marginBottom: 3, color: "rgba(255,255,255,0.32)", fontWeight: 500 }}>Email</div><a href={`mailto:${lead.email}`} style={{ fontSize: 14, fontWeight: 500, color: "#a78bfa", textDecoration: "none" }}>{lead.email}</a></div>}
+                {lead.phone && <div><div style={{ fontSize: 11, marginBottom: 3, color: "rgba(255,255,255,0.32)", fontWeight: 500 }}>Phone</div><div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)" }}>{lead.phone}</div></div>}
+                {lead.platform && <div><div style={{ fontSize: 11, marginBottom: 3, color: "rgba(255,255,255,0.32)", fontWeight: 500 }}>Platform</div><PlatformBadge platform={lead.platform} /></div>}
+                {lead.industry && <div><div style={{ fontSize: 11, marginBottom: 3, color: "rgba(255,255,255,0.32)", fontWeight: 500 }}>Industry</div><div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)" }}>{lead.industry}</div></div>}
+                {lead.location && <div><div style={{ fontSize: 11, marginBottom: 3, color: "rgba(255,255,255,0.32)", fontWeight: 500 }}>Location</div><div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)" }}>{lead.location}</div></div>}
               </div>
               {lead.tags && lead.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {lead.tags.map((tag) => <span key={tag} className="text-xs px-2 py-0.5 rounded-md" style={{ background: "rgba(124,58,237,0.1)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.2)" }}>{tag}</span>)}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {lead.tags.map((tag) => <span key={tag} style={{ fontSize: 12, padding: "3px 10px", borderRadius: 6, background: "rgba(124,58,237,0.1)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.2)" }}>{tag}</span>)}
                 </div>
               )}
             </div>
             {lead.notes && (
-              <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-                <div className="text-xs font-semibold mb-2" style={{ color: "var(--color-text-muted)" }}>NOTES</div>
-                <p className="text-sm leading-relaxed" style={{ color: "var(--color-text-2)" }}>{lead.notes}</p>
+              <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--color-border-subtle)" }}>
+                <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 8, color: "rgba(255,255,255,0.32)", letterSpacing: "0.06em" }}>NOTES</div>
+                <p style={{ fontSize: 14, lineHeight: 1.65, color: "rgba(255,255,255,0.6)" }}>{lead.notes}</p>
               </div>
             )}
-            <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-              <div className="text-xs font-semibold mb-2" style={{ color: "var(--color-text-muted)" }}>ADD NOTE</div>
-              <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Add a note..." className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none" style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "var(--color-text-1)" }} />
-              <button onClick={handleSaveNote} disabled={!note.trim() || savingNote} className="mt-2 px-4 py-1.5 rounded-lg text-xs font-semibold" style={{ background: note.trim() ? "rgba(124,58,237,0.15)" : "var(--color-surface-2)", color: note.trim() ? "#a78bfa" : "var(--color-text-muted)", border: `1px solid ${note.trim() ? "rgba(124,58,237,0.3)" : "var(--color-border-subtle)"}` }}>
+            <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--color-border-subtle)" }}>
+              <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 8, color: "rgba(255,255,255,0.32)", letterSpacing: "0.06em" }}>ADD NOTE</div>
+              <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Add a note..." style={{ width: "100%", padding: "10px 14px", borderRadius: 10, fontSize: 14, outline: "none", resize: "none", background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "rgba(255,255,255,0.88)", lineHeight: 1.6 }} />
+              <button onClick={handleSaveNote} disabled={!note.trim() || savingNote} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", background: note.trim() ? "rgba(124,58,237,0.15)" : "var(--color-surface-2)", color: note.trim() ? "#a78bfa" : "rgba(255,255,255,0.3)", outline: `1px solid ${note.trim() ? "rgba(124,58,237,0.3)" : "var(--color-border-subtle)"}` }}>
                 {savingNote ? "Saving..." : "Save Note"}
               </button>
             </div>
-            <div className="px-6 py-4">
-              <div className="text-xs font-semibold mb-3" style={{ color: "var(--color-text-muted)" }}>ACTIVITY TIMELINE</div>
+            <div style={{ padding: "18px 24px" }}>
+              <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 12, color: "rgba(255,255,255,0.32)", letterSpacing: "0.06em" }}>ACTIVITY TIMELINE</div>
               {activities.length === 0 ? (
-                <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>No activity recorded yet.</p>
+                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.3)" }}>No activity recorded yet.</p>
               ) : (
-                <div className="space-y-3 relative">
-                  <div className="absolute left-2.5 top-2 bottom-2 w-px" style={{ background: "var(--color-border-subtle)" }} />
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, position: "relative" }}>
+                  <div style={{ position: "absolute", left: 10, top: 8, bottom: 8, width: 1, background: "var(--color-border-subtle)" }} />
                   {(activities as Array<{ id: string; type: string; description: string; created_at: string }>).map((act) => (
-                    <div key={act.id} className="flex gap-3 relative pl-7">
-                      <div className="absolute left-0 top-1.5 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)" }}>
-                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#7c3aed" }} />
+                    <div key={act.id} style={{ display: "flex", gap: 12, position: "relative", paddingLeft: 28 }}>
+                      <div style={{ position: "absolute", left: 0, top: 6, width: 20, height: 20, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--color-surface-2)", border: "1px solid var(--color-border)" }}>
+                        <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#7c3aed" }} />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium" style={{ color: "var(--color-text-1)" }}>{act.type.replace(/_/g, " ")}</div>
-                        {act.description && <div className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>{act.description}</div>}
-                        <div className="text-[10px] mt-1" style={{ color: "var(--color-text-muted)" }}>{relativeTime(act.created_at)}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.88)" }}>{act.type.replace(/_/g, " ")}</div>
+                        {act.description && <div style={{ fontSize: 12, marginTop: 2, color: "rgba(255,255,255,0.38)" }}>{act.description}</div>}
+                        <div style={{ fontSize: 11, marginTop: 4, color: "rgba(255,255,255,0.25)" }}>{relativeTime(act.created_at)}</div>
                       </div>
                     </div>
                   ))}
