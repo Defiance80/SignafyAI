@@ -135,8 +135,7 @@ export default function SignInPage() {
           padding: "48px 52px",
           position: "relative", overflow: "hidden",
 
-          // Hide on mobile
-          // @ts-expect-error – media queries can't be inline, handled by style tag below
+          // Hide on mobile — see <style> tag at bottom of component
         }}>
           {/* Ambient glow */}
           <div style={{
