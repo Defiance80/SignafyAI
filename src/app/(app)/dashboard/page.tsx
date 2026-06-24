@@ -162,42 +162,31 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="p-5 sm:p-7 max-w-[1400px] mx-auto space-y-5">
+    <div style={{ padding: "28px 32px", maxWidth: 1400, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
 
-      {/* ── Welcome banner (LeadHub-style) ──────────────────────── */}
-      <div
-        className="rounded-2xl px-6 py-4 flex items-center justify-between animate-fade-up"
-        style={{
-          background: "var(--color-surface)",
-          border: "1px solid var(--color-border)",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-        }}
-      >
+      {/* ── Page header ──────────────────────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", paddingBottom: 4 }}>
         <div>
-          <p className="text-[11px] font-medium mb-0.5" style={{ color: "var(--color-text-muted)" }}>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", marginBottom: 6, fontWeight: 500 }}>
             {greeting}{data?.org.name ? `, ${data.org.name}` : ""}
           </p>
-          <h1
-            className="text-xl font-bold"
-            style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}
-          >
+          <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em", color: "rgba(255,255,255,0.95)", margin: 0 }}>
             Growth Dashboard
           </h1>
-          <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>
-            Live snapshot of your leads, prospects, and automation activity.
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.38)", marginTop: 6 }}>
+            Live snapshot of your leads, prospects, and automation activity
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-[11px]" style={{ color: "var(--color-text-muted)" }}>
-            Refreshes every 30s
-          </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.25)" }}>Refreshes every 30s</span>
           <Link
             href="/leads"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
             style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              padding: "10px 20px", borderRadius: 10, fontSize: 14, fontWeight: 600,
               background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)",
-              color: "white",
-              boxShadow: "0 3px 12px rgba(124,58,237,0.3)",
+              color: "white", textDecoration: "none",
+              boxShadow: "0 4px 14px rgba(124,58,237,0.35)",
             }}
           >
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
@@ -210,11 +199,10 @@ export default function DashboardPage() {
 
       {/* ── Setup checklist (collapsible) ───────────────────────── */}
       <div
-        className="rounded-2xl overflow-hidden animate-fade-up delay-100"
         style={{
-          background: "var(--color-surface)",
-          border: "1px solid var(--color-border)",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+          borderRadius: 14, overflow: "hidden",
+          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(255,255,255,0.07)",
         }}
       >
         <button
@@ -265,7 +253,7 @@ export default function DashboardPage() {
 
         {checklistOpen && (
           <div style={{ borderTop: "1px solid var(--color-border-subtle)" }}>
-            <div className="px-6 py-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2">
+            <div style={{ padding: "16px 24px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
               {SETUP_CHECKLIST.map((item) => (
                 <div key={item.key} className="flex items-center gap-2.5">
                   {item.done ? (
@@ -292,13 +280,11 @@ export default function DashboardPage() {
                       {item.label}
                     </Link>
                   ) : (
-                    <span
-                      className="text-xs font-medium"
-                      style={{
-                        color: item.done ? "var(--color-text-muted)" : "var(--color-text-2)",
-                        textDecoration: item.done ? "line-through" : "none",
-                      }}
-                    >
+                    <span style={{
+                      fontSize: 13,
+                      color: item.done ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.65)",
+                      textDecoration: item.done ? "line-through" : "none",
+                    }}>
                       {item.label}
                     </span>
                   )}
@@ -310,24 +296,24 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Stat cards ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
         {STAT_CARDS.map((card, i) => (
           <div
             key={card.label}
-            className="rounded-2xl p-5 animate-fade-up transition-all duration-200 cursor-default relative overflow-hidden"
             style={{
-              background: "var(--color-surface)",
-              border: "1px solid var(--color-border)",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-              animationDelay: `${(i + 2) * 0.06}s`,
+              borderRadius: 14, padding: "22px 20px",
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              position: "relative", overflow: "hidden",
+              cursor: "default", transition: "border-color 0.2s, box-shadow 0.2s",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.boxShadow = `0 6px 20px ${card.color}14`;
-              (e.currentTarget as HTMLElement).style.borderColor = `${card.color}35`;
+              (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 24px ${card.color}18`;
+              (e.currentTarget as HTMLElement).style.borderColor = `${card.color}40`;
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.boxShadow = "0 1px 3px rgba(0,0,0,0.05)";
-              (e.currentTarget as HTMLElement).style.borderColor = "var(--color-border)";
+              (e.currentTarget as HTMLElement).style.boxShadow = "none";
+              (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.07)";
             }}
           >
             {/* Subtle color wash top-right */}
@@ -358,17 +344,18 @@ export default function DashboardPage() {
                   </span>
                 )}
               </div>
-              <div
-                className={`text-3xl font-bold tabular-nums mb-0.5 ${loading ? "animate-pulse" : ""}`}
-                style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}
-              >
+              <div style={{
+                fontSize: 32, fontWeight: 800, letterSpacing: "-0.04em",
+                color: "rgba(255,255,255,0.92)", marginBottom: 2,
+                opacity: loading ? 0.4 : 1,
+              }}>
                 {card.value}
               </div>
-              <div className="text-xs font-medium" style={{ color: "var(--color-text-2)" }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.55)" }}>
                 {card.label}
               </div>
               {card.delta && (
-                <div className="text-[10px] mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+                <div style={{ fontSize: 11, marginTop: 3, color: "rgba(255,255,255,0.3)" }}>
                   {card.delta}
                 </div>
               )}
@@ -383,26 +370,23 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Main two-column row ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
 
         {/* Workflow runs */}
-        <div
-          className="xl:col-span-2 rounded-2xl animate-fade-up delay-300 overflow-hidden"
-          style={{
-            background: "var(--color-surface)",
-            border: "1px solid var(--color-border)",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-          }}
-        >
-          <div
-            className="flex items-center justify-between px-6 py-4"
-            style={{ borderBottom: "1px solid var(--color-border-subtle)" }}
-          >
+        <div style={{
+          borderRadius: 14, overflow: "hidden",
+          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(255,255,255,0.07)",
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "18px 22px", borderBottom: "1px solid rgba(255,255,255,0.06)",
+          }}>
             <div>
-              <h2 className="text-sm font-semibold" style={{ color: "var(--color-text-1)" }}>
+              <h2 style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.88)", margin: 0 }}>
                 Recent Workflow Runs
               </h2>
-              <p className="text-[11px] mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+              <p style={{ fontSize: 12, marginTop: 3, color: "rgba(255,255,255,0.35)" }}>
                 Last {Math.min(runs.length, 8)} automation runs across all workflows
               </p>
             </div>
@@ -449,9 +433,13 @@ export default function DashboardPage() {
                 return (
                   <div
                     key={r.id}
-                    className="flex items-center gap-4 px-6 py-3.5 transition-colors cursor-default"
-                    style={{ borderBottom: "1px solid var(--color-border-subtle)" }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 14,
+                      padding: "14px 22px", cursor: "default",
+                      borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      transition: "background 0.15s",
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.03)"; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                   >
                     <div
@@ -463,7 +451,7 @@ export default function DashboardPage() {
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium" style={{ color: "var(--color-text-1)" }}>
+                        <span style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.82)" }}>
                           {TYPE_LABELS[r.workflow_type] ?? r.workflow_type}
                         </span>
                         {r.output_summary?.leads_found != null && r.output_summary.leads_found > 0 && (
@@ -475,7 +463,7 @@ export default function DashboardPage() {
                           </span>
                         )}
                       </div>
-                      <div className="text-[11px] mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+                      <div style={{ fontSize: 12, marginTop: 3, color: "rgba(255,255,255,0.3)" }}>
                         {timeAgo(r.started_at)}
                       </div>
                     </div>
@@ -498,20 +486,14 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick actions */}
-        <div
-          className="rounded-2xl animate-fade-up delay-400 flex flex-col overflow-hidden"
-          style={{
-            background: "var(--color-surface)",
-            border: "1px solid var(--color-border)",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-          }}
-        >
-          <div
-            className="px-5 py-4"
-            style={{ borderBottom: "1px solid var(--color-border-subtle)" }}
-          >
-            <h2 className="text-sm font-semibold" style={{ color: "var(--color-text-1)" }}>Quick Actions</h2>
-            <p className="text-[11px] mt-0.5" style={{ color: "var(--color-text-muted)" }}>Jump to any tool</p>
+        <div style={{
+          borderRadius: 14, overflow: "hidden", display: "flex", flexDirection: "column",
+          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(255,255,255,0.07)",
+        }}>
+          <div style={{ padding: "18px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.88)", margin: 0 }}>Quick Actions</h2>
+            <p style={{ fontSize: 12, marginTop: 3, color: "rgba(255,255,255,0.35)" }}>Jump to any tool</p>
           </div>
 
           <div className="p-3 flex-1 space-y-1">
@@ -536,9 +518,9 @@ export default function DashboardPage() {
                 >
                   {action.icon}
                 </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold" style={{ color: "var(--color-text-1)" }}>{action.label}</div>
-                  <div className="text-[11px]" style={{ color: "var(--color-text-muted)" }}>{action.description}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>{action.label}</div>
+                  <div style={{ fontSize: 12, marginTop: 2, color: "rgba(255,255,255,0.35)" }}>{action.description}</div>
                 </div>
                 <svg
                   width="13" height="13" viewBox="0 0 13 13" fill="none"
@@ -561,15 +543,15 @@ export default function DashboardPage() {
                   border: "1px solid rgba(124,58,237,0.12)",
                 }}
               >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-bold capitalize" style={{ color: "#7c3aed" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#a78bfa", textTransform: "capitalize" }}>
                     {data.org.plan} Plan
                   </span>
-                  <Link href="/settings" className="text-[10px] font-medium" style={{ color: "var(--color-text-muted)" }}>
+                  <Link href="/settings" style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>
                     Upgrade →
                   </Link>
                 </div>
-                <div className="text-[11px]" style={{ color: "var(--color-text-muted)" }}>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>
                   {data.stats.leads_total.toLocaleString()} leads · {data.stats.content_total.toLocaleString()} content pieces
                 </div>
               </div>
