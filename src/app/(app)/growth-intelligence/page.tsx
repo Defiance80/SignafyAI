@@ -119,17 +119,24 @@ function useSocialAccounts() {
 
 function SearchBar({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
-    <div className="relative flex-1">
-      <svg className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: "var(--color-text-muted)" }}>
-        <circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.4" />
-        <path d="M9 9l3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    <div style={{ position: "relative", flex: 1 }}>
+      <svg style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "rgba(255,255,255,0.3)" }} width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M10 10l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder ?? "Search…"}
-        className="w-full pl-8 pr-3 py-2 rounded-xl text-sm outline-none"
-        style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text-1)" }}
+        style={{
+          width: "100%", paddingLeft: 42, paddingRight: 16, paddingTop: 12, paddingBottom: 12,
+          borderRadius: 12, fontSize: 14, outline: "none",
+          background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)",
+          color: "rgba(255,255,255,0.82)", boxSizing: "border-box",
+          transition: "border-color 0.15s",
+        }}
+        onFocus={e => { e.target.style.borderColor = "rgba(124,58,237,0.4)"; }}
+        onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.09)"; }}
       />
     </div>
   );
@@ -149,11 +156,11 @@ function EmptyState({ icon, title, desc, action }: { icon: string; title: string
 function GrowthScoreBar({ score }: { score: number }) {
   const { color } = scoreColor(score);
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--color-surface-2)" }}>
-        <div className="h-full rounded-full" style={{ width: `${score}%`, background: color }} />
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ flex: 1, height: 5, borderRadius: 4, overflow: "hidden", background: "rgba(255,255,255,0.07)" }}>
+        <div style={{ height: "100%", borderRadius: 4, width: `${score}%`, background: color }} />
       </div>
-      <span className="text-xs font-bold tabular-nums w-6 text-right" style={{ color }}>{score}</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color, minWidth: 24, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{score}</span>
     </div>
   );
 }
@@ -603,20 +610,23 @@ function OpportunitiesPanel({ onSelect }: { onSelect: (opp: GrowthOpportunity) =
   const opps = data?.data ?? [];
 
   if (isLoading) return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {[1,2,3,4].map((i) => <div key={i} className="rounded-2xl animate-pulse" style={{ height: 180, background: "var(--color-surface)", border: "1px solid var(--color-border)" }} />)}
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+      {[1,2,3,4].map((i) => <div key={i} style={{ height: 200, borderRadius: 16, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }} />)}
     </div>
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3">
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
         <SearchBar value={search} onChange={onSearchChange} placeholder="Search opportunities, topics…" />
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <label className="text-xs" style={{ color: "var(--color-text-muted)" }}>Min score:</label>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <label style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", whiteSpace: "nowrap" }}>Min score:</label>
           <select value={minScore} onChange={(e) => setMinScore(Number(e.target.value))}
-            className="px-2 py-1.5 rounded-lg text-xs outline-none"
-            style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}>
+            style={{
+              padding: "10px 12px", borderRadius: 10, fontSize: 13, outline: "none",
+              background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+              color: "rgba(255,255,255,0.72)", cursor: "pointer",
+            }}>
             <option value={0}>All</option>
             <option value={60}>60+</option>
             <option value={70}>70+</option>
@@ -629,42 +639,61 @@ function OpportunitiesPanel({ onSelect }: { onSelect: (opp: GrowthOpportunity) =
       {opps.length === 0 ? (
         <EmptyState icon="🧠" title="No opportunities yet" desc="Run a Growth Intelligence Scan to discover conversation opportunities across Reddit, YouTube, LinkedIn and more." />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
           {opps.map((opp) => {
             const { color: gc } = scoreColor(opp.growth_score);
             const sources = (opp.source ?? "").split(",").map((s) => s.trim()).filter(Boolean);
             return (
-              <div key={opp.id} onClick={() => onSelect(opp)}
-                className="rounded-2xl p-5 cursor-pointer transition-all group"
-                style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
-                onMouseEnter={(e) => { e.currentTarget.style.border = "1px solid rgba(124,58,237,0.3)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(124,58,237,0.08)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.border = "1px solid var(--color-border)"; e.currentTarget.style.boxShadow = "none"; }}>
-
+              <div key={opp.id} onClick={() => onSelect(opp)} style={{
+                borderRadius: 16, padding: "22px 24px", cursor: "pointer",
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                transition: "border-color 0.15s, box-shadow 0.15s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(124,58,237,0.3)"; e.currentTarget.style.boxShadow = "0 4px 24px rgba(124,58,237,0.1)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; e.currentTarget.style.boxShadow = "none"; }}
+              >
                 {/* Header row */}
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Platform + signal badges */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
                       {sources.map((s) => {
                         const pm = PLATFORM_META[s];
                         return pm ? (
-                          <span key={s} className="text-[9px] px-1.5 py-0.5 rounded font-medium" style={{ background: `${pm.color}15`, color: pm.color }}>{pm.icon} {s}</span>
+                          <span key={s} style={{
+                            fontSize: 11, padding: "2px 8px", borderRadius: 6, fontWeight: 600,
+                            background: `${pm.color}18`, color: pm.color,
+                          }}>{pm.icon} {s}</span>
                         ) : null;
                       })}
                       {opp.signal_count > 0 && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: "var(--color-surface-2)", color: "var(--color-text-muted)" }}>{opp.signal_count} signals</span>
+                        <span style={{
+                          fontSize: 11, padding: "2px 8px", borderRadius: 6,
+                          background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)",
+                        }}>{opp.signal_count} signals</span>
                       )}
                     </div>
-                    <h3 className="text-sm font-semibold leading-tight" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>{opp.title}</h3>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.35, color: "rgba(255,255,255,0.9)", margin: 0 }}>
+                      {opp.title}
+                    </h3>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <div className="text-xl font-bold" style={{ color: gc, fontFamily: "var(--font-syne)" }}>{opp.growth_score}</div>
-                    <div className="text-[9px]" style={{ color: "var(--color-text-muted)" }}>growth</div>
+                  {/* Score */}
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em", color: gc, lineHeight: 1 }}>
+                      {opp.growth_score}
+                    </div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>growth</div>
                   </div>
                 </div>
 
                 {/* Description */}
                 {opp.description && (
-                  <p className="text-xs leading-relaxed mb-3" style={{ color: "var(--color-text-2)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                  <p style={{
+                    fontSize: 13, lineHeight: 1.6, color: "rgba(255,255,255,0.52)",
+                    marginBottom: 14, margin: "0 0 14px",
+                    display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                  }}>
                     {opp.description}
                   </p>
                 )}
@@ -674,12 +703,15 @@ function OpportunitiesPanel({ onSelect }: { onSelect: (opp: GrowthOpportunity) =
 
                 {/* Content formats */}
                 {opp.content_formats?.length > 0 && (
-                  <div className="flex gap-1.5 mt-3 flex-wrap">
-                    {opp.content_formats.slice(0, 4).map((fmt) => {
+                  <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap" }}>
+                    {opp.content_formats.slice(0, 5).map((fmt) => {
                       const meta = FORMAT_META[fmt];
                       if (!meta) return null;
                       return (
-                        <span key={fmt} className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: `${meta.color}12`, color: meta.color }}>
+                        <span key={fmt} style={{
+                          fontSize: 11, padding: "3px 9px", borderRadius: 7,
+                          background: `${meta.color}14`, color: meta.color, fontWeight: 500,
+                        }}>
                           {meta.icon} {meta.label}
                         </span>
                       );
@@ -687,10 +719,15 @@ function OpportunitiesPanel({ onSelect }: { onSelect: (opp: GrowthOpportunity) =
                   </div>
                 )}
 
-                {/* First hook preview */}
+                {/* Hook preview */}
                 {opp.hooks?.[0] && (
-                  <div className="mt-3 px-2.5 py-1.5 rounded-lg text-[10px] italic" style={{ background: "rgba(124,58,237,0.06)", color: "#a78bfa", borderLeft: "2px solid rgba(124,58,237,0.3)" }}>
-                    &ldquo;{opp.hooks[0].length > 80 ? opp.hooks[0].slice(0, 80) + "…" : opp.hooks[0]}&rdquo;
+                  <div style={{
+                    marginTop: 14, padding: "10px 14px", borderRadius: 9,
+                    fontSize: 12, fontStyle: "italic", lineHeight: 1.5,
+                    background: "rgba(124,58,237,0.07)", color: "#c4b5fd",
+                    borderLeft: "2px solid rgba(124,58,237,0.35)",
+                  }}>
+                    &ldquo;{opp.hooks[0].length > 100 ? opp.hooks[0].slice(0, 100) + "…" : opp.hooks[0]}&rdquo;
                   </div>
                 )}
               </div>
@@ -723,29 +760,39 @@ function SignalsPanel({ accounts, onReply }: { accounts: SocialAccount[]; onRepl
   const types = ["question", "complaint", "trend", "discussion", "buying_intent"];
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3">
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <SearchBar value={search} onChange={onSearchChange} placeholder="Search conversations, topics…" />
-        <div className="flex gap-1.5">
-          <select value={source} onChange={(e) => setSource(e.target.value)}
-            className="px-2 py-1.5 rounded-lg text-xs outline-none"
-            style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}>
-            <option value="">All platforms</option>
-            {["linkedin","tiktok","instagram","facebook","x","reddit","youtube","google_news"].map((s) => <option key={s} value={s}>{PLATFORM_META[s]?.icon} {s}</option>)}
-          </select>
-        </div>
+        <select value={source} onChange={(e) => setSource(e.target.value)}
+          style={{
+            padding: "10px 12px", borderRadius: 10, fontSize: 13, outline: "none", flexShrink: 0,
+            background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+            color: "rgba(255,255,255,0.72)", cursor: "pointer",
+          }}>
+          <option value="">All platforms</option>
+          {["linkedin","tiktok","instagram","facebook","x","reddit","youtube","google_news"].map((s) => <option key={s} value={s}>{PLATFORM_META[s]?.icon} {s}</option>)}
+        </select>
       </div>
 
       {/* Signal type filter pills */}
-      <div className="flex gap-1.5 flex-wrap">
-        <button onClick={() => setSignalType("")} className="px-3 py-1.5 rounded-lg text-xs font-medium"
-          style={{ background: !signalType ? "rgba(124,58,237,0.15)" : "var(--color-surface-2)", border: !signalType ? "1px solid rgba(124,58,237,0.3)" : "1px solid var(--color-border-subtle)", color: !signalType ? "#a78bfa" : "var(--color-text-muted)" }}>All types</button>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <button onClick={() => setSignalType("")} style={{
+          padding: "7px 14px", borderRadius: 9, fontSize: 13, fontWeight: 500, cursor: "pointer",
+          background: !signalType ? "rgba(124,58,237,0.18)" : "rgba(255,255,255,0.05)",
+          border: !signalType ? "1px solid rgba(124,58,237,0.35)" : "1px solid rgba(255,255,255,0.08)",
+          color: !signalType ? "#c4b5fd" : "rgba(255,255,255,0.4)",
+        }}>All types</button>
         {types.map((t) => {
           const c = SIGNAL_TYPE_COLORS[t];
           const active = signalType === t;
           return (
-            <button key={t} onClick={() => setSignalType(active ? "" : t)} className="px-3 py-1.5 rounded-lg text-xs font-medium capitalize"
-              style={{ background: active ? c.bg : "var(--color-surface-2)", border: active ? `1px solid ${c.color}40` : "1px solid var(--color-border-subtle)", color: active ? c.color : "var(--color-text-muted)" }}>
+            <button key={t} onClick={() => setSignalType(active ? "" : t)} style={{
+              padding: "7px 14px", borderRadius: 9, fontSize: 13, fontWeight: 500,
+              textTransform: "capitalize", cursor: "pointer",
+              background: active ? c.bg : "rgba(255,255,255,0.05)",
+              border: active ? `1px solid ${c.color}40` : "1px solid rgba(255,255,255,0.08)",
+              color: active ? c.color : "rgba(255,255,255,0.4)",
+            }}>
               {t.replace("_", " ")}
             </button>
           );
@@ -753,51 +800,69 @@ function SignalsPanel({ accounts, onReply }: { accounts: SocialAccount[]; onRepl
       </div>
 
       {isLoading ? (
-        <div className="space-y-3">{[1,2,3].map((i) => <div key={i} className="rounded-2xl animate-pulse" style={{ height: 90, background: "var(--color-surface)", border: "1px solid var(--color-border)" }} />)}</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {[1,2,3].map((i) => <div key={i} style={{ height: 100, borderRadius: 16, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }} />)}
+        </div>
       ) : signals.length === 0 ? (
         <EmptyState icon="📡" title="No signals yet" desc="Run a Growth Intelligence Scan to capture real conversations from Reddit, YouTube, LinkedIn and more." />
       ) : (
-        <div className="space-y-3">
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {signals.map((sig) => {
             const tc = SIGNAL_TYPE_COLORS[sig.signal_type ?? ""] ?? SIGNAL_TYPE_COLORS.discussion;
             const pm = PLATFORM_META[sig.source ?? ""];
             const sentColor = SENTIMENT_COLORS[sig.sentiment ?? "neutral"] ?? "#6b7280";
             return (
-              <div key={sig.id} className="rounded-2xl p-4 transition-all"
-                style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap mb-2">
-                      {pm && <span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{ background: `${pm.color}15`, color: pm.color }}>{pm.icon} {sig.source}</span>}
+              <div key={sig.id} style={{
+                borderRadius: 16, padding: "18px 20px",
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                transition: "border-color 0.15s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; }}
+              >
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Badges */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                      {pm && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, fontWeight: 600, background: `${pm.color}18`, color: pm.color }}>{pm.icon} {sig.source}</span>}
                       {sig.signal_type && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded capitalize font-semibold" style={{ background: tc.bg, color: tc.color }}>{sig.signal_type.replace("_", " ")}</span>
+                        <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, fontWeight: 600, textTransform: "capitalize", background: tc.bg, color: tc.color }}>{sig.signal_type.replace("_", " ")}</span>
                       )}
                       {sig.sentiment && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded capitalize" style={{ color: sentColor, background: `${sentColor}12` }}>{sig.sentiment}</span>
+                        <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, textTransform: "capitalize", color: sentColor, background: `${sentColor}14` }}>{sig.sentiment}</span>
                       )}
-                      {sig.location && <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>📍 {sig.location}</span>}
+                      {sig.location && <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>📍 {sig.location}</span>}
                     </div>
-                    <p className="text-sm leading-relaxed" style={{ color: "var(--color-text-1)" }}>
+                    {/* Body */}
+                    <p style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.82)", margin: 0 }}>
                       &ldquo;{sig.question.length > 200 ? sig.question.slice(0, 200) + "…" : sig.question}&rdquo;
                     </p>
-                    <div className="flex items-center gap-3 mt-2">
-                      {sig.topic && <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>Topic: {sig.topic}</span>}
-                      {sig.engagement_hint && <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>💬 {sig.engagement_hint}</span>}
-                      <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>{relativeTime(sig.created_at)}</span>
+                    {/* Meta row */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 10 }}>
+                      {sig.topic && <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>Topic: {sig.topic}</span>}
+                      {sig.engagement_hint && <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>💬 {sig.engagement_hint}</span>}
+                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.28)" }}>{relativeTime(sig.created_at)}</span>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                    <div className="text-base font-bold" style={{ color: scoreColor(sig.relevance_score).color, fontFamily: "var(--font-syne)" }}>{sig.relevance_score}</div>
-                    <div className="text-[9px]" style={{ color: "var(--color-text-muted)" }}>relevance</div>
-                    <button onClick={(e) => { e.stopPropagation(); onReply(sig); }}
-                      className="text-[10px] px-2.5 py-1 rounded-lg font-medium mt-0.5 flex items-center gap-1"
-                      style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)", color: "white" }}>
+                  {/* Right column */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.03em", color: scoreColor(sig.relevance_score).color }}>
+                      {sig.relevance_score}
+                    </div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.28)" }}>relevance</div>
+                    <button onClick={(e) => { e.stopPropagation(); onReply(sig); }} style={{
+                      padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                      background: "linear-gradient(135deg,#7c3aed,#4f46e5)", color: "white",
+                      border: "none", cursor: "pointer",
+                    }}>
                       ↩ Reply
                     </button>
                     {sig.source_url && (
-                      <a href={sig.source_url} target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()}
-                        className="text-[10px] px-2 py-0.5 rounded"
-                        style={{ color: "#a78bfa", background: "rgba(124,58,237,0.1)" }}>View →</a>
+                      <a href={sig.source_url} target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()} style={{
+                        fontSize: 12, padding: "4px 10px", borderRadius: 7, textDecoration: "none",
+                        color: "#a78bfa", background: "rgba(124,58,237,0.12)",
+                      }}>View →</a>
                     )}
                   </div>
                 </div>
@@ -1415,30 +1480,55 @@ export default function GrowthIntelligencePage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 animate-fade-up" style={{ animationDelay: "0.05s" }}>
-        {STATS.map((s, i) => (
-          <div key={s.label} className="rounded-2xl p-5 relative overflow-hidden"
-            style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: `${i * 0.07}s` }}>
-            <div className="absolute top-0 right-0 w-24 h-24 rounded-full pointer-events-none opacity-30"
-              style={{ background: `radial-gradient(circle, ${s.color}25 0%, transparent 70%)`, transform: "translate(25%,-25%)" }} />
-            <div className="text-2xl font-bold mb-1" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>{s.value}</div>
-            <div className="text-xs" style={{ color: "var(--color-text-muted)" }}>{s.label}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+        {STATS.map((s) => (
+          <div key={s.label} style={{
+            borderRadius: 16, padding: "24px 24px", position: "relative", overflow: "hidden",
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            transition: "border-color 0.2s, box-shadow 0.2s",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = `${s.color}35`; e.currentTarget.style.boxShadow = `0 8px 24px ${s.color}14`; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; e.currentTarget.style.boxShadow = "none"; }}
+          >
+            <div style={{
+              position: "absolute", top: 0, right: 0, width: 100, height: 100,
+              borderRadius: "50%", pointerEvents: "none",
+              background: `radial-gradient(circle, ${s.color}18 0%, transparent 70%)`,
+              transform: "translate(30%, -30%)",
+            }} />
+            <div style={{ position: "relative" }}>
+              <div style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-0.04em", color: "rgba(255,255,255,0.92)", lineHeight: 1, marginBottom: 10 }}>
+                {s.value}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.5)" }}>{s.label}</div>
+            </div>
           </div>
         ))}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 animate-fade-up" style={{ animationDelay: "0.1s" }}>
+      <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
         {TABS.map(({ id, label, icon, count }) => {
           const active = activeTab === id;
           return (
-            <button key={id} onClick={() => setActiveTab(id)}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium flex-shrink-0 transition-all"
-              style={{ background: active ? "var(--color-surface)" : "transparent", border: active ? "1px solid var(--color-border)" : "1px solid transparent", color: active ? "var(--color-text-1)" : "var(--color-text-muted)", boxShadow: active ? "0 1px 3px rgba(0,0,0,0.06)" : "none" }}>
+            <button key={id} onClick={() => setActiveTab(id)} style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "10px 18px", borderRadius: 11, flexShrink: 0,
+              fontSize: 14, fontWeight: active ? 600 : 450,
+              background: active ? "rgba(255,255,255,0.06)" : "transparent",
+              border: active ? "1px solid rgba(255,255,255,0.12)" : "1px solid transparent",
+              color: active ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.4)",
+              cursor: "pointer", transition: "all 0.13s",
+            }}>
               <span>{icon}</span>
               <span>{label}</span>
               {count != null && count > 0 && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: active ? "rgba(124,58,237,0.15)" : "var(--color-surface-2)", color: active ? "#a78bfa" : "var(--color-text-muted)" }}>{count}</span>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 100,
+                  background: active ? "rgba(124,58,237,0.2)" : "rgba(255,255,255,0.07)",
+                  color: active ? "#a78bfa" : "rgba(255,255,255,0.35)",
+                }}>{count}</span>
               )}
             </button>
           );
