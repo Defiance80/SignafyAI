@@ -88,11 +88,11 @@ export default function SettingsPage() {
   const userInitial = (me?.user.name ?? "U").charAt(0).toUpperCase();
 
   return (
-    <div className="p-5 sm:p-8 max-w-[1000px] mx-auto space-y-8">
+    <div style={{ padding: "36px 40px", maxWidth: 1000, margin: "0 auto", display: "flex", flexDirection: "column", gap: 28 }}>
       {/* Header */}
       <div className="animate-fade-up">
         <p className="text-sm mb-1" style={{ color: "var(--color-text-2)" }}>Configure your workspace</p>
-        <h1 className="text-2xl sm:text-3xl font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Settings</h1>
+        <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "rgba(255,255,255,0.95)", margin: 0, lineHeight: 1.1 }}>Settings</h1>
       </div>
 
       {/* Profile */}

@@ -208,12 +208,12 @@ export default function BrandStudioPage() {
   }
 
   return (
-    <div style={{ maxWidth: 860, margin: "0 auto", padding: "32px 24px 80px" }}>
+    <div style={{ maxWidth: 1000, margin: "0 auto", padding: "36px 40px 80px" }}>
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 36 }}>
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: "#fff", margin: 0 }}>Brand Studio</h1>
-          <p style={{ color: "rgba(255,255,255,0.45)", marginTop: 6, fontSize: 14 }}>
+          <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.03em", color: "rgba(255,255,255,0.95)", margin: 0 }}>Brand Studio</h1>
+          <p style={{ color: "rgba(255,255,255,0.38)", marginTop: 8, fontSize: 15, lineHeight: 1.5 }}>
             Your AI content engine. The richer this is, the better your content suggestions will be.
           </p>
         </div>

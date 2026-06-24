@@ -188,11 +188,11 @@ export default function ContentStudioPage() {
   ];
 
   return (
-    <div style={{ maxWidth: 960, margin: "0 auto", padding: "28px 24px 80px" }}>
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "36px 40px 80px" }}>
       {/* Header */}
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: "#fff", margin: 0 }}>Content Studio</h1>
-        <p style={{ color: "rgba(255,255,255,0.4)", marginTop: 6, fontSize: 14 }}>
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.03em", color: "rgba(255,255,255,0.95)", margin: 0 }}>Content Studio</h1>
+        <p style={{ color: "rgba(255,255,255,0.38)", marginTop: 8, fontSize: 15, lineHeight: 1.5 }}>
           AI-suggested posts with performance predictions — approve, edit, and post to all platforms at once.
         </p>
       </div>

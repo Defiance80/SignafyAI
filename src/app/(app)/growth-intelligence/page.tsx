@@ -1356,7 +1356,7 @@ export default function GrowthIntelligencePage() {
   }, [qc]);
 
   return (
-    <div className="p-5 sm:p-8 max-w-[1400px] mx-auto space-y-6">
+    <div style={{ padding: "36px 40px", maxWidth: 1440, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
 
       {/* Running banner */}
       {scanning && (
@@ -1380,7 +1380,7 @@ export default function GrowthIntelligencePage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-up">
         <div>
           <p className="text-sm mb-1" style={{ color: "var(--color-text-2)" }}>Discover & capitalize on</p>
-          <h1 className="text-2xl sm:text-3xl font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>
+          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "rgba(255,255,255,0.95)", margin: 0, lineHeight: 1.1 }}>
             Growth Intelligence
           </h1>
         </div>

@@ -143,12 +143,12 @@ export default function CampaignsPage() {
   }
 
   return (
-    <div className="p-5 sm:p-8 max-w-[1400px] mx-auto space-y-8">
+    <div style={{ padding: "36px 40px", maxWidth: 1440, margin: "0 auto", display: "flex", flexDirection: "column", gap: 28 }}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-up">
         <div>
           <p className="text-sm mb-1" style={{ color: "var(--color-text-2)" }}>Plan & execute</p>
-          <h1 className="text-2xl sm:text-3xl font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Campaigns</h1>
+          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "rgba(255,255,255,0.95)", margin: 0, lineHeight: 1.1 }}>Campaigns</h1>
         </div>
         <button
           onClick={() => setShowModal(true)}

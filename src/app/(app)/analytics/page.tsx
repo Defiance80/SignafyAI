@@ -89,12 +89,12 @@ export default function AnalyticsPage() {
   const topContent = data?.top_content ?? [];
 
   return (
-    <div className="p-5 sm:p-8 max-w-[1400px] mx-auto space-y-8">
+    <div style={{ padding: "36px 40px", maxWidth: 1440, margin: "0 auto", display: "flex", flexDirection: "column", gap: 28 }}>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-up">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
         <div>
-          <p className="text-sm mb-1" style={{ color: "var(--color-text-2)" }}>Performance insights</p>
-          <h1 className="text-2xl sm:text-3xl font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Analytics</h1>
+          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.32)", marginBottom: 8, fontWeight: 500 }}>Performance insights</p>
+          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "rgba(255,255,255,0.95)", margin: 0, lineHeight: 1.1 }}>Analytics</h1>
         </div>
         <div className="flex gap-2">
           {ranges.map((r) => (
