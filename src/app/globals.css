@@ -227,6 +227,17 @@ body {
   border-radius: 6px;
 }
 
+/* ── Interactive cursor defaults ────────────────────────────── */
+/* button:pointer applies globally so every <button> feels clickable.
+   Disabled inline styles (cursor: not-allowed) and Tailwind's
+   disabled:cursor-not-allowed utility (in @layer utilities) both
+   override this @layer base rule automatically. */
+@layer base {
+  button         { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  [role="button"] { cursor: pointer; }
+}
+
 /* ── Custom button base ─────────────────────────────────────── */
 .btn {
   display:         inline-flex;

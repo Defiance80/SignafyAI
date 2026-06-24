@@ -109,8 +109,9 @@ export default function SeoPage() {
         </div>
         <button
           onClick={() => downloadCsv(filtered, lastTopic ? `keywords-${lastTopic.slice(0, 20)}.csv` : "keywords.csv")}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all w-fit"
-          style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}
+          style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: "pointer", transition: "all 0.2s", background: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-surface)"; }}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4.5 6.5L7 9l2.5-2.5M2 10.5V12h10v-1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
           Export CSV
@@ -132,8 +133,11 @@ export default function SeoPage() {
         <button
           onClick={handleResearch}
           disabled={isResearching}
-          className="flex items-center gap-2 px-5 py-3.5 rounded-2xl text-sm font-semibold transition-all disabled:opacity-60 flex-shrink-0"
-          style={{ background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)", color: "white", boxShadow: "0 4px 12px rgba(124,58,237,0.3)" }}
+          style={{
+            display: "flex", alignItems: "center", gap: 8, padding: "11px 22px", borderRadius: 14, fontSize: 14, fontWeight: 600, flexShrink: 0, transition: "all 0.2s",
+            cursor: isResearching ? "not-allowed" : "pointer", opacity: isResearching ? 0.6 : 1,
+            background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)", color: "white", boxShadow: "0 4px 12px rgba(124,58,237,0.3)",
+          }}
         >
           {isResearching ? (
             <><svg className="animate-spin" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" stroke="rgba(255,255,255,0.3)" strokeWidth="2"/><path d="M7 2a5 5 0 0 1 5 5" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg> Researching…</>

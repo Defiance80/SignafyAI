@@ -4,18 +4,18 @@ import { useState, useEffect } from "react";
 
 const PLATFORM_COLORS: Record<string, string> = {
   instagram: "#e040fb",
-  linkedin: "#0a66c2",
-  tiktok: "#00f2ea",
-  twitter: "#8899a6",
-  facebook: "#1877f2",
+  linkedin:  "#0a66c2",
+  tiktok:    "#00f2ea",
+  twitter:   "#8899a6",
+  facebook:  "#1877f2",
 };
 
 const PLATFORM_LABELS: Record<string, string> = {
   instagram: "Instagram",
-  linkedin: "LinkedIn",
-  tiktok: "TikTok",
-  twitter: "Twitter/X",
-  facebook: "Facebook",
+  linkedin:  "LinkedIn",
+  tiktok:    "TikTok",
+  twitter:   "Twitter/X",
+  facebook:  "Facebook",
 };
 
 interface Message {
@@ -41,23 +41,48 @@ function timeAgo(iso: string): string {
 }
 
 const DEMO_MESSAGES: Message[] = [
-  { id: "d1", platform: "instagram", author_name: "Emma Lawson", body: "Hey! I saw your post about content strategies and wanted to reach out. We're a mid-size e-commerce brand doing about $2M/year and want to scale to $5M through better organic reach. Do you work with DTC brands?", ai_reply: `Hi Emma! Thanks so much for reaching out.\n\nWe absolutely work with DTC brands — e-commerce is one of our sweet spots. We've helped several brands in the $2-5M range scale their social presence significantly.\n\nI'd love to learn more about your current strategy. Would you be open to a quick 15-minute call this week?`, is_read: false, status: "pending", received_at: new Date(Date.now() - 2 * 60000).toISOString() },
-  { id: "d2", platform: "linkedin", author_name: "Ryan Choi", body: "Would love to discuss a potential partnership for our clients. We run a growth consulting firm and often need content automation tools.", ai_reply: `Hi Ryan! Great to connect.\n\nPartnerships are definitely something we're open to. What types of clients do you work with primarily — B2B, DTC, or a mix? Happy to hop on a quick call to explore what that could look like.`, is_read: false, status: "pending", received_at: new Date(Date.now() - 15 * 60000).toISOString() },
-  { id: "d3", platform: "tiktok", author_name: "Zara Ahmed", body: "Love your latest video! Can you do one about SEO for small businesses?", ai_reply: `Thank you so much, Zara! That means a lot.\n\nSEO for small businesses is actually on our content roadmap — great timing! Stay tuned, we have something coming on that topic in the next few weeks.`, is_read: false, status: "pending", received_at: new Date(Date.now() - 42 * 60000).toISOString() },
-  { id: "d4", platform: "twitter", author_name: "Mike Turner", body: "Great thread on AI marketing tools. Quick question — does SignafyAI integrate with HubSpot?", ai_reply: `Thanks Mike! HubSpot integration is on the roadmap for Q3. Right now we have direct CSV export and webhook support that works great with most CRMs. Want me to share the docs?`, is_read: true, status: "pending", received_at: new Date(Date.now() - 3600000).toISOString() },
-  { id: "d5", platform: "instagram", author_name: "Sofia Martinez", body: "Hi! Are you taking on new clients right now? We're a fitness brand looking for help with Instagram content.", ai_reply: null, is_read: true, status: "pending", received_at: new Date(Date.now() - 2 * 3600000).toISOString() },
+  {
+    id: "d1", platform: "instagram", author_name: "Emma Lawson",
+    body: "Hey! I saw your post about content strategies and wanted to reach out. We're a mid-size e-commerce brand doing about $2M/year and want to scale to $5M through better organic reach. Do you work with DTC brands?",
+    ai_reply: `Hi Emma! Thanks so much for reaching out.\n\nWe absolutely work with DTC brands — e-commerce is one of our sweet spots. We've helped several brands in the $2-5M range scale their social presence significantly.\n\nI'd love to learn more about your current strategy. Would you be open to a quick 15-minute call this week?`,
+    is_read: false, status: "pending", received_at: new Date(Date.now() - 2 * 60000).toISOString(),
+  },
+  {
+    id: "d2", platform: "linkedin", author_name: "Ryan Choi",
+    body: "Would love to discuss a potential partnership for our clients. We run a growth consulting firm and often need content automation tools.",
+    ai_reply: `Hi Ryan! Great to connect.\n\nPartnerships are definitely something we're open to. What types of clients do you work with primarily — B2B, DTC, or a mix? Happy to hop on a quick call to explore what that could look like.`,
+    is_read: false, status: "pending", received_at: new Date(Date.now() - 15 * 60000).toISOString(),
+  },
+  {
+    id: "d3", platform: "tiktok", author_name: "Zara Ahmed",
+    body: "Love your latest video! Can you do one about SEO for small businesses?",
+    ai_reply: `Thank you so much, Zara! That means a lot.\n\nSEO for small businesses is actually on our content roadmap — great timing! Stay tuned, we have something coming on that topic in the next few weeks.`,
+    is_read: false, status: "pending", received_at: new Date(Date.now() - 42 * 60000).toISOString(),
+  },
+  {
+    id: "d4", platform: "twitter", author_name: "Mike Turner",
+    body: "Great thread on AI marketing tools. Quick question — does SignafyAI integrate with HubSpot?",
+    ai_reply: `Thanks Mike! HubSpot integration is on the roadmap for Q3. Right now we have direct CSV export and webhook support that works great with most CRMs. Want me to share the docs?`,
+    is_read: true, status: "pending", received_at: new Date(Date.now() - 3600000).toISOString(),
+  },
+  {
+    id: "d5", platform: "instagram", author_name: "Sofia Martinez",
+    body: "Hi! Are you taking on new clients right now? We're a fitness brand looking for help with Instagram content.",
+    ai_reply: null,
+    is_read: true, status: "pending", received_at: new Date(Date.now() - 2 * 3600000).toISOString(),
+  },
 ];
 
 export default function SocialPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [selected, setSelected] = useState<number>(0);
+  const [messages, setMessages]     = useState<Message[]>([]);
+  const [selected, setSelected]     = useState<number>(0);
   const [mobileView, setMobileView] = useState<"list" | "thread">("list");
-  const [isLoading, setIsLoading] = useState(true);
-  const [editMode, setEditMode] = useState(false);
-  const [editText, setEditText] = useState("");
-  const [isSending, setIsSending] = useState(false);
+  const [isLoading, setIsLoading]   = useState(true);
+  const [editMode, setEditMode]     = useState(false);
+  const [editText, setEditText]     = useState("");
+  const [isSending, setIsSending]   = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadCount, setUnreadCount]   = useState(0);
 
   useEffect(() => {
     fetch("/api/social/messages?per_page=20")
@@ -72,10 +97,7 @@ export default function SocialPage() {
           setUnreadCount(d.unread_count ?? 0);
         }
       })
-      .catch(() => {
-        setMessages(DEMO_MESSAGES);
-        setUnreadCount(3);
-      })
+      .catch(() => { setMessages(DEMO_MESSAGES); setUnreadCount(3); })
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -86,7 +108,6 @@ export default function SocialPage() {
     setMobileView("thread");
     setEditMode(false);
     setEditText("");
-    // Mark as read locally
     setMessages((prev) => prev.map((m, idx) => idx === i ? { ...m, is_read: true } : m));
   }
 
@@ -94,7 +115,6 @@ export default function SocialPage() {
     if (!msg) return;
     const body = editMode ? editText : (msg.ai_reply ?? "");
     if (!body.trim()) return;
-
     setIsSending(true);
     try {
       const res = await fetch(`/api/social/messages/${msg.id}/reply`, {
@@ -106,9 +126,7 @@ export default function SocialPage() {
         setMessages((prev) => prev.map((m, i) => i === selected ? { ...m, status: "replied", is_read: true } : m));
         setEditMode(false);
       }
-    } finally {
-      setIsSending(false);
-    }
+    } finally { setIsSending(false); }
   }
 
   async function handleDismiss() {
@@ -133,73 +151,112 @@ export default function SocialPage() {
           return;
         }
       }
-    } catch { /* fall through to local fallback */ } finally {
-      setIsGenerating(false);
-    }
+    } catch { /* fall through */ } finally { setIsGenerating(false); }
     const fallback = `Hi ${msg.author_name.split(" ")[0]}! Thanks for reaching out.\n\nWe'd love to connect and learn more about what you're working on. Feel free to share more details or suggest a time to chat!`;
     setMessages((prev) => prev.map((m, i) => i === selected ? { ...m, ai_reply: fallback } : m));
   }
 
+  const platColor = msg ? (PLATFORM_COLORS[msg.platform] ?? "#7c3aed") : "#7c3aed";
+  const canSend = !isSending && (!!msg?.ai_reply || editMode);
+
   return (
     <div style={{ padding: "36px 40px", maxWidth: 1440, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
-      {/* Header */}
-      <div className="animate-fade-up flex items-center justify-between">
+
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <p className="text-sm mb-1" style={{ color: "var(--color-text-2)" }}>Manage conversations</p>
+          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.38)", marginBottom: 8, fontWeight: 500 }}>Manage conversations</p>
           <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "rgba(255,255,255,0.95)", margin: 0, lineHeight: 1.1 }}>Social Inbox</h1>
         </div>
         {mobileView === "thread" && (
           <button
-            className="lg:hidden flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium"
-            style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}
             onClick={() => setMobileView("list")}
+            style={{
+              display: "flex", alignItems: "center", gap: 8, padding: "9px 16px", borderRadius: 10,
+              border: "1px solid var(--color-border)", background: "var(--color-surface-2)",
+              color: "rgba(255,255,255,0.7)", cursor: "pointer", fontSize: 13, fontWeight: 500,
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
             Back
           </button>
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 animate-fade-up" style={{ animationDelay: "0.1s", minHeight: "calc(100vh - 220px)" }}>
-        {/* Message List */}
-        <div className={`lg:col-span-2 rounded-2xl overflow-hidden ${mobileView === "thread" ? "hidden lg:block" : "block"}`} style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
-          <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-            <h2 className="text-sm font-semibold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>
-              Messages{unreadCount > 0 && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-md" style={{ background: "rgba(124,58,237,0.15)", color: "#a78bfa" }}>{unreadCount} new</span>}
+      {/* ── Two-panel layout ────────────────────────────────────── */}
+      <div style={{ display: "flex", gap: 16, minHeight: "calc(100vh - 220px)" }}>
+
+        {/* ── Message List Panel ──────────────────────────────── */}
+        <div style={{
+          width: 340, minWidth: 260, flexShrink: 0, borderRadius: 16, overflow: "hidden",
+          background: "var(--color-surface)", border: "1px solid var(--color-border)",
+          display: mobileView === "thread" ? "none" : "flex", flexDirection: "column",
+        }}>
+          {/* Panel header */}
+          <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--color-border-subtle)", flexShrink: 0 }}>
+            <h2 style={{ margin: 0, fontSize: 13, fontWeight: 700, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.9)", display: "flex", alignItems: "center", gap: 8 }}>
+              Messages
+              {unreadCount > 0 && (
+                <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, background: "rgba(124,58,237,0.15)", color: "#a78bfa", fontWeight: 600 }}>
+                  {unreadCount} new
+                </span>
+              )}
             </h2>
           </div>
 
           {isLoading ? (
-            <div className="p-4 space-y-3">
-              {[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background: "var(--color-surface-2)" }} />)}
+            <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+              {[1, 2, 3].map((i) => (
+                <div key={i} style={{ height: 64, borderRadius: 10, background: "var(--color-surface-2)" }} />
+              ))}
             </div>
           ) : (
-            <div className="divide-y" style={{ borderColor: "var(--color-border-subtle)" }}>
+            <div style={{ overflowY: "auto", flex: 1 }}>
               {messages.map((m, i) => {
-                const color = PLATFORM_COLORS[m.platform] ?? "#7c3aed";
+                const color    = PLATFORM_COLORS[m.platform] ?? "#7c3aed";
                 const platLabel = PLATFORM_LABELS[m.platform] ?? m.platform;
+                const isActive  = selected === i;
                 return (
                   <div
                     key={m.id}
                     onClick={() => selectMessage(i)}
-                    className="flex items-start gap-3 px-5 py-4 cursor-pointer transition-colors"
-                    style={{ background: selected === i ? "var(--color-surface-2)" : "transparent" }}
-                    onMouseEnter={(e) => { if (selected !== i) (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
-                    onMouseLeave={(e) => { if (selected !== i) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                    style={{
+                      display: "flex", alignItems: "flex-start", gap: 12,
+                      padding: "14px 20px", cursor: "pointer", transition: "background 0.15s",
+                      background: isActive ? "var(--color-surface-2)" : "transparent",
+                      borderBottom: "1px solid var(--color-border-subtle)",
+                    }}
+                    onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
+                    onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                   >
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold" style={{ background: `${color}20`, color }}>
+                    {/* Avatar */}
+                    <div style={{
+                      width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 12, fontWeight: 700, background: `${color}20`, color,
+                    }}>
                       {m.author_name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-sm font-medium truncate" style={{ color: "var(--color-text-1)" }}>{m.author_name}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-md flex-shrink-0" style={{ background: `${color}15`, color }}>{platLabel}</span>
-                        {!m.is_read && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "#7c3aed" }} />}
-                        {m.status === "replied" && <span className="text-[10px] px-1.5 py-0.5 rounded-md flex-shrink-0" style={{ background: "rgba(52,211,153,0.1)", color: "#34d399" }}>Replied</span>}
+
+                    {/* Content */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.9)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.author_name}</span>
+                        <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, flexShrink: 0, background: `${color}18`, color }}>{platLabel}</span>
+                        {!m.is_read && <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: "#7c3aed" }} />}
+                        {m.status === "replied" && (
+                          <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, flexShrink: 0, background: "rgba(52,211,153,0.12)", color: "#34d399" }}>Replied</span>
+                        )}
                       </div>
-                      <p className="text-xs truncate" style={{ color: "var(--color-text-muted)" }}>{m.body}</p>
+                      <p style={{ fontSize: 12, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "rgba(255,255,255,0.38)" }}>{m.body}</p>
                     </div>
-                    <span className="text-[10px] flex-shrink-0 mt-0.5" style={{ color: "var(--color-text-muted)" }}>{timeAgo(m.received_at)}</span>
+
+                    {/* Timestamp */}
+                    <span style={{ fontSize: 10, flexShrink: 0, marginTop: 2, color: "rgba(255,255,255,0.3)", whiteSpace: "nowrap" }}>{timeAgo(m.received_at)}</span>
                   </div>
                 );
               })}
@@ -207,100 +264,171 @@ export default function SocialPage() {
           )}
         </div>
 
-        {/* Conversation Detail */}
-        <div className={`lg:col-span-3 rounded-2xl flex flex-col ${mobileView === "list" ? "hidden lg:flex" : "flex"}`} style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
+        {/* ── Conversation Thread Panel ────────────────────────── */}
+        <div style={{
+          flex: 1, minWidth: 0, borderRadius: 16,
+          background: "var(--color-surface)", border: "1px solid var(--color-border)",
+          display: mobileView === "list" ? "none" : "flex", flexDirection: "column",
+        }}>
           {!msg ? (
-            <div className="flex-1 flex items-center justify-center p-12 text-center">
+            /* Empty state */
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 32px", textAlign: "center" }}>
               <div>
-                <div className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: "rgba(124,58,237,0.1)", color: "#a78bfa" }}>
-                  <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M20 11c0 4.97-4.03 8.5-9 8.5a10.3 10.3 0 0 1-3.57-.63L3 20.5l1.26-4.52A7.52 7.52 0 0 1 2 11C2 6.03 6.03 2.5 11 2.5S20 6.03 20 11z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>
+                <div style={{
+                  width: 52, height: 52, borderRadius: 16, margin: "0 auto", marginBottom: 14,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "rgba(124,58,237,0.1)", color: "#a78bfa",
+                }}>
+                  <svg width="24" height="24" viewBox="0 0 22 22" fill="none">
+                    <path d="M20 11c0 4.97-4.03 8.5-9 8.5a10.3 10.3 0 0 1-3.57-.63L3 20.5l1.26-4.52A7.52 7.52 0 0 1 2 11C2 6.03 6.03 2.5 11 2.5S20 6.03 20 11z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                  </svg>
                 </div>
-                <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>Select a message to view the conversation</p>
+                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.35)", margin: 0 }}>Select a message to view the conversation</p>
               </div>
             </div>
           ) : (
             <>
-              {/* Header */}
-              <div className="flex items-center gap-3 px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: `${PLATFORM_COLORS[msg.platform] ?? "#7c3aed"}20`, color: PLATFORM_COLORS[msg.platform] ?? "#7c3aed" }}>
+              {/* Thread header */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "18px 24px", borderBottom: "1px solid var(--color-border-subtle)", flexShrink: 0 }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: "50%",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 13, fontWeight: 700, background: `${platColor}20`, color: platColor,
+                }}>
                   {msg.author_name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <div className="text-sm font-semibold" style={{ color: "var(--color-text-1)" }}>{msg.author_name}</div>
-                  <div className="text-xs" style={{ color: "var(--color-text-muted)" }}>via {PLATFORM_LABELS[msg.platform] ?? msg.platform} · {timeAgo(msg.received_at)}</div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: "rgba(255,255,255,0.92)" }}>{msg.author_name}</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
+                    via {PLATFORM_LABELS[msg.platform] ?? msg.platform} · {timeAgo(msg.received_at)}
+                  </div>
                 </div>
                 {msg.status === "replied" && (
-                  <span className="ml-auto text-xs px-2 py-1 rounded-lg" style={{ background: "rgba(52,211,153,0.1)", color: "#34d399", border: "1px solid rgba(52,211,153,0.2)" }}>Replied</span>
+                  <span style={{ marginLeft: "auto", fontSize: 12, padding: "4px 12px", borderRadius: 8, background: "rgba(52,211,153,0.1)", color: "#34d399", border: "1px solid rgba(52,211,153,0.2)" }}>✓ Replied</span>
                 )}
               </div>
 
-              {/* Thread */}
-              <div className="flex-1 p-6 space-y-4 overflow-y-auto">
-                {/* Inbound message */}
-                <div className="flex justify-start">
-                  <div className="max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed" style={{ background: "var(--color-surface-2)", color: "var(--color-text-2)", border: "1px solid var(--color-border-subtle)" }}>
+              {/* Thread body */}
+              <div style={{ flex: 1, padding: "24px", display: "flex", flexDirection: "column", gap: 16, overflowY: "auto" }}>
+                {/* Inbound message bubble */}
+                <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                  <div style={{
+                    maxWidth: "78%", padding: "12px 16px", borderRadius: 16,
+                    fontSize: 14, lineHeight: 1.65,
+                    background: "var(--color-surface-2)", color: "rgba(255,255,255,0.78)",
+                    border: "1px solid var(--color-border-subtle)",
+                  }}>
                     {msg.body}
                   </div>
                 </div>
 
-                {/* AI Suggested Reply */}
+                {/* AI suggested reply */}
                 {msg.ai_reply ? (
-                  <div className="mt-4 rounded-xl p-4" style={{ background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.15)" }}>
-                    <div className="flex items-center justify-between gap-2 mb-3">
-                      <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold" style={{ background: "rgba(124,58,237,0.15)", color: "#a78bfa" }}>AI Suggested Reply</span>
-                      <button onClick={() => { setEditMode(true); setEditText(msg.ai_reply ?? ""); }} className="text-xs" style={{ color: "var(--color-text-muted)" }}>Edit</button>
+                  <div style={{ borderRadius: 12, padding: "16px 18px", background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.15)" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 12 }}>
+                      <span style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, fontWeight: 700, letterSpacing: "0.04em", background: "rgba(124,58,237,0.15)", color: "#a78bfa" }}>
+                        AI SUGGESTED REPLY
+                      </span>
+                      <button
+                        onClick={() => { setEditMode(true); setEditText(msg.ai_reply ?? ""); }}
+                        style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", background: "none", border: "none", cursor: "pointer", padding: "3px 8px", borderRadius: 6, transition: "color 0.15s" }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#a78bfa"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.45)"; }}
+                      >
+                        Edit
+                      </button>
                     </div>
                     {editMode ? (
                       <textarea
                         value={editText}
                         onChange={(e) => setEditText(e.target.value)}
                         rows={6}
-                        className="w-full text-sm leading-relaxed outline-none resize-none rounded-lg px-3 py-2"
-                        style={{ background: "var(--color-surface-2)", color: "var(--color-text-2)", border: "1px solid var(--color-border-subtle)" }}
+                        style={{
+                          width: "100%", fontSize: 13, lineHeight: 1.65, outline: "none", resize: "none",
+                          borderRadius: 8, padding: "10px 12px", boxSizing: "border-box",
+                          background: "var(--color-surface-2)", color: "rgba(255,255,255,0.82)",
+                          border: "1px solid var(--color-border-subtle)",
+                        }}
                       />
                     ) : (
-                      <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "var(--color-text-2)" }}>{msg.ai_reply}</p>
+                      <p style={{ fontSize: 13, lineHeight: 1.75, whiteSpace: "pre-line", color: "rgba(255,255,255,0.78)", margin: 0 }}>
+                        {msg.ai_reply}
+                      </p>
                     )}
                   </div>
                 ) : msg.status !== "replied" ? (
-                  <div className="mt-4 rounded-xl p-4 text-center" style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)" }}>
-                    <p className="text-xs mb-3" style={{ color: "var(--color-text-muted)" }}>No AI reply generated yet</p>
+                  <div style={{ borderRadius: 12, padding: "22px 20px", textAlign: "center", background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)" }}>
+                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", margin: "0 0 14px" }}>No AI reply generated yet</p>
                     <button
                       onClick={handleGenerateReply}
                       disabled={isGenerating}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium mx-auto transition-all"
-                      style={{ background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.25)", color: "#a78bfa" }}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 20px",
+                        borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: isGenerating ? "not-allowed" : "pointer",
+                        background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.25)", color: "#a78bfa",
+                        transition: "background 0.15s",
+                      }}
+                      onMouseEnter={(e) => { if (!isGenerating) (e.currentTarget as HTMLElement).style.background = "rgba(124,58,237,0.22)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(124,58,237,0.12)"; }}
                     >
-                      {isGenerating ? <><svg className="animate-spin" width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="4" stroke="rgba(167,139,250,0.3)" strokeWidth="2"/><path d="M6 2a4 4 0 0 1 4 4" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round"/></svg> Generating…</> : "Generate AI Reply"}
+                      {isGenerating ? (
+                        <>
+                          <svg className="animate-spin" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <circle cx="6" cy="6" r="4" stroke="rgba(167,139,250,0.3)" strokeWidth="2" />
+                            <path d="M6 2a4 4 0 0 1 4 4" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" />
+                          </svg>
+                          Generating…
+                        </>
+                      ) : "✦ Generate AI Reply"}
                     </button>
                   </div>
                 ) : null}
               </div>
 
-              {/* Actions */}
+              {/* Action bar */}
               {msg.status !== "replied" && msg.status !== "dismissed" && (
-                <div className="flex items-center gap-3 px-6 py-4" style={{ borderTop: "1px solid var(--color-border-subtle)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 24px", borderTop: "1px solid var(--color-border-subtle)", flexShrink: 0 }}>
                   <button
                     onClick={handleApproveAndSend}
-                    disabled={isSending || (!msg.ai_reply && !editMode)}
-                    className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)", color: "white", boxShadow: "0 4px 12px rgba(124,58,237,0.3)" }}
+                    disabled={!canSend}
+                    style={{
+                      flex: 1, padding: "11px 18px", borderRadius: 10, border: "none",
+                      fontSize: 14, fontWeight: 600, transition: "all 0.2s",
+                      cursor: canSend ? "pointer" : "not-allowed",
+                      background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)", color: "white",
+                      boxShadow: canSend ? "0 4px 12px rgba(124,58,237,0.3)" : "none",
+                      opacity: canSend ? 1 : 0.45,
+                    }}
                   >
-                    {isSending ? "Sending…" : "Approve & Send"}
+                    {isSending ? "Sending…" : "✓ Approve & Send"}
                   </button>
+
                   {!editMode && (
                     <button
                       onClick={() => { setEditMode(true); setEditText(msg.ai_reply ?? ""); }}
-                      className="px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
-                      style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}
+                      style={{
+                        padding: "11px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600,
+                        cursor: "pointer", whiteSpace: "nowrap", transition: "background 0.15s",
+                        background: "var(--color-surface-2)", border: "1px solid var(--color-border)",
+                        color: "rgba(255,255,255,0.65)",
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
                     >
                       Edit Reply
                     </button>
                   )}
+
                   <button
                     onClick={handleDismiss}
-                    className="px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
-                    style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)" }}
+                    style={{
+                      padding: "11px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600,
+                      cursor: "pointer", whiteSpace: "nowrap", transition: "background 0.15s",
+                      background: "var(--color-surface-2)", border: "1px solid var(--color-border)",
+                      color: "rgba(255,255,255,0.4)",
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
                   >
                     Dismiss
                   </button>

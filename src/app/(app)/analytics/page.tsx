@@ -96,9 +96,11 @@ export default function AnalyticsPage() {
           <p style={{ fontSize: 14, color: "rgba(255,255,255,0.32)", marginBottom: 8, fontWeight: 500 }}>Performance insights</p>
           <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "rgba(255,255,255,0.95)", margin: 0, lineHeight: 1.1 }}>Analytics</h1>
         </div>
-        <div className="flex gap-2">
+        <div style={{ display: "flex", gap: 8 }}>
           {ranges.map((r) => (
-            <button key={r.value} onClick={() => setRange(r.value)} className="px-3 py-2 rounded-xl text-xs font-medium transition-all" style={{
+            <button key={r.value} onClick={() => setRange(r.value)} style={{
+              padding: "8px 14px", borderRadius: 10, fontSize: 12, fontWeight: 500,
+              cursor: "pointer", transition: "all 0.2s",
               background: range === r.value ? "rgba(124,58,237,0.15)" : "var(--color-surface)",
               border: range === r.value ? "1px solid rgba(124,58,237,0.3)" : "1px solid var(--color-border)",
               color: range === r.value ? "#a78bfa" : "var(--color-text-2)",
