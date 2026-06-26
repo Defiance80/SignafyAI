@@ -97,7 +97,7 @@ export default function SettingsPage() {
 
       {/* Profile */}
       <div className="animate-fade-up" style={{ borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.07s" }}>
-        <h2 style={{ fontSize: 13, fontWeight: 700, marginBottom: 20, fontFamily: "var(--font-syne)", color: "var(--c2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Profile</h2>
+        <h2 style={{ fontSize: 13, fontWeight: 700, marginBottom: 20, color: "var(--c2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Profile</h2>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 20 }}>
           <div style={{ width: 60, height: 60, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700, flexShrink: 0, background: "rgba(124,58,237,0.15)", color: "#a78bfa" }}>{userInitial}</div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 14 }}>
@@ -146,7 +146,7 @@ export default function SettingsPage() {
       {/* Usage */}
       {me && (
         <div className="animate-fade-up" style={{ borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.11s" }}>
-          <h2 style={{ fontSize: 13, fontWeight: 700, marginBottom: 20, fontFamily: "var(--font-syne)", color: "var(--c2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Usage this month</h2>
+          <h2 style={{ fontSize: 13, fontWeight: 700, marginBottom: 20, color: "var(--c2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Usage this month</h2>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             {[
               { label: "Leads", used: me.org.usage_leads_mo, limit: me.org.limits_leads_mo, color: "#6d28d9" },
@@ -172,7 +172,7 @@ export default function SettingsPage() {
 
       {/* Brand Voice */}
       <div className="animate-fade-up" style={{ borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.14s" }}>
-        <h2 style={{ fontSize: 13, fontWeight: 700, marginBottom: 20, fontFamily: "var(--font-syne)", color: "var(--c2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Brand Voice</h2>
+        <h2 style={{ fontSize: 13, fontWeight: 700, marginBottom: 20, color: "var(--c2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Brand Voice</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
             <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 8, color: "var(--c3)" }}>Tone</label>
@@ -200,7 +200,7 @@ export default function SettingsPage() {
 
       {/* Notifications */}
       <div className="animate-fade-up" style={{ borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.21s" }}>
-        <h2 style={{ fontSize: 13, fontWeight: 700, marginBottom: 20, fontFamily: "var(--font-syne)", color: "var(--c2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Notifications</h2>
+        <h2 style={{ fontSize: 13, fontWeight: 700, marginBottom: 20, color: "var(--c2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Notifications</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {NOTIFICATIONS.map((n) => (
             <div key={n.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderRadius: 12, background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)" }}>
@@ -223,7 +223,7 @@ export default function SettingsPage() {
       <div className="animate-fade-up" style={{ borderRadius: 16, padding: "28px 32px", position: "relative", overflow: "hidden", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.28s" }}>
         <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse at 80% 50%, rgba(109,40,217,0.06) 0%, transparent 70%)" }} />
         <div style={{ position: "relative" }}>
-          <h2 style={{ fontSize: 13, fontWeight: 700, marginBottom: 20, fontFamily: "var(--font-syne)", color: "var(--c2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Plan & Billing</h2>
+          <h2 style={{ fontSize: 13, fontWeight: 700, marginBottom: 20, color: "var(--c2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Plan & Billing</h2>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "18px 22px", borderRadius: 12, background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", flexWrap: "wrap" }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>

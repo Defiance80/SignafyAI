@@ -168,7 +168,7 @@ export default function SeoPage() {
           >
             <div style={{ position: "absolute", top: 0, right: 0, width: 80, height: 80, borderRadius: "50%", pointerEvents: "none", opacity: 0.3, background: `radial-gradient(circle, ${c.color}25 0%, transparent 70%)`, transform: "translate(25%, -25%)" }} />
             <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 8, color: c.color, letterSpacing: "0.04em", textTransform: "uppercase" }}>{c.name}</div>
-            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 6, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>{c.volume}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 6, color: "var(--c1)" }}>{c.volume}</div>
             <div style={{ fontSize: 12, color: "var(--c3)" }}>{c.keywords} keywords</div>
           </div>
         ))}
@@ -177,7 +177,7 @@ export default function SeoPage() {
       {/* Keywords Table */}
       <div className="animate-fade-up" style={{ borderRadius: 16, overflow: "hidden", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.2s" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 28px", borderBottom: "1px solid var(--color-border-subtle)" }}>
-          <h2 style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>
+          <h2 style={{ fontSize: 14, fontWeight: 700, color: "var(--c1)" }}>
             Keyword Opportunities
             {lastTopic && <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 400, color: "var(--c3)" }}>for &ldquo;{lastTopic}&rdquo;</span>}
           </h2>

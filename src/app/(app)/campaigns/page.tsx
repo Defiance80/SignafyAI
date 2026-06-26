@@ -203,7 +203,7 @@ export default function CampaignsPage() {
               >
                 <div style={{ position: "absolute", top: 0, right: 0, width: 80, height: 80, borderRadius: "50%", pointerEvents: "none", opacity: 0.2, background: `radial-gradient(circle, ${color}30 0%, transparent 70%)`, transform: "translate(25%, -25%)" }} />
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 700, paddingRight: 10, fontFamily: "var(--font-syne)", color: "var(--c1)", margin: 0, lineHeight: 1.35 }}>{c.name}</h3>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, paddingRight: 10, color: "var(--c1)", margin: 0, lineHeight: 1.35 }}>{c.name}</h3>
                   <span style={{ fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 8, flexShrink: 0, textTransform: "capitalize", background: s.bg, color: s.color }}>{c.status}</span>
                 </div>
                 <div style={{ fontSize: 13, marginBottom: 16, color: "var(--c3)", display: "flex", flexDirection: "column", gap: 6 }}>
@@ -236,7 +236,7 @@ export default function CampaignsPage() {
         >
           <div style={{ width: "100%", maxWidth: 560, borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)", maxHeight: "90vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>New Campaign</h2>
+              <h2 className="text-base font-bold" style={{ color: "var(--color-text-1)" }}>New Campaign</h2>
               <button onClick={() => setShowModal(false)} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style={{ background: "var(--color-surface-2)", color: "var(--color-text-muted)" }}>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
               </button>

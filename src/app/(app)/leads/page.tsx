@@ -130,7 +130,7 @@ function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }
           </button>
           <div style={{ flex: 1 }}>
             {isLoading ? <div style={{ height: 20, width: 160, borderRadius: 6, background: "var(--color-surface-2)" }} /> :
-              <h2 style={{ fontSize: 16, fontWeight: 700, fontFamily: "var(--font-syne)", color: "var(--c1)", margin: 0 }}>{lead?.name}</h2>}
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--c1)", margin: 0 }}>{lead?.name}</h2>}
           </div>
         </div>
         {isLoading ? (
@@ -228,7 +228,7 @@ function WebsiteAuditSection({ bizId }: { bizId: string }) {
     const color = score >= 70 ? "#34d399" : score >= 45 ? "#fbbf24" : "#f87171";
     return (
       <div className="text-center px-3 py-2 rounded-xl" style={{ background: `${color}10`, border: `1px solid ${color}30` }}>
-        <div className="text-lg font-bold" style={{ color, fontFamily: "var(--font-syne)" }}>{score}</div>
+        <div className="text-lg font-bold" style={{ color }}>{score}</div>
         <div className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>{label}</div>
       </div>
     );
@@ -558,11 +558,11 @@ function BusinessDrawer({ biz, onClose }: { biz: Business; onClose: () => void }
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "var(--font-syne)", color: "var(--color-text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{biz.name}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--color-text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{biz.name}</div>
             <div style={{ fontSize: 12, marginTop: 2, color: "var(--color-text-muted)" }}>{biz.location ?? biz.industry ?? "Business"}</div>
           </div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color, fontFamily: "var(--font-syne)", lineHeight: 1 }}>{biz.opportunity_score}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{biz.opportunity_score}</div>
             <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>score</div>
           </div>
         </div>
@@ -718,7 +718,7 @@ function AssetDrawer({ asset, onClose }: { asset: GeneratedAsset; onClose: () =>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </button>
           <div className="flex-1">
-            <h2 className="text-base font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Funnel Asset Bundle</h2>
+            <h2 className="text-base font-bold" style={{ color: "var(--color-text-1)" }}>Funnel Asset Bundle</h2>
             <div className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>{asset.service} · {asset.location}</div>
           </div>
         </div>
@@ -842,7 +842,7 @@ function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunch
         {/* Header */}
         <div className="flex items-start justify-between mb-5">
           <div>
-            <h2 className="text-lg font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>
+            <h2 className="text-lg font-bold" style={{ color: "var(--color-text-1)" }}>
               🐺 Blue Wolf Discovery
             </h2>
             <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
@@ -1052,7 +1052,7 @@ function AddLeadModal({ onClose }: { onClose: () => void }) {
       <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose} />
       <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md max-h-[90dvh] overflow-y-auto" style={{ transform: "translate(-50%, -50%)", background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 20, boxShadow: "0 24px 80px rgba(0,0,0,0.5)" }}>
         <div className="px-6 py-5" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-          <h2 className="text-base font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Add Lead Manually</h2>
+          <h2 className="text-base font-bold" style={{ color: "var(--color-text-1)" }}>Add Lead Manually</h2>
         </div>
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-3">
           {field("name", "Name *", "Full name")}
@@ -1265,7 +1265,7 @@ function BizCard({ biz, onSelectBiz }: { biz: Business; onSelectBiz: (b: Busines
           <div className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>{biz.location ?? biz.industry ?? "—"}</div>
         </div>
         <div className="flex flex-col items-end flex-shrink-0">
-          <div className="text-xl font-bold" style={{ color, fontFamily: "var(--font-syne)" }}>{biz.opportunity_score}</div>
+          <div className="text-xl font-bold" style={{ color }}>{biz.opportunity_score}</div>
           <div className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>opp. score</div>
         </div>
       </div>
@@ -1291,10 +1291,35 @@ function BizCard({ biz, onSelectBiz }: { biz: Business; onSelectBiz: (b: Busines
 }
 
 function ProspectsPanel({ onSelectBiz, activeRunId }: { onSelectBiz: (b: Business) => void; activeRunId?: string | null }) {
+  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [collapsedRuns, setCollapsedRuns] = useState<Set<string>>(new Set());
+  const [clearingAll, setClearingAll] = useState(false);
+  const [clearingRun, setClearingRun] = useState<string | null>(null);
+
+  async function handleClearAll() {
+    if (!confirm(`Remove all ${allBiz.length} prospects? This cannot be undone.`)) return;
+    setClearingAll(true);
+    try {
+      await fetch("/api/businesses", { method: "DELETE" });
+      qc.invalidateQueries({ queryKey: ["businesses"] });
+    } finally {
+      setClearingAll(false);
+    }
+  }
+
+  async function handleClearRun(runId: string, count: number) {
+    if (!confirm(`Remove ${count} prospect${count !== 1 ? "s" : ""} from this scan? This cannot be undone.`)) return;
+    setClearingRun(runId);
+    try {
+      await fetch(`/api/businesses?run_id=${encodeURIComponent(runId)}`, { method: "DELETE" });
+      qc.invalidateQueries({ queryKey: ["businesses"] });
+    } finally {
+      setClearingRun(null);
+    }
+  }
 
   // Fetch ALL businesses (no per-run filter — we group client-side)
   const { data, isLoading } = useBusinesses({
@@ -1370,6 +1395,19 @@ function ProspectsPanel({ onSelectBiz, activeRunId }: { onSelectBiz: (b: Busines
           </div>
         )}
         {allBiz.length > 0 && <ExportButton businesses={allBiz} runLabel={runGroups[0]?.industry ?? undefined} />}
+        {allBiz.length > 0 && (
+          <button
+            onClick={handleClearAll}
+            disabled={clearingAll}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+            style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", cursor: clearingAll ? "not-allowed" : "pointer", opacity: clearingAll ? 0.6 : 1, whiteSpace: "nowrap" }}
+            onMouseEnter={e => { if (!clearingAll) (e.currentTarget).style.background = "rgba(239,68,68,0.14)"; }}
+            onMouseLeave={e => { (e.currentTarget).style.background = "rgba(239,68,68,0.08)"; }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M4 3V2h4v1M5 5v4M7 5v4M2.5 3l.5 7h6l.5-7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            {clearingAll ? "Clearing…" : "Clear All"}
+          </button>
+        )}
       </div>
 
       {runGroups.length === 0 ? (
@@ -1415,6 +1453,19 @@ function ProspectsPanel({ onSelectBiz, activeRunId }: { onSelectBiz: (b: Busines
                   {dateLabel && <span className="text-[10px] flex-shrink-0" style={{ color: "var(--color-text-muted)" }}>{dateLabel}</span>}
                   {/* Per-run export */}
                   <ExportButton businesses={group.bizes} runLabel={group.industry ?? group.runId.slice(0, 8)} />
+                  {group.runId !== "__no_run" && (
+                    <button
+                      onClick={() => handleClearRun(group.runId, group.bizes.length)}
+                      disabled={clearingRun === group.runId}
+                      title="Remove this scan's results"
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold transition-all flex-shrink-0"
+                      style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.18)", color: "#f87171", cursor: clearingRun === group.runId ? "not-allowed" : "pointer", opacity: clearingRun === group.runId ? 0.5 : 1 }}
+                      onMouseEnter={e => { if (!clearingRun) (e.currentTarget).style.background = "rgba(239,68,68,0.13)"; }}
+                      onMouseLeave={e => { (e.currentTarget).style.background = "rgba(239,68,68,0.07)"; }}
+                    >
+                      {clearingRun === group.runId ? "…" : "×"} Clear
+                    </button>
+                  )}
                 </div>
 
                 {/* Active run live-update banner */}
@@ -1531,7 +1582,7 @@ function IntentPanel({ onSelectSignal }: { onSelectSignal: (s: IntentSignal) => 
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <div className="text-lg font-bold" style={{ color: ic, fontFamily: "var(--font-syne)" }}>{sig.intent_score}</div>
+                    <div className="text-lg font-bold" style={{ color: ic }}>{sig.intent_score}</div>
                     <div className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>intent</div>
                     {sig.source_url && (
                       <a href={sig.source_url} target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()}
@@ -1699,10 +1750,10 @@ function SignalDrawer({
                 {sourceIcon} {signal.source}
               </span>
             </div>
-            <h2 className="text-base font-bold mt-1.5" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Intent Signal</h2>
+            <h2 className="text-base font-bold mt-1.5" style={{ color: "var(--color-text-1)" }}>Intent Signal</h2>
           </div>
           <div className="text-right flex-shrink-0">
-            <div className="text-2xl font-bold" style={{ color: ic, fontFamily: "var(--font-syne)" }}>{signal.intent_score}</div>
+            <div className="text-2xl font-bold" style={{ color: ic }}>{signal.intent_score}</div>
             <div className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>/ 100</div>
           </div>
         </div>
@@ -1729,7 +1780,7 @@ function SignalDrawer({
               <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "var(--color-surface-2)" }}>
                 <div className="h-full rounded-full" style={{ width: `${signal.intent_score}%`, background: `linear-gradient(90deg, ${ic}88, ${ic})` }} />
               </div>
-              <span className="text-sm font-bold tabular-nums" style={{ color: ic, fontFamily: "var(--font-syne)" }}>{signal.intent_score}/100</span>
+              <span className="text-sm font-bold tabular-nums" style={{ color: ic }}>{signal.intent_score}/100</span>
             </div>
             <div className="flex justify-between mt-1">
               <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>Passive browsing</span>
@@ -2001,20 +2052,19 @@ export default function LeadsPage() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
         {STATS[activeTab].map((s, i) => (
           <div key={s.label}
             className="animate-fade-up"
             style={{
-              borderRadius: 16, padding: "22px 24px", position: "relative", overflow: "hidden",
-              background: "var(--color-surface)", border: "1px solid var(--color-border)",
-              animationDelay: `${i * 0.07}s`, transition: "all 0.3s",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget).style.border = `1px solid ${s.color}33`; (e.currentTarget).style.boxShadow = `0 8px 24px ${s.color}15`; }}
-            onMouseLeave={(e) => { (e.currentTarget).style.border = "1px solid var(--color-border)"; (e.currentTarget).style.boxShadow = "none"; }}>
-            <div style={{ position: "absolute", top: 0, right: 0, width: 80, height: 80, borderRadius: "50%", pointerEvents: "none", opacity: 0.3, background: `radial-gradient(circle, ${s.color}25 0%, transparent 70%)`, transform: "translate(25%,-25%)" }} />
-            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 8, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>{s.value}</div>
-            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--c3)", letterSpacing: "0.02em" }}>{s.label}</div>
+              borderRadius: 12, padding: "20px 22px",
+              background: "var(--color-surface)",
+              border: "1px solid var(--color-border)",
+              borderTop: `3px solid ${s.color}`,
+              animationDelay: `${i * 0.06}s`,
+            }}>
+            <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.05em", lineHeight: 1, marginBottom: 6, color: s.color, fontVariantNumeric: "tabular-nums" }}>{s.value}</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--c3)", letterSpacing: "0.04em", textTransform: "uppercase" }}>{s.label}</div>
           </div>
         ))}
       </div>

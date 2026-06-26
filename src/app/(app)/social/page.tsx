@@ -198,7 +198,7 @@ export default function SocialPage() {
         }}>
           {/* Panel header */}
           <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--color-border-subtle)", flexShrink: 0 }}>
-            <h2 style={{ margin: 0, fontSize: 13, fontWeight: 700, fontFamily: "var(--font-syne)", color: "var(--c1)", display: "flex", alignItems: "center", gap: 8 }}>
+            <h2 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--c1)", display: "flex", alignItems: "center", gap: 8 }}>
               Messages
               {unreadCount > 0 && (
                 <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, background: "rgba(124,58,237,0.15)", color: "#a78bfa", fontWeight: 600 }}>

@@ -151,7 +151,7 @@ export default function BacklinksPage() {
         <div className="animate-fade-up" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Discovery form */}
           <div style={{ borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 20, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>Find Link Building Opportunities</h2>
+            <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 20, color: "var(--c1)" }}>Find Link Building Opportunities</h2>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 6, color: "var(--c3)" }}>Your domain</label>
@@ -201,7 +201,7 @@ export default function BacklinksPage() {
           {opportunities.length > 0 && (
             <div style={{ borderRadius: 16, overflow: "hidden", background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
               <div style={{ padding: "18px 28px", borderBottom: "1px solid var(--color-border-subtle)" }}>
-                <h2 style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>
+                <h2 style={{ fontSize: 14, fontWeight: 700, color: "var(--c1)" }}>
                   {opportunities.length} Opportunities Found
                 </h2>
               </div>
@@ -255,7 +255,7 @@ export default function BacklinksPage() {
         <div className="animate-fade-up">
           <div style={{ borderRadius: 16, overflow: "hidden", background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 28px", borderBottom: "1px solid var(--color-border-subtle)" }}>
-              <h2 style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>Tracked Backlinks</h2>
+              <h2 style={{ fontSize: 14, fontWeight: 700, color: "var(--c1)" }}>Tracked Backlinks</h2>
               <button
                 onClick={() => setTab("discover")}
                 className="flex items-center"

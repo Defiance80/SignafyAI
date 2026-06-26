@@ -146,7 +146,7 @@ function EmptyState({ icon, title, desc, action }: { icon: string; title: string
   return (
     <div className="text-center py-16 px-6">
       <div className="text-4xl mb-3">{icon}</div>
-      <h3 className="text-base font-semibold mb-1" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>{title}</h3>
+      <h3 className="text-base font-semibold mb-1" style={{ color: "var(--color-text-1)" }}>{title}</h3>
       <p className="text-sm mb-4" style={{ color: "var(--color-text-muted)" }}>{desc}</p>
       {action}
     </div>
@@ -226,10 +226,10 @@ function OpportunityDrawer({
                 </span>
               )}
             </div>
-            <h2 className="text-base font-bold leading-tight" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>{opp.title}</h2>
+            <h2 className="text-base font-bold leading-tight" style={{ color: "var(--color-text-1)" }}>{opp.title}</h2>
           </div>
           <div className="text-right flex-shrink-0">
-            <div className="text-2xl font-bold" style={{ color: gc, fontFamily: "var(--font-syne)" }}>{opp.growth_score}</div>
+            <div className="text-2xl font-bold" style={{ color: gc }}>{opp.growth_score}</div>
             <div className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>growth</div>
           </div>
         </div>
@@ -379,7 +379,7 @@ function AddToCalendarModal({ opp, onClose, onAdded }: { opp: GrowthOpportunity;
       <div className="fixed inset-0 z-50" style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose} />
       <div className="fixed left-1/2 top-1/2 z-[60] w-full max-w-md" style={{ transform: "translate(-50%, -50%)", background: "var(--color-surface)", borderRadius: 20, border: "1px solid var(--color-border)", boxShadow: "0 24px 80px rgba(0,0,0,0.5)", padding: 24 }}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Add to Calendar</h3>
+          <h3 className="text-base font-bold" style={{ color: "var(--color-text-1)" }}>Add to Calendar</h3>
           <button onClick={onClose} style={{ color: "var(--color-text-muted)" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </button>
@@ -491,7 +491,7 @@ function DiscoveryModal({ onClose, onLaunched }: {
 
         <div className="flex items-start justify-between mb-5">
           <div>
-            <h2 className="text-lg font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>🧠 Run Growth Intelligence Scan</h2>
+            <h2 className="text-lg font-bold" style={{ color: "var(--color-text-1)" }}>🧠 Run Growth Intelligence Scan</h2>
             <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>Find conversation opportunities across Reddit, YouTube, LinkedIn & more</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: "var(--color-text-muted)" }}>
@@ -1069,7 +1069,7 @@ function ReplyDrawer({
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
           <div className="flex-1">
-            <h2 className="text-sm font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Reply in Your Voice</h2>
+            <h2 className="text-sm font-bold" style={{ color: "var(--color-text-1)" }}>Reply in Your Voice</h2>
             <p className="text-[11px]" style={{ color: "var(--color-text-muted)" }}>AI crafts a reply using your brand voice — you review &amp; send</p>
           </div>
         </div>
@@ -1265,7 +1265,7 @@ function PublishModal({
 
         <div className="flex items-start justify-between mb-5">
           <div>
-            <h2 className="text-base font-bold" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>Publish to Social</h2>
+            <h2 className="text-base font-bold" style={{ color: "var(--color-text-1)" }}>Publish to Social</h2>
             <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>Post this calendar item to your connected accounts</p>
           </div>
           <button onClick={onClose} style={{ color: "var(--color-text-muted)" }}>

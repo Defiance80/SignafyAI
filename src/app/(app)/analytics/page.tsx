@@ -125,7 +125,7 @@ export default function AnalyticsPage() {
           >
             <div style={{ position: "absolute", top: 0, right: 0, width: 96, height: 96, borderRadius: "50%", pointerEvents: "none", opacity: 0.3, background: `radial-gradient(circle, ${m.color}25 0%, transparent 70%)`, transform: "translate(25%, -25%)" }} />
             <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 12, color: "var(--c3)", letterSpacing: "0.03em" }}>{m.label}</div>
-            <div className={loading ? "animate-pulse" : ""} style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>{m.value}</div>
+            <div className={loading ? "animate-pulse" : ""} style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, color: "var(--c1)" }}>{m.value}</div>
           </div>
         ))}
       </div>
@@ -133,7 +133,7 @@ export default function AnalyticsPage() {
       {/* Chart */}
       {chartData.length > 0 && (
         <div className="animate-fade-up" style={{ borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.2s" }}>
-          <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 18, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>
+          <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 18, color: "var(--c1)" }}>
             Reach Trend — <span style={{ fontWeight: 400, color: "var(--c3)" }}>{ranges.find(r => r.value === range)?.label}</span>
           </h2>
           <DynamicAreaChart data={chartData} />
@@ -147,7 +147,7 @@ export default function AnalyticsPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 24 }}>
         {/* Platform Breakdown */}
         <div className="animate-fade-up" style={{ borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.25s" }}>
-          <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 18, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>Platform Breakdown</h2>
+          <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 18, color: "var(--c1)" }}>Platform Breakdown</h2>
           {platforms.length === 0 ? (
             <p style={{ fontSize: 14, padding: "32px 0", textAlign: "center", color: "var(--c3)" }}>
               Connect social accounts to see platform breakdown.
@@ -175,7 +175,7 @@ export default function AnalyticsPage() {
         {/* Top Content */}
         <div className="animate-fade-up" style={{ borderRadius: 16, background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.3s", overflow: "hidden" }}>
           <div style={{ padding: "20px 28px", borderBottom: "1px solid var(--color-border-subtle)" }}>
-            <h2 style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>Top Performing Content</h2>
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: "var(--c1)" }}>Top Performing Content</h2>
           </div>
           {topContent.length === 0 ? (
             <div style={{ padding: "40px 28px", textAlign: "center" }}>
@@ -191,7 +191,7 @@ export default function AnalyticsPage() {
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                 >
-                  <span style={{ fontSize: 18, fontWeight: 800, width: 24, textAlign: "center", flexShrink: 0, fontFamily: "var(--font-syne)", color: "var(--c4)" }}>{i + 1}</span>
+                  <span style={{ fontSize: 18, fontWeight: 800, width: 24, textAlign: "center", flexShrink: 0, color: "var(--c4)" }}>{i + 1}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 500, color: "var(--c1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {c.title ?? (c.body ? c.body.slice(0, 60) + "…" : "Untitled")}

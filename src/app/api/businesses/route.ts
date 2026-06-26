@@ -38,6 +38,25 @@ const DEMO_BUSINESSES: Business[] = [
   },
 ];
 
+export async function DELETE(request: Request) {
+  const ctx = await requireOrgContext(request).catch(() => null);
+  if (!ctx) return errorResponse("Unauthorized", 401);
+
+  const db = getSupabaseServiceClient();
+  if (!db) return jsonResponse({ deleted: 0 });
+
+  const url = new URL(request.url);
+  const runId = url.searchParams.get("run_id") ?? null;
+
+  let query = db.from("businesses").delete({ count: "exact" }).eq("org_id", ctx.org.id);
+  if (runId) query = (query as typeof query).eq("run_id", runId);
+
+  const { error, count } = await query;
+  if (error) return errorResponse(error.message, 500);
+
+  return jsonResponse({ deleted: count ?? 0 });
+}
+
 export async function GET(request: Request) {
   const ctx = await requireOrgContext(request).catch(() => null);
   if (!ctx) return errorResponse("Unauthorized", 401);

@@ -139,25 +139,43 @@ export function Topbar() {
       {/* Right — actions */}
       <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
 
-        {/* Theme toggle */}
+        {/* Theme toggle — labeled pill */}
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          style={iconBtn}
-          onMouseEnter={onIconEnter}
-          onMouseLeave={onIconLeave}
+          style={{
+            display:        "flex",
+            alignItems:     "center",
+            gap:            6,
+            padding:        "5px 11px",
+            borderRadius:   20,
+            fontSize:       12,
+            fontWeight:     600,
+            cursor:         "pointer",
+            border:         "1px solid var(--color-border)",
+            background:     "var(--o1)",
+            color:          "var(--color-text-2)",
+            transition:     "all 0.15s",
+            letterSpacing:  "0.01em",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = "var(--o2)"; e.currentTarget.style.color = "var(--color-text-1)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "var(--o1)"; e.currentTarget.style.color = "var(--color-text-2)"; }}
           title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
         >
           {theme === "dark" ? (
-            /* Sun icon — shown in dark mode, click to go light */
-            <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-              <circle cx="7.5" cy="7.5" r="3" stroke="currentColor" strokeWidth="1.3"/>
-              <path d="M7.5 1.5v1.5M7.5 12v1.5M1.5 7.5H3M12 7.5h1.5M3.5 3.5l1 1M10.5 10.5l1 1M3.5 11.5l1-1M10.5 4.5l1-1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-            </svg>
+            <>
+              <svg width="13" height="13" viewBox="0 0 15 15" fill="none">
+                <circle cx="7.5" cy="7.5" r="3" stroke="currentColor" strokeWidth="1.4"/>
+                <path d="M7.5 1.5v1.5M7.5 12v1.5M1.5 7.5H3M12 7.5h1.5M3.5 3.5l.9.9M10.6 10.6l.9.9M3.5 11.5l.9-.9M10.6 4.4l.9-.9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+              Light
+            </>
           ) : (
-            /* Moon icon — shown in light mode, click to go dark */
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M12 9.5A6 6 0 0 1 4.5 2a6 6 0 1 0 7.5 7.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <>
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                <path d="M12 9.5A6 6 0 0 1 4.5 2a6 6 0 1 0 7.5 7.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Dark
+            </>
           )}
         </button>
 
