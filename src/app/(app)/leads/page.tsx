@@ -514,114 +514,169 @@ function ExportButton({ businesses, runLabel }: { businesses: Business[]; runLab
 
 function BusinessDrawer({ biz, onClose }: { biz: Business; onClose: () => void }) {
   const [copied, setCopied] = useState<string | null>(null);
+  const [emailSubject, setEmailSubject] = useState(biz.email_subject ?? "");
+  const [emailBody, setEmailBody] = useState(biz.email_body ?? "");
+  const [generatingEmail, setGeneratingEmail] = useState(false);
+  const [emailError, setEmailError] = useState("");
+
   const copy = (text: string, key: string) => {
     navigator.clipboard.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(null), 1500); });
   };
   const { color } = scoreColor(biz.opportunity_score);
+  const hasEmail = !!(emailSubject || emailBody);
 
   function openGmailDraft() {
     const to = biz.email ?? "";
-    const subject = encodeURIComponent(biz.email_subject ?? `Quick question for ${biz.name}`);
-    const body = encodeURIComponent(biz.email_body ?? "");
+    const subject = encodeURIComponent(emailSubject || `Quick question for ${biz.name}`);
+    const body = encodeURIComponent(emailBody);
     window.open(`https://mail.google.com/mail/?view=cm&to=${to}&su=${subject}&body=${body}`, "_blank");
+  }
+
+  async function handleGenerateEmail() {
+    setGeneratingEmail(true);
+    setEmailError("");
+    try {
+      const res = await fetch(`/api/businesses/${biz.id}/email`, { method: "POST" });
+      if (!res.ok) throw new Error("Generation failed");
+      const data = await res.json() as { subject: string; body: string };
+      setEmailSubject(data.subject);
+      setEmailBody(data.body);
+    } catch {
+      setEmailError("Could not generate email. Check your AI configuration.");
+    } finally {
+      setGeneratingEmail(false);
+    }
   }
 
   return (
     <>
-      <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.5)" }} onClick={onClose} />
-      <div className="fixed right-0 top-0 bottom-0 z-50 flex flex-col overflow-hidden"
-        style={{ width: "min(580px, 100vw)", background: "var(--color-surface)", borderLeft: "1px solid var(--color-border)", boxShadow: "-16px 0 64px rgba(0,0,0,0.4)" }}>
+      <div style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(0,0,0,0.5)" }} onClick={onClose} />
+      <div style={{ position: "fixed", right: 0, top: 0, bottom: 0, zIndex: 50, display: "flex", flexDirection: "column", overflow: "hidden", width: "min(580px, 100vw)", background: "var(--color-surface)", borderLeft: "1px solid var(--color-border)", boxShadow: "-16px 0 64px rgba(0,0,0,0.4)" }}>
         {/* Header */}
-        <div className="flex items-center gap-3 px-6 py-5" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-          <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: "var(--color-text-muted)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 24px", borderBottom: "1px solid var(--color-border-subtle)", flexShrink: 0 }}>
+          <button onClick={onClose} style={{ padding: 6, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", color: "var(--color-text-muted)" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </button>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-base font-bold truncate" style={{ fontFamily: "var(--font-syne)", color: "var(--color-text-1)" }}>{biz.name}</h2>
-            <div className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>{biz.location ?? biz.industry ?? "Business"}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "var(--font-syne)", color: "var(--color-text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{biz.name}</div>
+            <div style={{ fontSize: 12, marginTop: 2, color: "var(--color-text-muted)" }}>{biz.location ?? biz.industry ?? "Business"}</div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="text-lg font-bold" style={{ color, fontFamily: "var(--font-syne)" }}>{biz.opportunity_score}</div>
-            <div className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>score</div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color, fontFamily: "var(--font-syne)", lineHeight: 1 }}>{biz.opportunity_score}</div>
+            <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>score</div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div style={{ flex: 1, overflowY: "auto" }}>
           {/* Contact info */}
-          <div className="px-6 py-4 grid grid-cols-2 gap-3" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-            {biz.website && <div><div className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>Website</div><a href={biz.website} target="_blank" rel="noopener" className="text-sm font-medium" style={{ color: "#a78bfa" }}>{biz.website.replace(/^https?:\/\//, "")}</a></div>}
-            {biz.phone && <div><div className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>Phone</div><a href={`tel:${biz.phone}`} className="text-sm" style={{ color: "var(--color-text-2)" }}>{biz.phone}</a></div>}
-            {biz.email && <div><div className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>Email</div><a href={`mailto:${biz.email}`} className="text-sm" style={{ color: "#a78bfa" }}>{biz.email}</a></div>}
-            {biz.address && <div><div className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>Address</div><div className="text-sm" style={{ color: "var(--color-text-2)" }}>{biz.address}</div></div>}
+          <div style={{ padding: "16px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, borderBottom: "1px solid var(--color-border-subtle)" }}>
+            {biz.website && <div><div style={{ fontSize: 11, marginBottom: 3, color: "var(--color-text-muted)", fontWeight: 500 }}>Website</div><a href={biz.website} target="_blank" rel="noopener" style={{ fontSize: 13, fontWeight: 500, color: "#a78bfa", textDecoration: "none" }}>{biz.website.replace(/^https?:\/\//, "")}</a></div>}
+            {biz.phone && <div><div style={{ fontSize: 11, marginBottom: 3, color: "var(--color-text-muted)", fontWeight: 500 }}>Phone</div><a href={`tel:${biz.phone}`} style={{ fontSize: 13, color: "var(--color-text-2)", textDecoration: "none" }}>{biz.phone}</a></div>}
+            {biz.email && <div><div style={{ fontSize: 11, marginBottom: 3, color: "var(--color-text-muted)", fontWeight: 500 }}>Email</div><a href={`mailto:${biz.email}`} style={{ fontSize: 13, color: "#a78bfa", textDecoration: "none" }}>{biz.email}</a></div>}
+            {biz.address && <div><div style={{ fontSize: 11, marginBottom: 3, color: "var(--color-text-muted)", fontWeight: 500 }}>Address</div><div style={{ fontSize: 13, color: "var(--color-text-2)" }}>{biz.address}</div></div>}
             {biz.rating != null && (
-              <div><div className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>Rating</div>
-                <div className="text-sm font-medium" style={{ color: "#fbbf24" }}>★ {biz.rating} <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>({biz.reviews} reviews)</span></div>
+              <div><div style={{ fontSize: 11, marginBottom: 3, color: "var(--color-text-muted)", fontWeight: 500 }}>Rating</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#fbbf24" }}>★ {biz.rating} <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>({biz.reviews} reviews)</span></div>
               </div>
             )}
           </div>
 
           {/* AI Intelligence */}
           {biz.weaknesses && (
-            <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-              <div className="text-xs font-semibold mb-2" style={{ color: "#f87171" }}>⚠ WEAKNESSES IDENTIFIED</div>
-              <p className="text-sm leading-relaxed" style={{ color: "var(--color-text-2)" }}>{biz.weaknesses}</p>
+            <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--color-border-subtle)" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 8, color: "#f87171", letterSpacing: "0.04em" }}>⚠ WEAKNESSES IDENTIFIED</div>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-text-2)" }}>{biz.weaknesses}</p>
             </div>
           )}
           {biz.recommended_offer && (
-            <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-              <div className="text-xs font-semibold mb-2" style={{ color: "#34d399" }}>✦ RECOMMENDED OFFER</div>
-              <p className="text-sm leading-relaxed" style={{ color: "var(--color-text-2)" }}>{biz.recommended_offer}</p>
+            <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--color-border-subtle)" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 8, color: "#34d399", letterSpacing: "0.04em" }}>✦ RECOMMENDED OFFER</div>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-text-2)" }}>{biz.recommended_offer}</p>
             </div>
           )}
           {biz.pitch_angle && (
-            <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-xs font-semibold" style={{ color: "#a78bfa" }}>💡 PITCH ANGLE</div>
-                <button onClick={() => copy(biz.pitch_angle!, "pitch")} className="text-[10px] px-2 py-0.5 rounded" style={{ color: copied === "pitch" ? "#34d399" : "#a78bfa", background: "rgba(124,58,237,0.1)" }}>
+            <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--color-border-subtle)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#a78bfa", letterSpacing: "0.04em" }}>💡 PITCH ANGLE</div>
+                <button onClick={() => copy(biz.pitch_angle!, "pitch")} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, cursor: "pointer", border: "none", color: copied === "pitch" ? "#34d399" : "#a78bfa", background: "rgba(124,58,237,0.1)" }}>
                   {copied === "pitch" ? "Copied!" : "Copy"}
                 </button>
               </div>
-              <p className="text-sm leading-relaxed italic" style={{ color: "var(--color-text-1)" }}>&ldquo;{biz.pitch_angle}&rdquo;</p>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, fontStyle: "italic", color: "var(--color-text-1)" }}>&ldquo;{biz.pitch_angle}&rdquo;</p>
             </div>
           )}
 
-          {/* Draft email + Gmail button */}
-          {(biz.email_subject || biz.email_body) && (
-            <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-xs font-semibold" style={{ color: "var(--color-text-muted)" }}>✉ DRAFT OUTREACH EMAIL</div>
-                <div className="flex gap-2">
-                  {biz.email_body && (
-                    <button onClick={() => copy(`Subject: ${biz.email_subject ?? ""}\n\n${biz.email_body}`, "email")} className="text-[10px] px-2 py-0.5 rounded" style={{ color: copied === "email" ? "#34d399" : "#a78bfa", background: "rgba(124,58,237,0.1)" }}>
-                      {copied === "email" ? "Copied!" : "Copy"}
-                    </button>
-                  )}
-                </div>
+          {/* Outreach Email — always shown, generate if missing */}
+          <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--color-border-subtle)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--color-text-muted)", letterSpacing: "0.04em" }}>✉ OUTREACH EMAIL</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {hasEmail && (
+                  <button onClick={() => copy(`Subject: ${emailSubject}\n\n${emailBody}`, "email")} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, cursor: "pointer", border: "none", color: copied === "email" ? "#34d399" : "#a78bfa", background: "rgba(124,58,237,0.1)", transition: "all 0.15s" }}>
+                    {copied === "email" ? "Copied!" : "Copy"}
+                  </button>
+                )}
+                <button
+                  onClick={handleGenerateEmail}
+                  disabled={generatingEmail}
+                  style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, cursor: generatingEmail ? "not-allowed" : "pointer", border: "1px solid rgba(124,58,237,0.3)", color: "#a78bfa", background: "rgba(124,58,237,0.08)", transition: "all 0.15s", opacity: generatingEmail ? 0.6 : 1 }}
+                  onMouseEnter={(e) => { if (!generatingEmail) (e.currentTarget).style.background = "rgba(124,58,237,0.15)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget).style.background = "rgba(124,58,237,0.08)"; }}
+                >
+                  {generatingEmail ? "Generating…" : hasEmail ? "↻ Regenerate" : "✦ Generate Email"}
+                </button>
               </div>
-              {biz.email_subject && <div className="text-xs font-semibold mb-2 px-3 py-2 rounded-lg" style={{ background: "var(--color-surface-2)", color: "var(--color-text-1)" }}>Subject: {biz.email_subject}</div>}
-              {biz.email_body && <div className="text-sm leading-relaxed px-3 py-3 rounded-xl mb-3" style={{ background: "var(--color-surface-2)", color: "var(--color-text-2)", whiteSpace: "pre-wrap" }}>{biz.email_body}</div>}
-              {/* Gmail Send Draft button */}
-              <button
-                onClick={openGmailDraft}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
-                style={{ background: "linear-gradient(135deg, #ea4335 0%, #c5221f 100%)", color: "white", boxShadow: "0 3px 10px rgba(234,67,53,0.25)" }}
-                onMouseEnter={(e) => { (e.currentTarget).style.opacity = "0.9"; }}
-                onMouseLeave={(e) => { (e.currentTarget).style.opacity = "1"; }}
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="2.5" width="12" height="9" rx="1.5" stroke="white" strokeWidth="1.3"/><path d="M1 4l6 4 6-4" stroke="white" strokeWidth="1.3" strokeLinecap="round"/></svg>
-                Send Email via Gmail
-              </button>
             </div>
-          )}
 
-          {/* Website Audit — B2B only */}
+            {emailError && <p style={{ margin: "0 0 12px", fontSize: 12, color: "#f87171" }}>{emailError}</p>}
+
+            {generatingEmail && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 0" }}>
+                <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(124,58,237,0.3)", borderTopColor: "#7c3aed", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>Writing a personalised email for {biz.name}…</span>
+              </div>
+            )}
+
+            {!generatingEmail && hasEmail && (
+              <>
+                {/* Subject line */}
+                <div style={{ padding: "10px 14px", borderRadius: 10, marginBottom: 10, background: "rgba(124,58,237,0.07)", border: "1px solid rgba(124,58,237,0.18)" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#a78bfa", letterSpacing: "0.06em", marginBottom: 4 }}>SUBJECT</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.9)" }}>{emailSubject}</div>
+                </div>
+                {/* Body */}
+                <div style={{ padding: "14px 16px", borderRadius: 10, marginBottom: 12, background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", fontSize: 13, lineHeight: 1.75, color: "var(--color-text-2)", whiteSpace: "pre-wrap" }}>
+                  {emailBody}
+                </div>
+                {/* Gmail button */}
+                <button
+                  onClick={openGmailDraft}
+                  style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", background: "linear-gradient(135deg, #ea4335 0%, #c5221f 100%)", color: "white", boxShadow: "0 3px 10px rgba(234,67,53,0.2)", transition: "opacity 0.15s" }}
+                  onMouseEnter={(e) => { (e.currentTarget).style.opacity = "0.88"; }}
+                  onMouseLeave={(e) => { (e.currentTarget).style.opacity = "1"; }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="2.5" width="12" height="9" rx="1.5" stroke="white" strokeWidth="1.3"/><path d="M1 4l6 4 6-4" stroke="white" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                  Open in Gmail
+                </button>
+              </>
+            )}
+
+            {!generatingEmail && !hasEmail && (
+              <div style={{ padding: "20px 0", textAlign: "center" }}>
+                <p style={{ margin: "0 0 4px", fontSize: 13, color: "rgba(255,255,255,0.35)" }}>No email drafted yet.</p>
+                <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.22)" }}>Click Generate to write a personalised outreach email.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Website Audit */}
           <WebsiteAuditSection bizId={biz.id} />
 
           {/* Social Chatter */}
           <SocialChatterSection bizId={biz.id} />
 
-          <div className="px-6 py-4">
-            <div className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+          <div style={{ padding: "14px 24px" }}>
+            <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
               Scraped {biz.scraped_at ? relativeTime(biz.scraped_at) : "recently"} · Opportunity score calculated by AI
             </div>
           </div>

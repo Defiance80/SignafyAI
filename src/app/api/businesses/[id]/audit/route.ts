@@ -5,6 +5,19 @@ import type { AuditData } from "@/lib/supabase/types";
 
 const CACHE_TTL_HOURS = 72;
 
+function extractJSON(raw: string): Record<string, unknown> {
+  const attempts = [
+    raw.trim(),
+    raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim(),
+  ];
+  for (const s of attempts) {
+    try { return JSON.parse(s) as Record<string, unknown>; } catch {}
+  }
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (match) { try { return JSON.parse(match[0]) as Record<string, unknown>; } catch {} }
+  return {};
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -107,14 +120,20 @@ Return ONLY a JSON object (no markdown):
 
   try {
     const resp = await openai.chat.completions.create({
-      model: process.env.AI_MODEL ?? "gpt-4.1-mini",
+      model: process.env.AI_MODEL ?? "gpt-4o-mini",
       messages: [{ role: "user", content: userPrompt }],
       temperature: 0.3,
-      max_tokens: 800,
+      max_tokens: 900,
     });
     const raw = resp.choices[0]?.message?.content ?? "{}";
+    const parsed = extractJSON(raw) as Partial<AuditData>;
     const audit: AuditData = {
-      ...JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()),
+      seo: parsed.seo ?? { score: 50, issues: [], positives: [] },
+      design: parsed.design ?? { score: 50, notes: "", trust_signals: [] },
+      conversion: parsed.conversion ?? { score: 50, issues: [], recommendation: "" },
+      overall_score: parsed.overall_score ?? 50,
+      opportunity: parsed.opportunity ?? "",
+      recommendations: parsed.recommendations ?? [],
       cached_at: new Date().toISOString(),
     };
 

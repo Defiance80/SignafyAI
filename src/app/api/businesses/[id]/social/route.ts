@@ -5,6 +5,19 @@ import type { SocialData } from "@/lib/supabase/types";
 
 const CACHE_TTL_HOURS = 48;
 
+function extractJSON(raw: string): Record<string, unknown> {
+  const attempts = [
+    raw.trim(),
+    raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim(),
+  ];
+  for (const s of attempts) {
+    try { return JSON.parse(s) as Record<string, unknown>; } catch {}
+  }
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (match) { try { return JSON.parse(match[0]) as Record<string, unknown>; } catch {} }
+  return {};
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -86,14 +99,17 @@ Include 3-5 mentions across different platforms. Be specific to their industry a
 
   try {
     const resp = await openai.chat.completions.create({
-      model: process.env.AI_MODEL ?? "gpt-4.1-mini",
+      model: process.env.AI_MODEL ?? "gpt-4o-mini",
       messages: [{ role: "user", content: userPrompt }],
       temperature: 0.4,
       max_tokens: 600,
     });
     const raw = resp.choices[0]?.message?.content ?? "{}";
+    const parsed = extractJSON(raw) as Partial<SocialData>;
     const social: SocialData = {
-      ...JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()),
+      mentions: parsed.mentions ?? [],
+      sentiment_summary: parsed.sentiment_summary ?? "",
+      opportunity_relevance: parsed.opportunity_relevance ?? "",
       cached_at: new Date().toISOString(),
     };
 
