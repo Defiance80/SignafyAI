@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -155,7 +155,7 @@ function SocialSettingsContent() {
         <h1 style={{ fontSize: 26, fontWeight: 700, color: "#fff", margin: 0 }}>
           Social Accounts
         </h1>
-        <p style={{ color: "rgba(255,255,255,0.45)", marginTop: 8, fontSize: 14, lineHeight: 1.6 }}>
+        <p style={{ color: "var(--c3)", marginTop: 8, fontSize: 14, lineHeight: 1.6 }}>
           Connect your social media accounts. SignafyAI uses these to post content,
           reply to comments, and monitor engagement — all from inside the app.
         </p>
@@ -168,7 +168,7 @@ function SocialSettingsContent() {
         display: "flex", gap: 12, alignItems: "flex-start",
       }}>
         <span style={{ fontSize: 18, flexShrink: 0 }}>🔐</span>
-        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>
+        <div style={{ fontSize: 13, color: "var(--c2)", lineHeight: 1.6 }}>
           <strong style={{ color: "#a78bfa" }}>OAuth 2.0 secured.</strong>{" "}
           We never store your password. Each platform grants SignafyAI specific permissions
           you approve during login. You can disconnect at any time.
@@ -177,7 +177,7 @@ function SocialSettingsContent() {
 
       {/* Platform cards */}
       {loading ? (
-        <div style={{ textAlign: "center", padding: "60px 0", color: "rgba(255,255,255,0.3)" }}>
+        <div style={{ textAlign: "center", padding: "60px 0", color: "var(--c3)" }}>
           Loading accounts…
         </div>
       ) : (
@@ -188,8 +188,8 @@ function SocialSettingsContent() {
 
             return (
               <div key={platform.id} style={{
-                background: account ? platform.bg : "rgba(255,255,255,0.03)",
-                border: `1px solid ${account ? `${platform.color}40` : "rgba(255,255,255,0.08)"}`,
+                background: account ? platform.bg : "var(--o1)",
+                border: `1px solid ${account ? `${platform.color}40` : "var(--o2)"}`,
                 borderRadius: 12, padding: "18px 20px",
                 display: "flex", alignItems: "center", gap: 16,
                 transition: "all 0.2s",
@@ -214,12 +214,12 @@ function SocialSettingsContent() {
                       }}>⚠ Token expired — reconnect</span>
                     )}
                     {!account && (
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>Not connected</span>
+                      <span style={{ fontSize: 11, color: "var(--c4)" }}>Not connected</span>
                     )}
                   </div>
 
                   {account ? (
-                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>
+                    <div style={{ fontSize: 13, color: "var(--c2)" }}>
                       {account.account_name}
                       {account.token_expires && !expired && (
                         <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.5 }}>
@@ -228,7 +228,7 @@ function SocialSettingsContent() {
                       )}
                     </div>
                   ) : (
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>
+                    <div style={{ fontSize: 12, color: "var(--c3)" }}>
                       Permissions: {platform.scopes}
                     </div>
                   )}
@@ -256,7 +256,7 @@ function SocialSettingsContent() {
                         padding: "8px 16px", borderRadius: 8, fontSize: 13,
                         background: "transparent",
                         border: "1px solid rgba(255,255,255,0.1)",
-                        color: "rgba(255,255,255,0.35)", cursor: "pointer",
+                        color: "var(--c3)", cursor: "pointer",
                       }}
                     >
                       {disconnecting === account.id ? "…" : "Disconnect"}
@@ -271,13 +271,13 @@ function SocialSettingsContent() {
 
       {/* Setup note */}
       <div style={{
-        marginTop: 32, background: "rgba(255,255,255,0.03)",
+        marginTop: 32, background: "var(--o1)",
         border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "16px 20px",
       }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.5)", marginBottom: 10 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--c2)", marginBottom: 10 }}>
           ⚙ Developer App Setup Required
         </div>
-        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", lineHeight: 1.8 }}>
+        <div style={{ fontSize: 12, color: "var(--c3)", lineHeight: 1.8 }}>
           Each platform requires a developer app with OAuth credentials configured in your environment variables.
           Your redirect URI for each platform should be:
           <br />
@@ -305,7 +305,7 @@ export default function SocialSettingsPage() {
   return (
     <Suspense fallback={
       <div style={{ maxWidth: 740, margin: "0 auto", padding: "32px 24px" }}>
-        <div style={{ color: "rgba(255,255,255,0.3)", textAlign: "center", paddingTop: 60 }}>
+        <div style={{ color: "var(--c3)", textAlign: "center", paddingTop: 60 }}>
           Loading…
         </div>
       </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 
@@ -53,8 +53,8 @@ function SectionCard({ title, subtitle, children }: { title: string; subtitle?: 
       border: "1px solid var(--color-border)", display: "flex", flexDirection: "column", gap: 20,
     }}>
       <div>
-        <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "rgba(255,255,255,0.92)", letterSpacing: "-0.02em" }}>{title}</h2>
-        {subtitle && <p style={{ margin: "4px 0 0", fontSize: 13, color: "rgba(255,255,255,0.38)", lineHeight: 1.5 }}>{subtitle}</p>}
+        <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--c1)", letterSpacing: "-0.02em" }}>{title}</h2>
+        {subtitle && <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--c3)", lineHeight: 1.5 }}>{subtitle}</p>}
       </div>
       {children}
     </div>
@@ -98,7 +98,7 @@ export default function BrandVoicePage() {
   const inputStyle: React.CSSProperties = {
     width: "100%", padding: "10px 14px", borderRadius: 10, fontSize: 14,
     background: "var(--color-surface-2)", border: "1px solid var(--color-border)",
-    color: "rgba(255,255,255,0.88)", outline: "none", transition: "border-color 0.15s",
+    color: "var(--c1)", outline: "none", transition: "border-color 0.15s",
     boxSizing: "border-box",
   };
 
@@ -108,9 +108,9 @@ export default function BrandVoicePage() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
         <div>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.32)", marginBottom: 8, fontWeight: 500 }}>Settings</p>
-          <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.04em", color: "rgba(255,255,255,0.95)", margin: 0, lineHeight: 1.1 }}>Brand Voice</h1>
-          <p style={{ margin: "8px 0 0", fontSize: 14, color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>
+          <p style={{ fontSize: 14, color: "var(--c3)", marginBottom: 8, fontWeight: 500 }}>Settings</p>
+          <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.04em", color: "var(--c1)", margin: 0, lineHeight: 1.1 }}>Brand Voice</h1>
+          <p style={{ margin: "8px 0 0", fontSize: 14, color: "var(--c3)", lineHeight: 1.6 }}>
             Define how your brand communicates. SignafyAI uses this to generate on-brand content across every channel.
           </p>
         </div>
@@ -144,15 +144,15 @@ export default function BrandVoicePage() {
                 onMouseLeave={() => setHoveredTone(null)}
                 style={{
                   padding: "16px 14px", borderRadius: 12, textAlign: "left", cursor: "pointer",
-                  background: isActive ? "rgba(124,58,237,0.12)" : isHover ? "rgba(255,255,255,0.04)" : "var(--color-surface-2)",
+                  background: isActive ? "rgba(124,58,237,0.12)" : isHover ? "var(--o1)" : "var(--color-surface-2)",
                   border: isActive ? "1px solid rgba(124,58,237,0.35)" : "1px solid var(--color-border)",
                   transition: "all 0.15s", display: "flex", flexDirection: "column", gap: 6,
                   boxShadow: isActive ? "0 0 0 1px rgba(124,58,237,0.15)" : "none",
                 }}
               >
                 <span style={{ fontSize: 22, lineHeight: 1 }}>{t.emoji}</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: isActive ? "#a78bfa" : "rgba(255,255,255,0.82)" }}>{t.label}</span>
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.38)", lineHeight: 1.45 }}>{t.desc}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: isActive ? "#a78bfa" : "var(--c2)" }}>{t.label}</span>
+                <span style={{ fontSize: 11, color: "var(--c3)", lineHeight: 1.45 }}>{t.desc}</span>
               </button>
             );
           })}
@@ -173,14 +173,14 @@ export default function BrandVoicePage() {
                 onMouseLeave={() => setHoveredStyle(null)}
                 style={{
                   padding: "18px 20px", borderRadius: 12, textAlign: "left", cursor: "pointer",
-                  background: isActive ? "rgba(124,58,237,0.12)" : isHover ? "rgba(255,255,255,0.04)" : "var(--color-surface-2)",
+                  background: isActive ? "rgba(124,58,237,0.12)" : isHover ? "var(--o1)" : "var(--color-surface-2)",
                   border: isActive ? "1px solid rgba(124,58,237,0.35)" : "1px solid var(--color-border)",
                   transition: "all 0.15s", display: "flex", flexDirection: "column", gap: 6,
                   boxShadow: isActive ? "0 0 0 1px rgba(124,58,237,0.15)" : "none",
                 }}
               >
-                <span style={{ fontSize: 13, fontWeight: 600, color: isActive ? "#a78bfa" : "rgba(255,255,255,0.82)" }}>{s.label}</span>
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", lineHeight: 1.5 }}>{s.desc}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: isActive ? "#a78bfa" : "var(--c2)" }}>{s.label}</span>
+                <span style={{ fontSize: 12, color: "var(--c3)", lineHeight: 1.5 }}>{s.desc}</span>
               </button>
             );
           })}
@@ -190,7 +190,7 @@ export default function BrandVoicePage() {
       {/* Formality + Audience */}
       <SectionCard title="Audience & Formality" subtitle="Who you're talking to and how formally">
         <div>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.4)", marginBottom: 8, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--c3)", marginBottom: 8, letterSpacing: "0.04em", textTransform: "uppercase" }}>
             Formality level
           </label>
           <div style={{ display: "flex", gap: 8 }}>
@@ -204,7 +204,7 @@ export default function BrandVoicePage() {
                     padding: "9px 20px", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer",
                     background: isActive ? "rgba(124,58,237,0.12)" : "var(--color-surface-2)",
                     border: isActive ? "1px solid rgba(124,58,237,0.35)" : "1px solid var(--color-border)",
-                    color: isActive ? "#a78bfa" : "rgba(255,255,255,0.55)",
+                    color: isActive ? "#a78bfa" : "var(--c2)",
                     transition: "all 0.15s",
                   }}
                 >{f.label}</button>
@@ -213,7 +213,7 @@ export default function BrandVoicePage() {
           </div>
         </div>
         <div>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.4)", marginBottom: 8, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--c3)", marginBottom: 8, letterSpacing: "0.04em", textTransform: "uppercase" }}>
             Target audience
           </label>
           <input
@@ -232,7 +232,7 @@ export default function BrandVoicePage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {config.pillars.map((p, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.22)", width: 20, textAlign: "center", flexShrink: 0 }}>{i + 1}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--c4)", width: 20, textAlign: "center", flexShrink: 0 }}>{i + 1}</span>
               <input
                 value={p}
                 onChange={(e) => setPillar(i, e.target.value)}
@@ -308,7 +308,7 @@ export default function BrandVoicePage() {
         />
         {config.examplePhrase && (
           <div style={{ padding: "14px 18px", borderRadius: 10, background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.15)" }}>
-            <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.65)", lineHeight: 1.65, fontStyle: "italic" }}>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--c2)", lineHeight: 1.65, fontStyle: "italic" }}>
               &ldquo;{config.examplePhrase}&rdquo;
             </p>
           </div>
@@ -327,7 +327,7 @@ export default function BrandVoicePage() {
               Voice Summary
             </span>
           </div>
-          <p style={{ margin: 0, fontSize: 14, color: "rgba(255,255,255,0.7)", lineHeight: 1.7 }}>
+          <p style={{ margin: 0, fontSize: 14, color: "var(--c2)", lineHeight: 1.7 }}>
             Your brand speaks in a{" "}
             <span style={{ color: "#c4b5fd", fontWeight: 600 }}>
               {TONE_OPTIONS.find((t) => t.id === config.tone)?.label.toLowerCase() ?? config.tone}
@@ -344,7 +344,7 @@ export default function BrandVoicePage() {
               <>, targeting <span style={{ color: "#c4b5fd", fontWeight: 600 }}>{config.audience}</span></>
             )}.
           </p>
-          <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.38)", lineHeight: 1.5 }}>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--c3)", lineHeight: 1.5 }}>
             SignafyAI will apply this voice to all generated content — social posts, email sequences, ad copy, and SEO articles.
           </p>
         </div>

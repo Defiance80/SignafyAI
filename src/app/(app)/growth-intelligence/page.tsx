@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -120,7 +120,7 @@ function useSocialAccounts() {
 function SearchBar({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <div style={{ position: "relative", flex: 1 }}>
-      <svg style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "rgba(255,255,255,0.3)" }} width="15" height="15" viewBox="0 0 15 15" fill="none">
+      <svg style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--c3)" }} width="15" height="15" viewBox="0 0 15 15" fill="none">
         <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.5" />
         <path d="M10 10l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
@@ -131,8 +131,8 @@ function SearchBar({ value, onChange, placeholder }: { value: string; onChange: 
         style={{
           width: "100%", paddingLeft: 42, paddingRight: 16, paddingTop: 12, paddingBottom: 12,
           borderRadius: 12, fontSize: 14, outline: "none",
-          background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)",
-          color: "rgba(255,255,255,0.82)", boxSizing: "border-box",
+          background: "var(--o1)", border: "1px solid rgba(255,255,255,0.09)",
+          color: "var(--c2)", boxSizing: "border-box",
           transition: "border-color 0.15s",
         }}
         onFocus={e => { e.target.style.borderColor = "rgba(124,58,237,0.4)"; }}
@@ -157,7 +157,7 @@ function GrowthScoreBar({ score }: { score: number }) {
   const { color } = scoreColor(score);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <div style={{ flex: 1, height: 5, borderRadius: 4, overflow: "hidden", background: "rgba(255,255,255,0.07)" }}>
+      <div style={{ flex: 1, height: 5, borderRadius: 4, overflow: "hidden", background: "var(--o2)" }}>
         <div style={{ height: "100%", borderRadius: 4, width: `${score}%`, background: color }} />
       </div>
       <span style={{ fontSize: 13, fontWeight: 700, color, minWidth: 24, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{score}</span>
@@ -611,7 +611,7 @@ function OpportunitiesPanel({ onSelect }: { onSelect: (opp: GrowthOpportunity) =
 
   if (isLoading) return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
-      {[1,2,3,4].map((i) => <div key={i} style={{ height: 200, borderRadius: 16, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }} />)}
+      {[1,2,3,4].map((i) => <div key={i} style={{ height: 200, borderRadius: 16, background: "var(--o1)", border: "1px solid rgba(255,255,255,0.07)" }} />)}
     </div>
   );
 
@@ -620,11 +620,11 @@ function OpportunitiesPanel({ onSelect }: { onSelect: (opp: GrowthOpportunity) =
       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
         <SearchBar value={search} onChange={onSearchChange} placeholder="Search opportunities, topics…" />
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-          <label style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", whiteSpace: "nowrap" }}>Min score:</label>
+          <label style={{ fontSize: 13, color: "var(--c3)", whiteSpace: "nowrap" }}>Min score:</label>
           <select value={minScore} onChange={(e) => setMinScore(Number(e.target.value))}
             style={{
               padding: "10px 12px", borderRadius: 10, fontSize: 13, outline: "none",
-              background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+              background: "var(--o1)", border: "1px solid rgba(255,255,255,0.1)",
               color: "rgba(255,255,255,0.72)", cursor: "pointer",
             }}>
             <option value={0}>All</option>
@@ -646,12 +646,12 @@ function OpportunitiesPanel({ onSelect }: { onSelect: (opp: GrowthOpportunity) =
             return (
               <div key={opp.id} onClick={() => onSelect(opp)} style={{
                 borderRadius: 16, padding: "22px 24px", cursor: "pointer",
-                background: "rgba(255,255,255,0.03)",
+                background: "var(--o1)",
                 border: "1px solid rgba(255,255,255,0.07)",
                 transition: "border-color 0.15s, box-shadow 0.15s",
               }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(124,58,237,0.3)"; e.currentTarget.style.boxShadow = "0 4px 24px rgba(124,58,237,0.1)"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; e.currentTarget.style.boxShadow = "none"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--o2)"; e.currentTarget.style.boxShadow = "none"; }}
               >
                 {/* Header row */}
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
@@ -670,11 +670,11 @@ function OpportunitiesPanel({ onSelect }: { onSelect: (opp: GrowthOpportunity) =
                       {opp.signal_count > 0 && (
                         <span style={{
                           fontSize: 11, padding: "2px 8px", borderRadius: 6,
-                          background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)",
+                          background: "var(--o2)", color: "var(--c3)",
                         }}>{opp.signal_count} signals</span>
                       )}
                     </div>
-                    <h3 style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.35, color: "rgba(255,255,255,0.9)", margin: 0 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.35, color: "var(--c1)", margin: 0 }}>
                       {opp.title}
                     </h3>
                   </div>
@@ -683,7 +683,7 @@ function OpportunitiesPanel({ onSelect }: { onSelect: (opp: GrowthOpportunity) =
                     <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em", color: gc, lineHeight: 1 }}>
                       {opp.growth_score}
                     </div>
-                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>growth</div>
+                    <div style={{ fontSize: 10, color: "var(--c3)", marginTop: 2 }}>growth</div>
                   </div>
                 </div>
 
@@ -766,7 +766,7 @@ function SignalsPanel({ accounts, onReply }: { accounts: SocialAccount[]; onRepl
         <select value={source} onChange={(e) => setSource(e.target.value)}
           style={{
             padding: "10px 12px", borderRadius: 10, fontSize: 13, outline: "none", flexShrink: 0,
-            background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+            background: "var(--o1)", border: "1px solid rgba(255,255,255,0.1)",
             color: "rgba(255,255,255,0.72)", cursor: "pointer",
           }}>
           <option value="">All platforms</option>
@@ -778,9 +778,9 @@ function SignalsPanel({ accounts, onReply }: { accounts: SocialAccount[]; onRepl
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         <button onClick={() => setSignalType("")} style={{
           padding: "7px 14px", borderRadius: 9, fontSize: 13, fontWeight: 500, cursor: "pointer",
-          background: !signalType ? "rgba(124,58,237,0.18)" : "rgba(255,255,255,0.05)",
+          background: !signalType ? "rgba(124,58,237,0.18)" : "var(--o1)",
           border: !signalType ? "1px solid rgba(124,58,237,0.35)" : "1px solid rgba(255,255,255,0.08)",
-          color: !signalType ? "#c4b5fd" : "rgba(255,255,255,0.4)",
+          color: !signalType ? "#c4b5fd" : "var(--c3)",
         }}>All types</button>
         {types.map((t) => {
           const c = SIGNAL_TYPE_COLORS[t];
@@ -789,9 +789,9 @@ function SignalsPanel({ accounts, onReply }: { accounts: SocialAccount[]; onRepl
             <button key={t} onClick={() => setSignalType(active ? "" : t)} style={{
               padding: "7px 14px", borderRadius: 9, fontSize: 13, fontWeight: 500,
               textTransform: "capitalize", cursor: "pointer",
-              background: active ? c.bg : "rgba(255,255,255,0.05)",
+              background: active ? c.bg : "var(--o1)",
               border: active ? `1px solid ${c.color}40` : "1px solid rgba(255,255,255,0.08)",
-              color: active ? c.color : "rgba(255,255,255,0.4)",
+              color: active ? c.color : "var(--c3)",
             }}>
               {t.replace("_", " ")}
             </button>
@@ -801,7 +801,7 @@ function SignalsPanel({ accounts, onReply }: { accounts: SocialAccount[]; onRepl
 
       {isLoading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {[1,2,3].map((i) => <div key={i} style={{ height: 100, borderRadius: 16, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }} />)}
+          {[1,2,3].map((i) => <div key={i} style={{ height: 100, borderRadius: 16, background: "var(--o1)", border: "1px solid rgba(255,255,255,0.07)" }} />)}
         </div>
       ) : signals.length === 0 ? (
         <EmptyState icon="📡" title="No signals yet" desc="Run a Growth Intelligence Scan to capture real conversations from Reddit, YouTube, LinkedIn and more." />
@@ -814,12 +814,12 @@ function SignalsPanel({ accounts, onReply }: { accounts: SocialAccount[]; onRepl
             return (
               <div key={sig.id} style={{
                 borderRadius: 16, padding: "18px 20px",
-                background: "rgba(255,255,255,0.03)",
+                background: "var(--o1)",
                 border: "1px solid rgba(255,255,255,0.07)",
                 transition: "border-color 0.15s",
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--c5)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--o2)"; }}
               >
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -832,17 +832,17 @@ function SignalsPanel({ accounts, onReply }: { accounts: SocialAccount[]; onRepl
                       {sig.sentiment && (
                         <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, textTransform: "capitalize", color: sentColor, background: `${sentColor}14` }}>{sig.sentiment}</span>
                       )}
-                      {sig.location && <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>📍 {sig.location}</span>}
+                      {sig.location && <span style={{ fontSize: 11, color: "var(--c3)" }}>📍 {sig.location}</span>}
                     </div>
                     {/* Body */}
-                    <p style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.82)", margin: 0 }}>
+                    <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--c2)", margin: 0 }}>
                       &ldquo;{sig.question.length > 200 ? sig.question.slice(0, 200) + "…" : sig.question}&rdquo;
                     </p>
                     {/* Meta row */}
                     <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 10 }}>
-                      {sig.topic && <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>Topic: {sig.topic}</span>}
-                      {sig.engagement_hint && <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>💬 {sig.engagement_hint}</span>}
-                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.28)" }}>{relativeTime(sig.created_at)}</span>
+                      {sig.topic && <span style={{ fontSize: 12, color: "var(--c3)" }}>Topic: {sig.topic}</span>}
+                      {sig.engagement_hint && <span style={{ fontSize: 12, color: "var(--c3)" }}>💬 {sig.engagement_hint}</span>}
+                      <span style={{ fontSize: 12, color: "var(--c4)" }}>{relativeTime(sig.created_at)}</span>
                     </div>
                   </div>
                   {/* Right column */}
@@ -850,7 +850,7 @@ function SignalsPanel({ accounts, onReply }: { accounts: SocialAccount[]; onRepl
                     <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.03em", color: scoreColor(sig.relevance_score).color }}>
                       {sig.relevance_score}
                     </div>
-                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.28)" }}>relevance</div>
+                    <div style={{ fontSize: 10, color: "var(--c4)" }}>relevance</div>
                     <button onClick={(e) => { e.stopPropagation(); onReply(sig); }} style={{
                       padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
                       background: "linear-gradient(135deg,#7c3aed,#4f46e5)", color: "white",
@@ -1445,7 +1445,7 @@ export default function GrowthIntelligencePage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-up">
         <div>
           <p className="text-sm mb-1" style={{ color: "var(--color-text-2)" }}>Discover & capitalize on</p>
-          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "rgba(255,255,255,0.95)", margin: 0, lineHeight: 1.1 }}>
+          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "var(--c1)", margin: 0, lineHeight: 1.1 }}>
             Growth Intelligence
           </h1>
         </div>
@@ -1484,12 +1484,12 @@ export default function GrowthIntelligencePage() {
         {STATS.map((s) => (
           <div key={s.label} style={{
             borderRadius: 16, padding: "24px 24px", position: "relative", overflow: "hidden",
-            background: "rgba(255,255,255,0.03)",
+            background: "var(--o1)",
             border: "1px solid rgba(255,255,255,0.07)",
             transition: "border-color 0.2s, box-shadow 0.2s",
           }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = `${s.color}35`; e.currentTarget.style.boxShadow = `0 8px 24px ${s.color}14`; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; e.currentTarget.style.boxShadow = "none"; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--o2)"; e.currentTarget.style.boxShadow = "none"; }}
           >
             <div style={{
               position: "absolute", top: 0, right: 0, width: 100, height: 100,
@@ -1498,10 +1498,10 @@ export default function GrowthIntelligencePage() {
               transform: "translate(30%, -30%)",
             }} />
             <div style={{ position: "relative" }}>
-              <div style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-0.04em", color: "rgba(255,255,255,0.92)", lineHeight: 1, marginBottom: 10 }}>
+              <div style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-0.04em", color: "var(--c1)", lineHeight: 1, marginBottom: 10 }}>
                 {s.value}
               </div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.5)" }}>{s.label}</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--c2)" }}>{s.label}</div>
             </div>
           </div>
         ))}
@@ -1516,9 +1516,9 @@ export default function GrowthIntelligencePage() {
               display: "flex", alignItems: "center", gap: 8,
               padding: "10px 18px", borderRadius: 11, flexShrink: 0,
               fontSize: 14, fontWeight: active ? 600 : 450,
-              background: active ? "rgba(255,255,255,0.06)" : "transparent",
+              background: active ? "var(--o2)" : "transparent",
               border: active ? "1px solid rgba(255,255,255,0.12)" : "1px solid transparent",
-              color: active ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.4)",
+              color: active ? "var(--c1)" : "var(--c3)",
               cursor: "pointer", transition: "all 0.13s",
             }}>
               <span>{icon}</span>
@@ -1526,8 +1526,8 @@ export default function GrowthIntelligencePage() {
               {count != null && count > 0 && (
                 <span style={{
                   fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 100,
-                  background: active ? "rgba(124,58,237,0.2)" : "rgba(255,255,255,0.07)",
-                  color: active ? "#a78bfa" : "rgba(255,255,255,0.35)",
+                  background: active ? "rgba(124,58,237,0.2)" : "var(--o2)",
+                  color: active ? "#a78bfa" : "var(--c3)",
                 }}>{count}</span>
               )}
             </button>

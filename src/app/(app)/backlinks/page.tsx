@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 
@@ -112,7 +112,7 @@ export default function BacklinksPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-up">
         <div>
           <p className="text-sm mb-1" style={{ color: "var(--color-text-2)" }}>Link building & tracking</p>
-          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "rgba(255,255,255,0.95)", margin: 0, lineHeight: 1.1 }}>Backlinks</h1>
+          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "var(--c1)", margin: 0, lineHeight: 1.1 }}>Backlinks</h1>
         </div>
         {/* Stats pills */}
         <div className="flex items-center gap-2">
@@ -151,26 +151,26 @@ export default function BacklinksPage() {
         <div className="animate-fade-up" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Discovery form */}
           <div style={{ borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 20, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.9)" }}>Find Link Building Opportunities</h2>
+            <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 20, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>Find Link Building Opportunities</h2>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.35)" }}>Your domain</label>
+                <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 6, color: "var(--c3)" }}>Your domain</label>
                 <input
                   value={domain}
                   onChange={(e) => setDomain(e.target.value)}
                   placeholder="yourdomain.com"
-                  style={{ width: "100%", padding: "11px 14px", borderRadius: 10, fontSize: 14, outline: "none", background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "rgba(255,255,255,0.88)" }}
+                  style={{ width: "100%", padding: "11px 14px", borderRadius: 10, fontSize: 14, outline: "none", background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "var(--c1)" }}
                   onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(124,58,237,0.4)"; }}
                   onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--color-border-subtle)"; }}
                 />
               </div>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.35)" }}>Niche / Industry (optional)</label>
+                <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 6, color: "var(--c3)" }}>Niche / Industry (optional)</label>
                 <input
                   value={niche}
                   onChange={(e) => setNiche(e.target.value)}
                   placeholder="e.g. marketing software, DTC fashion"
-                  style={{ width: "100%", padding: "11px 14px", borderRadius: 10, fontSize: 14, outline: "none", background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "rgba(255,255,255,0.88)" }}
+                  style={{ width: "100%", padding: "11px 14px", borderRadius: 10, fontSize: 14, outline: "none", background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "var(--c1)" }}
                   onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(124,58,237,0.4)"; }}
                   onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--color-border-subtle)"; }}
                 />
@@ -190,7 +190,7 @@ export default function BacklinksPage() {
               style={{ gap: 8, padding: "11px 22px", borderRadius: 10, fontSize: 14, fontWeight: 600, transition: "all 0.15s", cursor: isDiscovering ? "not-allowed" : "pointer", opacity: isDiscovering ? 0.7 : 1, border: "none", background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)", color: "white", boxShadow: "0 4px 12px rgba(124,58,237,0.3)" }}
             >
               {isDiscovering ? (
-                <><svg className="animate-spin" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" stroke="rgba(255,255,255,0.3)" strokeWidth="2"/><path d="M7 2a5 5 0 0 1 5 5" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg> Discovering…</>
+                <><svg className="animate-spin" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" stroke="var(--c3)" strokeWidth="2"/><path d="M7 2a5 5 0 0 1 5 5" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg> Discovering…</>
               ) : (
                 <><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 10l-1.5 1.5a2.5 2.5 0 0 1-3.54-3.54l3-3A2.5 2.5 0 0 1 8.5 5.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><path d="M9 6l1.5-1.5a2.5 2.5 0 0 1 3.54 3.54l-3 3A2.5 2.5 0 0 1 7.5 10.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg> Discover Opportunities</>
               )}
@@ -201,7 +201,7 @@ export default function BacklinksPage() {
           {opportunities.length > 0 && (
             <div style={{ borderRadius: 16, overflow: "hidden", background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
               <div style={{ padding: "18px 28px", borderBottom: "1px solid var(--color-border-subtle)" }}>
-                <h2 style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.9)" }}>
+                <h2 style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>
                   {opportunities.length} Opportunities Found
                 </h2>
               </div>
@@ -219,15 +219,15 @@ export default function BacklinksPage() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.9)" }}>{opp.site_name}</span>
-                        <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, background: "var(--color-surface-2)", color: "rgba(255,255,255,0.38)" }}>{TYPE_LABELS[opp.type] ?? opp.type}</span>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: "var(--c1)" }}>{opp.site_name}</span>
+                        <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, background: "var(--color-surface-2)", color: "var(--c3)" }}>{TYPE_LABELS[opp.type] ?? opp.type}</span>
                         <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, background: "rgba(52,211,153,0.1)", color: "#34d399" }}>{opp.relevance}% match</span>
                       </div>
-                      <div style={{ fontSize: 13, marginBottom: 3, color: "rgba(255,255,255,0.38)" }}>
+                      <div style={{ fontSize: 13, marginBottom: 3, color: "var(--c3)" }}>
                         {opp.site_url} · {opp.estimated_traffic} traffic · DA {opp.domain_authority}
                       </div>
                       {opp.notes && (
-                        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>{opp.notes}</p>
+                        <p style={{ fontSize: 13, color: "var(--c2)" }}>{opp.notes}</p>
                       )}
                     </div>
                     <button
@@ -255,7 +255,7 @@ export default function BacklinksPage() {
         <div className="animate-fade-up">
           <div style={{ borderRadius: 16, overflow: "hidden", background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 28px", borderBottom: "1px solid var(--color-border-subtle)" }}>
-              <h2 style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.9)" }}>Tracked Backlinks</h2>
+              <h2 style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>Tracked Backlinks</h2>
               <button
                 onClick={() => setTab("discover")}
                 className="flex items-center"
@@ -278,8 +278,8 @@ export default function BacklinksPage() {
                     <path d="M13 9l2-2a3.5 3.5 0 0 1 4.95 4.95l-4 4A3.5 3.5 0 0 1 10.5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                   </svg>
                 </div>
-                <p style={{ fontSize: 15, fontWeight: 600, color: "rgba(255,255,255,0.88)", marginBottom: 4 }}>No backlinks tracked yet</p>
-                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.35)" }}>Discover opportunities above and start building your link profile.</p>
+                <p style={{ fontSize: 15, fontWeight: 600, color: "var(--c1)", marginBottom: 4 }}>No backlinks tracked yet</p>
+                <p style={{ fontSize: 14, color: "var(--c3)" }}>Discover opportunities above and start building your link profile.</p>
               </div>
             ) : (
               <div>
@@ -295,13 +295,13 @@ export default function BacklinksPage() {
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
-                          <span style={{ fontSize: 14, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "rgba(255,255,255,0.88)" }}>{bl.url}</span>
+                          <span style={{ fontSize: 14, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--c1)" }}>{bl.url}</span>
                           {bl.domain_authority != null && (
                             <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, flexShrink: 0, background: "rgba(124,58,237,0.12)", color: "#a78bfa" }}>DA {bl.domain_authority}</span>
                           )}
                         </div>
                         {bl.anchor_text && (
-                          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.38)" }}>Anchor: &ldquo;{bl.anchor_text}&rdquo;</div>
+                          <div style={{ fontSize: 13, color: "var(--c3)" }}>Anchor: &ldquo;{bl.anchor_text}&rdquo;</div>
                         )}
                       </div>
                       <span style={{ fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 8, flexShrink: 0, background: s.bg, color: s.color }}>{s.label}</span>

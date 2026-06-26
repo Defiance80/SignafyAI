@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 
@@ -84,7 +84,7 @@ function ScoreRing({ value, size = 60 }: { value: number; size?: number }) {
   const color = scoreColor(value);
   return (
     <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={size * 0.067} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--o2)" strokeWidth={size * 0.067} />
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={size * 0.067}
         strokeDasharray={c} strokeDashoffset={c * (1 - value / 100)} strokeLinecap="round"
         style={{ transition: "stroke-dashoffset 0.8s ease" }} />
@@ -191,19 +191,19 @@ export default function ContentStudioPage() {
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "36px 40px 80px" }}>
       {/* Header */}
       <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.03em", color: "rgba(255,255,255,0.95)", margin: 0 }}>Content Studio</h1>
-        <p style={{ color: "rgba(255,255,255,0.38)", marginTop: 8, fontSize: 15, lineHeight: 1.5 }}>
+        <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.03em", color: "var(--c1)", margin: 0 }}>Content Studio</h1>
+        <p style={{ color: "var(--c3)", marginTop: 8, fontSize: 15, lineHeight: 1.5 }}>
           AI-suggested posts with performance predictions — approve, edit, and post to all platforms at once.
         </p>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 2, marginBottom: 28, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4 }}>
+      <div style={{ display: "flex", gap: 2, marginBottom: 28, background: "var(--o1)", borderRadius: 10, padding: 4 }}>
         {tabs.map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
             flex: 1, padding: "9px 8px", borderRadius: 8, border: "none", cursor: "pointer",
             background: activeTab === t.key ? "rgba(124,58,237,0.3)" : "transparent",
-            color: activeTab === t.key ? "#a78bfa" : "rgba(255,255,255,0.45)",
+            color: activeTab === t.key ? "#a78bfa" : "var(--c3)",
             fontSize: 13, fontWeight: activeTab === t.key ? 600 : 400,
             display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "all 0.2s",
           }}>
@@ -227,19 +227,19 @@ export default function ContentStudioPage() {
               <button key={s} onClick={() => { setStatusFilter(s); }}
                 style={{
                   padding: "6px 16px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 13,
-                  background: statusFilter === s ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.06)",
-                  color: statusFilter === s ? "#a78bfa" : "rgba(255,255,255,0.45)",
+                  background: statusFilter === s ? "rgba(124,58,237,0.25)" : "var(--o2)",
+                  color: statusFilter === s ? "#a78bfa" : "var(--c3)",
                   textTransform: "capitalize",
                 }}>{s}</button>
             ))}
           </div>
 
           {loading ? (
-            <div style={{ textAlign: "center", padding: "60px 0", color: "rgba(255,255,255,0.3)" }}>Loading suggestions…</div>
+            <div style={{ textAlign: "center", padding: "60px 0", color: "var(--c3)" }}>Loading suggestions…</div>
           ) : suggestions.length === 0 ? (
             <div style={{ textAlign: "center", padding: "60px 0" }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>✦</div>
-              <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 15, marginBottom: 20 }}>No {statusFilter} suggestions yet</div>
+              <div style={{ color: "var(--c2)", fontSize: 15, marginBottom: 20 }}>No {statusFilter} suggestions yet</div>
               <button onClick={() => setActiveTab("generate")} style={{
                 padding: "10px 24px", borderRadius: 8, border: "none", cursor: "pointer",
                 background: "linear-gradient(135deg,#7c3aed,#4f46e5)", color: "#fff", fontSize: 14, fontWeight: 600,
@@ -254,8 +254,8 @@ export default function ContentStudioPage() {
 
                 return (
                   <div key={s.id} style={{
-                    background: "rgba(255,255,255,0.04)", borderRadius: 14,
-                    border: `1px solid ${expanded ? "rgba(124,58,237,0.3)" : "rgba(255,255,255,0.08)"}`,
+                    background: "var(--o1)", borderRadius: 14,
+                    border: `1px solid ${expanded ? "rgba(124,58,237,0.3)" : "var(--o2)"}`,
                     overflow: "hidden", transition: "border-color 0.2s",
                   }}>
                     {/* Card Header */}
@@ -290,7 +290,7 @@ export default function ContentStudioPage() {
                             ) : null;
                           })}
                           {s.best_posting_time && (
-                            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                            <span style={{ fontSize: 11, color: "var(--c3)" }}>
                               📅 Best: {s.best_posting_time}
                             </span>
                           )}
@@ -306,7 +306,7 @@ export default function ContentStudioPage() {
                           ].map(m => (
                             <div key={m.label} style={{ textAlign: "center" }}>
                               <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{(m.val ?? 0).toLocaleString()}</div>
-                              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>{m.label}</div>
+                              <div style={{ fontSize: 10, color: "var(--c3)" }}>{m.label}</div>
                             </div>
                           ))}
                         </div>
@@ -322,7 +322,7 @@ export default function ContentStudioPage() {
                           }}>✓ Approve & Post</button>
                           <button onClick={() => setDeclineId(s.id)} style={{
                             padding: "8px 18px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)",
-                            background: "transparent", color: "rgba(255,255,255,0.4)", fontSize: 13, cursor: "pointer",
+                            background: "transparent", color: "var(--c3)", fontSize: 13, cursor: "pointer",
                           }}>✕ Decline</button>
                         </div>
                       )}
@@ -343,9 +343,9 @@ export default function ContentStudioPage() {
                     {/* Expand / collapse */}
                     <button onClick={() => setExpandedId(expanded ? null : s.id)}
                       style={{
-                        width: "100%", padding: "10px", background: "rgba(255,255,255,0.03)",
+                        width: "100%", padding: "10px", background: "var(--o1)",
                         border: "none", borderTop: "1px solid rgba(255,255,255,0.06)", cursor: "pointer",
-                        color: "rgba(255,255,255,0.4)", fontSize: 12,
+                        color: "var(--c3)", fontSize: 12,
                         display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                       }}>
                       {expanded ? "▲ Hide Details" : "▼ View Variations & Full Details"}
@@ -357,9 +357,9 @@ export default function ContentStudioPage() {
                         {/* Variation selector */}
                         {s.variations.length > 0 && (
                           <>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 12 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--c2)", marginBottom: 12 }}>
                               Choose a Variation
-                              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", fontWeight: 400, marginLeft: 8 }}>
+                              <span style={{ fontSize: 11, color: "var(--c3)", fontWeight: 400, marginLeft: 8 }}>
                                 (select one before approving)
                               </span>
                             </div>
@@ -372,9 +372,9 @@ export default function ContentStudioPage() {
                                   <button key={v.id} onClick={() => setSelectedVariations(prev => ({ ...prev, [s.id]: v.id }))}
                                     style={{
                                       padding: "8px 16px", borderRadius: 8, cursor: "pointer",
-                                      border: `1.5px solid ${isSelected ? "#7c3aed" : "rgba(255,255,255,0.1)"}`,
-                                      background: isSelected ? "rgba(124,58,237,0.2)" : "rgba(255,255,255,0.04)",
-                                      color: isSelected ? "#a78bfa" : "rgba(255,255,255,0.5)", fontSize: 13,
+                                      border: `1.5px solid ${isSelected ? "#7c3aed" : "var(--c5)"}`,
+                                      background: isSelected ? "rgba(124,58,237,0.2)" : "var(--o1)",
+                                      color: isSelected ? "#a78bfa" : "var(--c2)", fontSize: 13,
                                     }}>
                                     <span style={{ fontWeight: 700 }}>Variation {v.variation_label}</span>
                                     <span style={{ display: "block", fontSize: 11, opacity: 0.6, marginTop: 1 }}>{v.tone}</span>
@@ -386,21 +386,21 @@ export default function ContentStudioPage() {
                             {/* Selected variation content */}
                             {selVariation && (
                               <div style={{
-                                background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: 16,
+                                background: "var(--o1)", borderRadius: 10, padding: 16,
                                 border: "1px solid rgba(255,255,255,0.08)", marginBottom: 20,
                               }}>
                                 {selVariation.hook && (
                                   <div style={{ marginBottom: 10 }}>
-                                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>HOOK</span>
+                                    <span style={{ fontSize: 11, color: "var(--c3)" }}>HOOK</span>
                                     <div style={{ fontSize: 13, color: "#a78bfa", fontWeight: 600, marginTop: 4 }}>
                                       {selVariation.hook}
                                     </div>
                                   </div>
                                 )}
                                 <div style={{ marginBottom: 12 }}>
-                                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>CAPTION</span>
+                                  <span style={{ fontSize: 11, color: "var(--c3)" }}>CAPTION</span>
                                   <pre style={{
-                                    fontSize: 13, color: "rgba(255,255,255,0.8)", marginTop: 8, whiteSpace: "pre-wrap",
+                                    fontSize: 13, color: "var(--c2)", marginTop: 8, whiteSpace: "pre-wrap",
                                     fontFamily: "inherit", lineHeight: 1.65,
                                   }}>{selVariation.caption}</pre>
                                 </div>
@@ -415,7 +415,7 @@ export default function ContentStudioPage() {
                                   {selVariation.cta && (
                                     <span style={{ fontSize: 12, color: "#10b981" }}>CTA: {selVariation.cta}</span>
                                   )}
-                                  <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>
+                                  <span style={{ fontSize: 12, color: "var(--c3)" }}>
                                     Est. reach: {(selVariation.predicted_reach || 0).toLocaleString()}
                                   </span>
                                 </div>
@@ -433,12 +433,12 @@ export default function ContentStudioPage() {
                             🖼 IMAGE: {IMAGE_TYPE_LABELS[s.image_type] ?? s.image_type}
                           </div>
                           {s.image_prompt && (
-                            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", fontStyle: "italic", marginBottom: 6 }}>
+                            <div style={{ fontSize: 12, color: "var(--c2)", fontStyle: "italic", marginBottom: 6 }}>
                               Prompt: "{s.image_prompt}"
                             </div>
                           )}
                           {s.image_description && (
-                            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>{s.image_description}</div>
+                            <div style={{ fontSize: 12, color: "var(--c3)" }}>{s.image_description}</div>
                           )}
                         </div>
 
@@ -449,14 +449,14 @@ export default function ContentStudioPage() {
                             border: "1px solid rgba(16,185,129,0.15)",
                           }}>
                             <div style={{ fontSize: 11, color: "#10b981", fontWeight: 600, marginBottom: 6 }}>📊 BENCHMARK INSIGHT</div>
-                            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>{s.benchmark_reference}</div>
+                            <div style={{ fontSize: 12, color: "var(--c2)", lineHeight: 1.5 }}>{s.benchmark_reference}</div>
                           </div>
                         )}
 
                         {/* Optimization tips */}
                         {s.optimization_tips?.length > 0 && (
                           <div>
-                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", fontWeight: 600, marginBottom: 8 }}>
+                            <div style={{ fontSize: 11, color: "var(--c3)", fontWeight: 600, marginBottom: 8 }}>
                               💡 OPTIMIZATION TIPS TO MAXIMIZE PERFORMANCE
                             </div>
                             {s.optimization_tips.map((tip, i) => (
@@ -465,7 +465,7 @@ export default function ContentStudioPage() {
                                 borderBottom: i < s.optimization_tips.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
                               }}>
                                 <span style={{ color: "#7c3aed", fontWeight: 700, flexShrink: 0 }}>{i + 1}.</span>
-                                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>{tip}</span>
+                                <span style={{ fontSize: 13, color: "var(--c2)", lineHeight: 1.5 }}>{tip}</span>
                               </div>
                             ))}
                           </div>
@@ -480,7 +480,7 @@ export default function ContentStudioPage() {
                             }}>✓ Approve Variation {(selVariation?.variation_label ?? "A")} & Schedule for All Platforms</button>
                             <button onClick={() => setDeclineId(s.id)} style={{
                               padding: "12px 20px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)",
-                              background: "transparent", color: "rgba(255,255,255,0.4)", fontSize: 14, cursor: "pointer",
+                              background: "transparent", color: "var(--c3)", fontSize: 14, cursor: "pointer",
                             }}>✕</button>
                           </div>
                         )}
@@ -493,14 +493,14 @@ export default function ContentStudioPage() {
                         padding: 20, borderTop: "1px solid rgba(255,255,255,0.06)",
                         background: "rgba(239,68,68,0.06)",
                       }}>
-                        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginBottom: 10 }}>
+                        <div style={{ fontSize: 13, color: "var(--c2)", marginBottom: 10 }}>
                           Why are you declining this? (helps the AI learn your preferences)
                         </div>
                         <input value={declineReason} onChange={e => setDeclineReason(e.target.value)}
                           placeholder="Too promotional, wrong tone, off-brand topic…"
                           style={{
                             width: "100%", padding: "10px 14px", borderRadius: 8, boxSizing: "border-box",
-                            border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)",
+                            border: "1px solid rgba(255,255,255,0.1)", background: "var(--o1)",
                             color: "#fff", fontSize: 13, outline: "none", marginBottom: 12,
                           }} />
                         <div style={{ display: "flex", gap: 8 }}>
@@ -510,7 +510,7 @@ export default function ContentStudioPage() {
                           }}>Decline</button>
                           <button onClick={() => setDeclineId(null)} style={{
                             padding: "8px 20px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)",
-                            background: "transparent", color: "rgba(255,255,255,0.5)", fontSize: 13, cursor: "pointer",
+                            background: "transparent", color: "var(--c2)", fontSize: 13, cursor: "pointer",
                           }}>Cancel</button>
                         </div>
                       </div>
@@ -540,7 +540,7 @@ export default function ContentStudioPage() {
           {/* Grid header */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, marginBottom: 4 }}>
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
-              <div key={d} style={{ textAlign: "center", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.35)", padding: "8px 0" }}>{d}</div>
+              <div key={d} style={{ textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--c3)", padding: "8px 0" }}>{d}</div>
             ))}
           </div>
 
@@ -559,12 +559,12 @@ export default function ContentStudioPage() {
               return (
                 <div key={day} style={{
                   minHeight: 80, borderRadius: 8, padding: "8px 6px",
-                  background: isToday ? "rgba(124,58,237,0.12)" : "rgba(255,255,255,0.03)",
-                  border: `1px solid ${isToday ? "rgba(124,58,237,0.3)" : "rgba(255,255,255,0.07)"}`,
+                  background: isToday ? "rgba(124,58,237,0.12)" : "var(--o1)",
+                  border: `1px solid ${isToday ? "rgba(124,58,237,0.3)" : "var(--o2)"}`,
                 }}>
                   <div style={{
                     fontSize: 12, fontWeight: isToday ? 700 : 400,
-                    color: isToday ? "#a78bfa" : "rgba(255,255,255,0.5)",
+                    color: isToday ? "#a78bfa" : "var(--c2)",
                     marginBottom: 4,
                   }}>{day}</div>
                   {dayPosts.slice(0, 2).map(post => (
@@ -575,7 +575,7 @@ export default function ContentStudioPage() {
                     }} title={post.title}>{post.title}</div>
                   ))}
                   {dayPosts.length > 2 && (
-                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>+{dayPosts.length - 2} more</div>
+                    <div style={{ fontSize: 10, color: "var(--c3)" }}>+{dayPosts.length - 2} more</div>
                   )}
                 </div>
               );
@@ -590,7 +590,7 @@ export default function ContentStudioPage() {
             ].map(l => (
               <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <div style={{ width: 10, height: 10, borderRadius: 2, background: l.color }} />
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{l.label}</span>
+                <span style={{ fontSize: 12, color: "var(--c3)" }}>{l.label}</span>
               </div>
             ))}
           </div>
@@ -605,35 +605,35 @@ export default function ContentStudioPage() {
             borderRadius: 12, padding: 20, marginBottom: 24,
           }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: "#a78bfa", marginBottom: 8 }}>✦ AI Content Generation</div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>
+            <div style={{ fontSize: 13, color: "var(--c2)", lineHeight: 1.6 }}>
               The AI reads your Brand Studio profile — company type, personality, content themes, inspiration accounts, and posting goals — then generates a full week of high-performance content suggestions with A/B/C variations and performance scores.
             </div>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.7)", display: "block", marginBottom: 8 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: "var(--c2)", display: "block", marginBottom: 8 }}>
                 Generate content for week of
               </label>
               <input type="date" value={genSettings.week_of}
                 onChange={e => setGenSettings(s => ({ ...s, week_of: e.target.value }))}
                 style={{
                   padding: "10px 14px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.05)", color: "#fff", fontSize: 14, outline: "none",
+                  background: "var(--o1)", color: "#fff", fontSize: 14, outline: "none",
                 }} />
             </div>
 
             <div>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.7)", display: "block", marginBottom: 8 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: "var(--c2)", display: "block", marginBottom: 8 }}>
                 Number of suggestions to generate
               </label>
               <div style={{ display: "flex", gap: 8 }}>
                 {[5, 7, 10, 14].map(n => (
                   <button key={n} onClick={() => setGenSettings(s => ({ ...s, posts_count: n }))}
                     style={{
-                      width: 56, height: 48, borderRadius: 8, border: `1.5px solid ${genSettings.posts_count === n ? "#7c3aed" : "rgba(255,255,255,0.1)"}`,
-                      background: genSettings.posts_count === n ? "rgba(124,58,237,0.2)" : "rgba(255,255,255,0.04)",
-                      color: genSettings.posts_count === n ? "#a78bfa" : "rgba(255,255,255,0.5)",
+                      width: 56, height: 48, borderRadius: 8, border: `1.5px solid ${genSettings.posts_count === n ? "#7c3aed" : "var(--c5)"}`,
+                      background: genSettings.posts_count === n ? "rgba(124,58,237,0.2)" : "var(--o1)",
+                      color: genSettings.posts_count === n ? "#a78bfa" : "var(--c2)",
                       cursor: "pointer", fontSize: 15, fontWeight: 700,
                     }}>{n}</button>
                 ))}
@@ -657,7 +657,7 @@ export default function ContentStudioPage() {
             </button>
 
             {generating && (
-              <div style={{ textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.8 }}>
+              <div style={{ textAlign: "center", fontSize: 13, color: "var(--c3)", lineHeight: 1.8 }}>
                 The AI is:<br />
                 • Reading your brand profile and inspiration accounts<br />
                 • Researching trending content in your industry<br />

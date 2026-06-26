@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -125,18 +125,18 @@ function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }
       <div className="fixed right-0 top-0 bottom-0 z-50 flex flex-col overflow-hidden"
         style={{ width: "min(520px, 100vw)", background: "var(--color-surface)", borderLeft: "1px solid var(--color-border)", boxShadow: "-16px 0 64px rgba(0,0,0,0.4)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 24px", borderBottom: "1px solid var(--color-border-subtle)" }}>
-          <button onClick={onClose} style={{ padding: 6, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.4)" }}>
+          <button onClick={onClose} style={{ padding: 6, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", color: "var(--c3)" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </button>
           <div style={{ flex: 1 }}>
             {isLoading ? <div style={{ height: 20, width: 160, borderRadius: 6, background: "var(--color-surface-2)" }} /> :
-              <h2 style={{ fontSize: 16, fontWeight: 700, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.92)", margin: 0 }}>{lead?.name}</h2>}
+              <h2 style={{ fontSize: 16, fontWeight: 700, fontFamily: "var(--font-syne)", color: "var(--c1)", margin: 0 }}>{lead?.name}</h2>}
           </div>
         </div>
         {isLoading ? (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.35)" }}>Loading lead...</div>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--c3)" }}>Loading lead...</div>
         ) : !lead ? (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.35)" }}>Lead not found</div>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--c3)" }}>Lead not found</div>
         ) : (
           <div style={{ flex: 1, overflowY: "auto" }}>
             <div style={{ padding: "22px 24px", borderBottom: "1px solid var(--color-border-subtle)", display: "flex", flexDirection: "column", gap: 16 }}>
@@ -148,7 +148,7 @@ function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }
                     const isActive = lead.status === s;
                     return (
                       <button key={s} onClick={() => handleStatusChange(s)}
-                        style={{ fontSize: 12, fontWeight: 600, padding: "5px 12px", borderRadius: 8, transition: "all 0.15s", cursor: "pointer", border: "none", background: isActive ? style.bg : "var(--color-surface-2)", color: isActive ? style.color : "rgba(255,255,255,0.38)", outline: isActive ? `1px solid ${style.color}40` : "1px solid var(--color-border-subtle)", opacity: updateLead.isPending ? 0.6 : 1 }}>
+                        style={{ fontSize: 12, fontWeight: 600, padding: "5px 12px", borderRadius: 8, transition: "all 0.15s", cursor: "pointer", border: "none", background: isActive ? style.bg : "var(--color-surface-2)", color: isActive ? style.color : "var(--c3)", outline: isActive ? `1px solid ${style.color}40` : "1px solid var(--color-border-subtle)", opacity: updateLead.isPending ? 0.6 : 1 }}>
                         {style.label}
                       </button>
                     );
@@ -156,12 +156,12 @@ function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }
                 </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                {lead.company && <div><div style={{ fontSize: 11, marginBottom: 3, color: "rgba(255,255,255,0.32)", fontWeight: 500 }}>Company</div><div style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.88)" }}>{lead.company}</div></div>}
-                {lead.email && <div><div style={{ fontSize: 11, marginBottom: 3, color: "rgba(255,255,255,0.32)", fontWeight: 500 }}>Email</div><a href={`mailto:${lead.email}`} style={{ fontSize: 14, fontWeight: 500, color: "#a78bfa", textDecoration: "none" }}>{lead.email}</a></div>}
-                {lead.phone && <div><div style={{ fontSize: 11, marginBottom: 3, color: "rgba(255,255,255,0.32)", fontWeight: 500 }}>Phone</div><div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)" }}>{lead.phone}</div></div>}
-                {lead.platform && <div><div style={{ fontSize: 11, marginBottom: 3, color: "rgba(255,255,255,0.32)", fontWeight: 500 }}>Platform</div><PlatformBadge platform={lead.platform} /></div>}
-                {lead.industry && <div><div style={{ fontSize: 11, marginBottom: 3, color: "rgba(255,255,255,0.32)", fontWeight: 500 }}>Industry</div><div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)" }}>{lead.industry}</div></div>}
-                {lead.location && <div><div style={{ fontSize: 11, marginBottom: 3, color: "rgba(255,255,255,0.32)", fontWeight: 500 }}>Location</div><div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)" }}>{lead.location}</div></div>}
+                {lead.company && <div><div style={{ fontSize: 11, marginBottom: 3, color: "var(--c3)", fontWeight: 500 }}>Company</div><div style={{ fontSize: 14, fontWeight: 500, color: "var(--c1)" }}>{lead.company}</div></div>}
+                {lead.email && <div><div style={{ fontSize: 11, marginBottom: 3, color: "var(--c3)", fontWeight: 500 }}>Email</div><a href={`mailto:${lead.email}`} style={{ fontSize: 14, fontWeight: 500, color: "#a78bfa", textDecoration: "none" }}>{lead.email}</a></div>}
+                {lead.phone && <div><div style={{ fontSize: 11, marginBottom: 3, color: "var(--c3)", fontWeight: 500 }}>Phone</div><div style={{ fontSize: 14, color: "var(--c2)" }}>{lead.phone}</div></div>}
+                {lead.platform && <div><div style={{ fontSize: 11, marginBottom: 3, color: "var(--c3)", fontWeight: 500 }}>Platform</div><PlatformBadge platform={lead.platform} /></div>}
+                {lead.industry && <div><div style={{ fontSize: 11, marginBottom: 3, color: "var(--c3)", fontWeight: 500 }}>Industry</div><div style={{ fontSize: 14, color: "var(--c2)" }}>{lead.industry}</div></div>}
+                {lead.location && <div><div style={{ fontSize: 11, marginBottom: 3, color: "var(--c3)", fontWeight: 500 }}>Location</div><div style={{ fontSize: 14, color: "var(--c2)" }}>{lead.location}</div></div>}
               </div>
               {lead.tags && lead.tags.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -171,21 +171,21 @@ function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }
             </div>
             {lead.notes && (
               <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--color-border-subtle)" }}>
-                <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 8, color: "rgba(255,255,255,0.32)", letterSpacing: "0.06em" }}>NOTES</div>
-                <p style={{ fontSize: 14, lineHeight: 1.65, color: "rgba(255,255,255,0.6)" }}>{lead.notes}</p>
+                <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 8, color: "var(--c3)", letterSpacing: "0.06em" }}>NOTES</div>
+                <p style={{ fontSize: 14, lineHeight: 1.65, color: "var(--c2)" }}>{lead.notes}</p>
               </div>
             )}
             <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--color-border-subtle)" }}>
-              <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 8, color: "rgba(255,255,255,0.32)", letterSpacing: "0.06em" }}>ADD NOTE</div>
-              <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Add a note..." style={{ width: "100%", padding: "10px 14px", borderRadius: 10, fontSize: 14, outline: "none", resize: "none", background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "rgba(255,255,255,0.88)", lineHeight: 1.6 }} />
-              <button onClick={handleSaveNote} disabled={!note.trim() || savingNote} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", background: note.trim() ? "rgba(124,58,237,0.15)" : "var(--color-surface-2)", color: note.trim() ? "#a78bfa" : "rgba(255,255,255,0.3)", outline: `1px solid ${note.trim() ? "rgba(124,58,237,0.3)" : "var(--color-border-subtle)"}` }}>
+              <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 8, color: "var(--c3)", letterSpacing: "0.06em" }}>ADD NOTE</div>
+              <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Add a note..." style={{ width: "100%", padding: "10px 14px", borderRadius: 10, fontSize: 14, outline: "none", resize: "none", background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", color: "var(--c1)", lineHeight: 1.6 }} />
+              <button onClick={handleSaveNote} disabled={!note.trim() || savingNote} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", background: note.trim() ? "rgba(124,58,237,0.15)" : "var(--color-surface-2)", color: note.trim() ? "#a78bfa" : "var(--c3)", outline: `1px solid ${note.trim() ? "rgba(124,58,237,0.3)" : "var(--color-border-subtle)"}` }}>
                 {savingNote ? "Saving..." : "Save Note"}
               </button>
             </div>
             <div style={{ padding: "18px 24px" }}>
-              <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 12, color: "rgba(255,255,255,0.32)", letterSpacing: "0.06em" }}>ACTIVITY TIMELINE</div>
+              <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 12, color: "var(--c3)", letterSpacing: "0.06em" }}>ACTIVITY TIMELINE</div>
               {activities.length === 0 ? (
-                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.3)" }}>No activity recorded yet.</p>
+                <p style={{ fontSize: 14, color: "var(--c3)" }}>No activity recorded yet.</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12, position: "relative" }}>
                   <div style={{ position: "absolute", left: 10, top: 8, bottom: 8, width: 1, background: "var(--color-border-subtle)" }} />
@@ -195,9 +195,9 @@ function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }
                         <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#7c3aed" }} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.88)" }}>{act.type.replace(/_/g, " ")}</div>
-                        {act.description && <div style={{ fontSize: 12, marginTop: 2, color: "rgba(255,255,255,0.38)" }}>{act.description}</div>}
-                        <div style={{ fontSize: 11, marginTop: 4, color: "rgba(255,255,255,0.25)" }}>{relativeTime(act.created_at)}</div>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--c1)" }}>{act.type.replace(/_/g, " ")}</div>
+                        {act.description && <div style={{ fontSize: 12, marginTop: 2, color: "var(--c3)" }}>{act.description}</div>}
+                        <div style={{ fontSize: 11, marginTop: 4, color: "var(--c4)" }}>{relativeTime(act.created_at)}</div>
                       </div>
                     </div>
                   ))}
@@ -642,7 +642,7 @@ function BusinessDrawer({ biz, onClose }: { biz: Business; onClose: () => void }
                 {/* Subject line */}
                 <div style={{ padding: "10px 14px", borderRadius: 10, marginBottom: 10, background: "rgba(124,58,237,0.07)", border: "1px solid rgba(124,58,237,0.18)" }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: "#a78bfa", letterSpacing: "0.06em", marginBottom: 4 }}>SUBJECT</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.9)" }}>{emailSubject}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--c1)" }}>{emailSubject}</div>
                 </div>
                 {/* Body */}
                 <div style={{ padding: "14px 16px", borderRadius: 10, marginBottom: 12, background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)", fontSize: 13, lineHeight: 1.75, color: "var(--color-text-2)", whiteSpace: "pre-wrap" }}>
@@ -663,8 +663,8 @@ function BusinessDrawer({ biz, onClose }: { biz: Business; onClose: () => void }
 
             {!generatingEmail && !hasEmail && (
               <div style={{ padding: "20px 0", textAlign: "center" }}>
-                <p style={{ margin: "0 0 4px", fontSize: 13, color: "rgba(255,255,255,0.35)" }}>No email drafted yet.</p>
-                <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.22)" }}>Click Generate to write a personalised outreach email.</p>
+                <p style={{ margin: "0 0 4px", fontSize: 13, color: "var(--c3)" }}>No email drafted yet.</p>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--c4)" }}>Click Generate to write a personalised outreach email.</p>
               </div>
             )}
           </div>
@@ -1979,8 +1979,8 @@ export default function LeadsPage() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
         <div>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.32)", marginBottom: 8, fontWeight: 500 }}>Discover & manage</p>
-          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "rgba(255,255,255,0.95)", margin: 0, lineHeight: 1.1 }}>
+          <p style={{ fontSize: 14, color: "var(--c3)", marginBottom: 8, fontWeight: 500 }}>Discover & manage</p>
+          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "var(--c1)", margin: 0, lineHeight: 1.1 }}>
             Lead Intelligence
           </h1>
         </div>
@@ -2013,8 +2013,8 @@ export default function LeadsPage() {
             onMouseEnter={(e) => { (e.currentTarget).style.border = `1px solid ${s.color}33`; (e.currentTarget).style.boxShadow = `0 8px 24px ${s.color}15`; }}
             onMouseLeave={(e) => { (e.currentTarget).style.border = "1px solid var(--color-border)"; (e.currentTarget).style.boxShadow = "none"; }}>
             <div style={{ position: "absolute", top: 0, right: 0, width: 80, height: 80, borderRadius: "50%", pointerEvents: "none", opacity: 0.3, background: `radial-gradient(circle, ${s.color}25 0%, transparent 70%)`, transform: "translate(25%,-25%)" }} />
-            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 8, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.92)" }}>{s.value}</div>
-            <div style={{ fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.38)", letterSpacing: "0.02em" }}>{s.label}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 8, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>{s.value}</div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--c3)", letterSpacing: "0.02em" }}>{s.label}</div>
           </div>
         ))}
       </div>

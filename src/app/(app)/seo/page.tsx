@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 
@@ -105,12 +105,12 @@ export default function SeoPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-up">
         <div>
           <p className="text-sm mb-1" style={{ color: "var(--color-text-2)" }}>Research & optimize</p>
-          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "rgba(255,255,255,0.95)", margin: 0, lineHeight: 1.1 }}>SEO Research</h1>
+          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "var(--c1)", margin: 0, lineHeight: 1.1 }}>SEO Research</h1>
         </div>
         <button
           onClick={() => downloadCsv(filtered, lastTopic ? `keywords-${lastTopic.slice(0, 20)}.csv` : "keywords.csv")}
           style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: "pointer", transition: "all 0.2s", background: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)"; }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--o2)"; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-surface)"; }}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4.5 6.5L7 9l2.5-2.5M2 10.5V12h10v-1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -140,7 +140,7 @@ export default function SeoPage() {
           }}
         >
           {isResearching ? (
-            <><svg className="animate-spin" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" stroke="rgba(255,255,255,0.3)" strokeWidth="2"/><path d="M7 2a5 5 0 0 1 5 5" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg> Researching…</>
+            <><svg className="animate-spin" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" stroke="var(--c3)" strokeWidth="2"/><path d="M7 2a5 5 0 0 1 5 5" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg> Researching…</>
           ) : (
             <><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.5"/><path d="M9.5 9.5L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> Research</>
           )}
@@ -168,8 +168,8 @@ export default function SeoPage() {
           >
             <div style={{ position: "absolute", top: 0, right: 0, width: 80, height: 80, borderRadius: "50%", pointerEvents: "none", opacity: 0.3, background: `radial-gradient(circle, ${c.color}25 0%, transparent 70%)`, transform: "translate(25%, -25%)" }} />
             <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 8, color: c.color, letterSpacing: "0.04em", textTransform: "uppercase" }}>{c.name}</div>
-            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 6, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.92)" }}>{c.volume}</div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{c.keywords} keywords</div>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 6, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>{c.volume}</div>
+            <div style={{ fontSize: 12, color: "var(--c3)" }}>{c.keywords} keywords</div>
           </div>
         ))}
       </div>
@@ -177,18 +177,18 @@ export default function SeoPage() {
       {/* Keywords Table */}
       <div className="animate-fade-up" style={{ borderRadius: 16, overflow: "hidden", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.2s" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 28px", borderBottom: "1px solid var(--color-border-subtle)" }}>
-          <h2 style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.9)" }}>
+          <h2 style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>
             Keyword Opportunities
-            {lastTopic && <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 400, color: "rgba(255,255,255,0.35)" }}>for &ldquo;{lastTopic}&rdquo;</span>}
+            {lastTopic && <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 400, color: "var(--c3)" }}>for &ldquo;{lastTopic}&rdquo;</span>}
           </h2>
-          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{filtered.length} keywords</span>
+          <span style={{ fontSize: 12, color: "var(--c3)" }}>{filtered.length} keywords</span>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
                 {["Keyword", "Volume", "Difficulty", "CPC", "Trend"].map((h) => (
-                  <th key={h} style={{ textAlign: "left", padding: "14px 24px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: "0.04em", textTransform: "uppercase" }}>{h}</th>
+                  <th key={h} style={{ textAlign: "left", padding: "14px 24px", fontSize: 11, fontWeight: 600, color: "var(--c3)", letterSpacing: "0.04em", textTransform: "uppercase" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -202,12 +202,12 @@ export default function SeoPage() {
                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                   >
-                    <td style={{ padding: "15px 24px", fontWeight: 500, color: "rgba(255,255,255,0.88)" }}>{kw.keyword}</td>
-                    <td style={{ padding: "15px 24px", color: "rgba(255,255,255,0.55)" }}>{kw.volume.toLocaleString()}</td>
+                    <td style={{ padding: "15px 24px", fontWeight: 500, color: "var(--c1)" }}>{kw.keyword}</td>
+                    <td style={{ padding: "15px 24px", color: "var(--c2)" }}>{kw.volume.toLocaleString()}</td>
                     <td style={{ padding: "15px 24px" }}><span style={{ fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 8, background: d.bg, color: d.color }}>{kw.difficulty}</span></td>
-                    <td style={{ padding: "15px 24px", color: "rgba(255,255,255,0.55)" }}>{kw.cpc}</td>
+                    <td style={{ padding: "15px 24px", color: "var(--c2)" }}>{kw.cpc}</td>
                     <td style={{ padding: "15px 24px" }}>
-                      <span style={{ fontSize: 13, color: kw.trend === "up" ? "#34d399" : kw.trend === "down" ? "#f87171" : "rgba(255,255,255,0.35)" }}>
+                      <span style={{ fontSize: 13, color: kw.trend === "up" ? "#34d399" : kw.trend === "down" ? "#f87171" : "var(--c3)" }}>
                         {kw.trend === "up" ? "↑ Up" : kw.trend === "down" ? "↓ Down" : "→ Stable"}
                       </span>
                     </td>
@@ -218,7 +218,7 @@ export default function SeoPage() {
           </table>
           {filtered.length === 0 && (
             <div style={{ padding: "40px 28px", textAlign: "center" }}>
-              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.3)" }}>No keywords match your search.</p>
+              <p style={{ fontSize: 14, color: "var(--c3)" }}>No keywords match your search.</p>
             </div>
           )}
         </div>

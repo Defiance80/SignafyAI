@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 
@@ -165,8 +165,8 @@ export default function SocialPage() {
       {/* ── Header ─────────────────────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.38)", marginBottom: 8, fontWeight: 500 }}>Manage conversations</p>
-          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "rgba(255,255,255,0.95)", margin: 0, lineHeight: 1.1 }}>Social Inbox</h1>
+          <p style={{ fontSize: 14, color: "var(--c3)", marginBottom: 8, fontWeight: 500 }}>Manage conversations</p>
+          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "var(--c1)", margin: 0, lineHeight: 1.1 }}>Social Inbox</h1>
         </div>
         {mobileView === "thread" && (
           <button
@@ -174,9 +174,9 @@ export default function SocialPage() {
             style={{
               display: "flex", alignItems: "center", gap: 8, padding: "9px 16px", borderRadius: 10,
               border: "1px solid var(--color-border)", background: "var(--color-surface-2)",
-              color: "rgba(255,255,255,0.7)", cursor: "pointer", fontSize: 13, fontWeight: 500,
+              color: "var(--c2)", cursor: "pointer", fontSize: 13, fontWeight: 500,
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--o2)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -198,7 +198,7 @@ export default function SocialPage() {
         }}>
           {/* Panel header */}
           <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--color-border-subtle)", flexShrink: 0 }}>
-            <h2 style={{ margin: 0, fontSize: 13, fontWeight: 700, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.9)", display: "flex", alignItems: "center", gap: 8 }}>
+            <h2 style={{ margin: 0, fontSize: 13, fontWeight: 700, fontFamily: "var(--font-syne)", color: "var(--c1)", display: "flex", alignItems: "center", gap: 8 }}>
               Messages
               {unreadCount > 0 && (
                 <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, background: "rgba(124,58,237,0.15)", color: "#a78bfa", fontWeight: 600 }}>
@@ -245,18 +245,18 @@ export default function SocialPage() {
                     {/* Content */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.9)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.author_name}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--c1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.author_name}</span>
                         <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, flexShrink: 0, background: `${color}18`, color }}>{platLabel}</span>
                         {!m.is_read && <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: "#7c3aed" }} />}
                         {m.status === "replied" && (
                           <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, flexShrink: 0, background: "rgba(52,211,153,0.12)", color: "#34d399" }}>Replied</span>
                         )}
                       </div>
-                      <p style={{ fontSize: 12, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "rgba(255,255,255,0.38)" }}>{m.body}</p>
+                      <p style={{ fontSize: 12, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--c3)" }}>{m.body}</p>
                     </div>
 
                     {/* Timestamp */}
-                    <span style={{ fontSize: 10, flexShrink: 0, marginTop: 2, color: "rgba(255,255,255,0.3)", whiteSpace: "nowrap" }}>{timeAgo(m.received_at)}</span>
+                    <span style={{ fontSize: 10, flexShrink: 0, marginTop: 2, color: "var(--c3)", whiteSpace: "nowrap" }}>{timeAgo(m.received_at)}</span>
                   </div>
                 );
               })}
@@ -283,7 +283,7 @@ export default function SocialPage() {
                     <path d="M20 11c0 4.97-4.03 8.5-9 8.5a10.3 10.3 0 0 1-3.57-.63L3 20.5l1.26-4.52A7.52 7.52 0 0 1 2 11C2 6.03 6.03 2.5 11 2.5S20 6.03 20 11z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
                   </svg>
                 </div>
-                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.35)", margin: 0 }}>Select a message to view the conversation</p>
+                <p style={{ fontSize: 14, color: "var(--c3)", margin: 0 }}>Select a message to view the conversation</p>
               </div>
             </div>
           ) : (
@@ -298,8 +298,8 @@ export default function SocialPage() {
                   {msg.author_name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: "rgba(255,255,255,0.92)" }}>{msg.author_name}</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: "var(--c1)" }}>{msg.author_name}</div>
+                  <div style={{ fontSize: 12, color: "var(--c3)" }}>
                     via {PLATFORM_LABELS[msg.platform] ?? msg.platform} · {timeAgo(msg.received_at)}
                   </div>
                 </div>
@@ -331,9 +331,9 @@ export default function SocialPage() {
                       </span>
                       <button
                         onClick={() => { setEditMode(true); setEditText(msg.ai_reply ?? ""); }}
-                        style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", background: "none", border: "none", cursor: "pointer", padding: "3px 8px", borderRadius: 6, transition: "color 0.15s" }}
+                        style={{ fontSize: 12, color: "var(--c3)", background: "none", border: "none", cursor: "pointer", padding: "3px 8px", borderRadius: 6, transition: "color 0.15s" }}
                         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#a78bfa"; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.45)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--c3)"; }}
                       >
                         Edit
                       </button>
@@ -346,7 +346,7 @@ export default function SocialPage() {
                         style={{
                           width: "100%", fontSize: 13, lineHeight: 1.65, outline: "none", resize: "none",
                           borderRadius: 8, padding: "10px 12px", boxSizing: "border-box",
-                          background: "var(--color-surface-2)", color: "rgba(255,255,255,0.82)",
+                          background: "var(--color-surface-2)", color: "var(--c2)",
                           border: "1px solid var(--color-border-subtle)",
                         }}
                       />
@@ -358,7 +358,7 @@ export default function SocialPage() {
                   </div>
                 ) : msg.status !== "replied" ? (
                   <div style={{ borderRadius: 12, padding: "22px 20px", textAlign: "center", background: "var(--color-surface-2)", border: "1px solid var(--color-border-subtle)" }}>
-                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", margin: "0 0 14px" }}>No AI reply generated yet</p>
+                    <p style={{ fontSize: 13, color: "var(--c3)", margin: "0 0 14px" }}>No AI reply generated yet</p>
                     <button
                       onClick={handleGenerateReply}
                       disabled={isGenerating}
@@ -410,9 +410,9 @@ export default function SocialPage() {
                         padding: "11px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600,
                         cursor: "pointer", whiteSpace: "nowrap", transition: "background 0.15s",
                         background: "var(--color-surface-2)", border: "1px solid var(--color-border)",
-                        color: "rgba(255,255,255,0.65)",
+                        color: "var(--c2)",
                       }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--o2)"; }}
                       onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
                     >
                       Edit Reply
@@ -425,9 +425,9 @@ export default function SocialPage() {
                       padding: "11px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600,
                       cursor: "pointer", whiteSpace: "nowrap", transition: "background 0.15s",
                       background: "var(--color-surface-2)", border: "1px solid var(--color-border)",
-                      color: "rgba(255,255,255,0.4)",
+                      color: "var(--c3)",
                     }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)"; }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--o2)"; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
                   >
                     Dismiss

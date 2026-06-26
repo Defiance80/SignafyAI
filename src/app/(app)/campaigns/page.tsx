@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 
@@ -148,7 +148,7 @@ export default function CampaignsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-up">
         <div>
           <p className="text-sm mb-1" style={{ color: "var(--color-text-2)" }}>Plan & execute</p>
-          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "rgba(255,255,255,0.95)", margin: 0, lineHeight: 1.1 }}>Campaigns</h1>
+          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "var(--c1)", margin: 0, lineHeight: 1.1 }}>Campaigns</h1>
         </div>
         <button
           onClick={() => setShowModal(true)}
@@ -181,8 +181,8 @@ export default function CampaignsPage() {
           <div style={{ width: 48, height: 48, borderRadius: 12, margin: "0 auto 14px", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(124,58,237,0.1)", color: "#a78bfa" }}>
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 4v14M4 11h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </div>
-          <p style={{ fontSize: 15, fontWeight: 600, color: "rgba(255,255,255,0.88)", marginBottom: 4 }}>No campaigns yet</p>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.3)" }}>Create your first campaign to get started.</p>
+          <p style={{ fontSize: 15, fontWeight: 600, color: "var(--c1)", marginBottom: 4 }}>No campaigns yet</p>
+          <p style={{ fontSize: 14, color: "var(--c3)" }}>Create your first campaign to get started.</p>
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
@@ -203,20 +203,20 @@ export default function CampaignsPage() {
               >
                 <div style={{ position: "absolute", top: 0, right: 0, width: 80, height: 80, borderRadius: "50%", pointerEvents: "none", opacity: 0.2, background: `radial-gradient(circle, ${color}30 0%, transparent 70%)`, transform: "translate(25%, -25%)" }} />
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 700, paddingRight: 10, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.9)", margin: 0, lineHeight: 1.35 }}>{c.name}</h3>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, paddingRight: 10, fontFamily: "var(--font-syne)", color: "var(--c1)", margin: 0, lineHeight: 1.35 }}>{c.name}</h3>
                   <span style={{ fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 8, flexShrink: 0, textTransform: "capitalize", background: s.bg, color: s.color }}>{c.status}</span>
                 </div>
-                <div style={{ fontSize: 13, marginBottom: 16, color: "rgba(255,255,255,0.38)", display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ fontSize: 13, marginBottom: 16, color: "var(--c3)", display: "flex", flexDirection: "column", gap: 6 }}>
                   <div>{formatDates(c.start_date, c.end_date)}</div>
                   <div style={{ display: "flex", gap: 12 }}>
-                    <span>Budget: <span style={{ color: "rgba(255,255,255,0.6)" }}>{formatBudget(c.budget)}</span></span>
-                    {c.budget_spent != null && <span>Spent: <span style={{ color: "rgba(255,255,255,0.6)" }}>{formatBudget(c.budget_spent)}</span></span>}
+                    <span>Budget: <span style={{ color: "var(--c2)" }}>{formatBudget(c.budget)}</span></span>
+                    {c.budget_spent != null && <span>Spent: <span style={{ color: "var(--c2)" }}>{formatBudget(c.budget_spent)}</span></span>}
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {c.channels.map((ch) => (
-                      <span key={ch} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 6, background: "var(--color-surface-2)", color: "rgba(255,255,255,0.38)", border: "1px solid var(--color-border-subtle)" }}>{ch}</span>
+                      <span key={ch} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 6, background: "var(--color-surface-2)", color: "var(--c3)", border: "1px solid var(--color-border-subtle)" }}>{ch}</span>
                     ))}
                   </div>
                   <Sparkline color={color} />

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 
@@ -93,8 +93,8 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
         <div>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.32)", marginBottom: 8, fontWeight: 500 }}>Performance insights</p>
-          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "rgba(255,255,255,0.95)", margin: 0, lineHeight: 1.1 }}>Analytics</h1>
+          <p style={{ fontSize: 14, color: "var(--c3)", marginBottom: 8, fontWeight: 500 }}>Performance insights</p>
+          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "var(--c1)", margin: 0, lineHeight: 1.1 }}>Analytics</h1>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {ranges.map((r) => (
@@ -124,8 +124,8 @@ export default function AnalyticsPage() {
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.border = "1px solid var(--color-border)"; (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
           >
             <div style={{ position: "absolute", top: 0, right: 0, width: 96, height: 96, borderRadius: "50%", pointerEvents: "none", opacity: 0.3, background: `radial-gradient(circle, ${m.color}25 0%, transparent 70%)`, transform: "translate(25%, -25%)" }} />
-            <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 12, color: "rgba(255,255,255,0.38)", letterSpacing: "0.03em" }}>{m.label}</div>
-            <div className={loading ? "animate-pulse" : ""} style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.92)" }}>{m.value}</div>
+            <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 12, color: "var(--c3)", letterSpacing: "0.03em" }}>{m.label}</div>
+            <div className={loading ? "animate-pulse" : ""} style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>{m.value}</div>
           </div>
         ))}
       </div>
@@ -133,8 +133,8 @@ export default function AnalyticsPage() {
       {/* Chart */}
       {chartData.length > 0 && (
         <div className="animate-fade-up" style={{ borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.2s" }}>
-          <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 18, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.9)" }}>
-            Reach Trend — <span style={{ fontWeight: 400, color: "rgba(255,255,255,0.38)" }}>{ranges.find(r => r.value === range)?.label}</span>
+          <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 18, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>
+            Reach Trend — <span style={{ fontWeight: 400, color: "var(--c3)" }}>{ranges.find(r => r.value === range)?.label}</span>
           </h2>
           <DynamicAreaChart data={chartData} />
         </div>
@@ -147,9 +147,9 @@ export default function AnalyticsPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 24 }}>
         {/* Platform Breakdown */}
         <div className="animate-fade-up" style={{ borderRadius: 16, padding: "28px 32px", background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.25s" }}>
-          <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 18, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.9)" }}>Platform Breakdown</h2>
+          <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 18, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>Platform Breakdown</h2>
           {platforms.length === 0 ? (
-            <p style={{ fontSize: 14, padding: "32px 0", textAlign: "center", color: "rgba(255,255,255,0.3)" }}>
+            <p style={{ fontSize: 14, padding: "32px 0", textAlign: "center", color: "var(--c3)" }}>
               Connect social accounts to see platform breakdown.
             </p>
           ) : (
@@ -159,8 +159,8 @@ export default function AnalyticsPage() {
                 return (
                   <div key={p.name}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.88)" }}>{p.name}</span>
-                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{fmt(p.reach)} reach · {p.leads} leads</span>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: "var(--c1)" }}>{p.name}</span>
+                      <span style={{ fontSize: 12, color: "var(--c3)" }}>{fmt(p.reach)} reach · {p.leads} leads</span>
                     </div>
                     <div style={{ width: "100%", height: 6, borderRadius: 999, background: "var(--color-surface-2)" }}>
                       <div style={{ height: 6, borderRadius: 999, transition: "all 0.3s", width: `${p.pct}%`, background: color }} />
@@ -175,11 +175,11 @@ export default function AnalyticsPage() {
         {/* Top Content */}
         <div className="animate-fade-up" style={{ borderRadius: 16, background: "var(--color-surface)", border: "1px solid var(--color-border)", animationDelay: "0.3s", overflow: "hidden" }}>
           <div style={{ padding: "20px 28px", borderBottom: "1px solid var(--color-border-subtle)" }}>
-            <h2 style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.9)" }}>Top Performing Content</h2>
+            <h2 style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-syne)", color: "var(--c1)" }}>Top Performing Content</h2>
           </div>
           {topContent.length === 0 ? (
             <div style={{ padding: "40px 28px", textAlign: "center" }}>
-              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.3)" }}>Generate and publish content to track performance.</p>
+              <p style={{ fontSize: 14, color: "var(--c3)" }}>Generate and publish content to track performance.</p>
             </div>
           ) : (
             <div>
@@ -191,12 +191,12 @@ export default function AnalyticsPage() {
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--color-surface-2)"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                 >
-                  <span style={{ fontSize: 18, fontWeight: 800, width: 24, textAlign: "center", flexShrink: 0, fontFamily: "var(--font-syne)", color: "rgba(255,255,255,0.22)" }}>{i + 1}</span>
+                  <span style={{ fontSize: 18, fontWeight: 800, width: 24, textAlign: "center", flexShrink: 0, fontFamily: "var(--font-syne)", color: "var(--c4)" }}>{i + 1}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.88)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: "var(--c1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {c.title ?? (c.body ? c.body.slice(0, 60) + "…" : "Untitled")}
                     </div>
-                    <div style={{ fontSize: 12, marginTop: 2, color: "rgba(255,255,255,0.35)" }}>{c.platform} · {c.type ?? "Content"}</div>
+                    <div style={{ fontSize: 12, marginTop: 2, color: "var(--c3)" }}>{c.platform} · {c.type ?? "Content"}</div>
                   </div>
                   {c.engagement_prediction != null && (
                     <div style={{ textAlign: "right", flexShrink: 0 }}>

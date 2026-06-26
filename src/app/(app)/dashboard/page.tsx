@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -164,10 +164,10 @@ export default function DashboardPage() {
       {/* ── Page header ──────────────────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", paddingBottom: 4 }}>
         <div>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.32)", marginBottom: 8, fontWeight: 500, letterSpacing: "0.01em" }}>
+          <p style={{ fontSize: 14, color: "var(--c3)", marginBottom: 8, fontWeight: 500, letterSpacing: "0.01em" }}>
             {greeting}{data?.org.name ? `, ${data.org.name}` : ""}
           </p>
-          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "rgba(255,255,255,0.95)", margin: 0, lineHeight: 1.1 }}>
+          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", color: "var(--c1)", margin: 0, lineHeight: 1.1 }}>
             Growth Dashboard
           </h1>
           <p style={{ fontSize: 15, color: "rgba(255,255,255,0.36)", marginTop: 10, lineHeight: 1.5 }}>
@@ -175,7 +175,7 @@ export default function DashboardPage() {
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
-          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>Refreshes every 30s</span>
+          <span style={{ fontSize: 12, color: "var(--c4)" }}>Refreshes every 30s</span>
           <Link href="/leads" style={{
             display: "inline-flex", alignItems: "center", gap: 8,
             padding: "11px 22px", borderRadius: 11, fontSize: 14, fontWeight: 600,
@@ -195,7 +195,7 @@ export default function DashboardPage() {
       {/* ── Setup checklist ──────────────────────────────────────── */}
       <div style={{
         borderRadius: 16, overflow: "hidden",
-        background: "rgba(255,255,255,0.03)",
+        background: "var(--o1)",
         border: "1px solid rgba(255,255,255,0.07)",
       }}>
         {/* Header row */}
@@ -206,21 +206,21 @@ export default function DashboardPage() {
             padding: "20px 28px", background: "transparent", border: "none", cursor: "pointer",
             textAlign: "left", transition: "background 0.15s",
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
+          onMouseEnter={e => { e.currentTarget.style.background = "var(--o1)"; }}
           onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
         >
           <div>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: "rgba(255,255,255,0.85)", margin: 0 }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--c1)", margin: 0 }}>
               Setup checklist
             </h2>
-            <p style={{ fontSize: 13, marginTop: 5, color: "rgba(255,255,255,0.35)", margin: "5px 0 0" }}>
+            <p style={{ fontSize: 13, marginTop: 5, color: "var(--c3)", margin: "5px 0 0" }}>
               Complete these steps to get the most out of SignafyAI — {doneCount}/{totalCount} done
             </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
             {/* Progress bar */}
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 120, height: 4, borderRadius: 4, background: "rgba(255,255,255,0.08)" }}>
+              <div style={{ width: 120, height: 4, borderRadius: 4, background: "var(--o2)" }}>
                 <div style={{
                   height: 4, borderRadius: 4, transition: "width 0.5s ease",
                   background: "linear-gradient(90deg, #7c3aed, #4f46e5)",
@@ -232,7 +232,7 @@ export default function DashboardPage() {
               </span>
             </div>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{
-              color: "rgba(255,255,255,0.3)",
+              color: "var(--c3)",
               transition: "transform 0.2s",
               transform: checklistOpen ? "rotate(0deg)" : "rotate(-90deg)",
             }}>
@@ -273,7 +273,7 @@ export default function DashboardPage() {
                   ) : (
                     <span style={{
                       fontSize: 14, fontWeight: 450,
-                      color: item.done ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.68)",
+                      color: item.done ? "var(--c4)" : "rgba(255,255,255,0.68)",
                       textDecoration: item.done ? "line-through" : "none",
                     }}>
                       {item.label}
@@ -291,7 +291,7 @@ export default function DashboardPage() {
         {STAT_CARDS.map((card) => (
           <div key={card.label} style={{
             borderRadius: 16, padding: "26px 24px",
-            background: "rgba(255,255,255,0.03)",
+            background: "var(--o1)",
             border: "1px solid rgba(255,255,255,0.07)",
             position: "relative", overflow: "hidden",
             transition: "border-color 0.2s, box-shadow 0.2s",
@@ -302,7 +302,7 @@ export default function DashboardPage() {
           }}
           onMouseLeave={e => {
             e.currentTarget.style.boxShadow = "none";
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)";
+            e.currentTarget.style.borderColor = "var(--o2)";
           }}
           >
             {/* Colour wash */}
@@ -335,18 +335,18 @@ export default function DashboardPage() {
               {/* Value */}
               <div style={{
                 fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em",
-                color: "rgba(255,255,255,0.92)", lineHeight: 1,
+                color: "var(--c1)", lineHeight: 1,
                 opacity: loading ? 0.3 : 1, transition: "opacity 0.3s",
               }}>
                 {card.value}
               </div>
               {/* Label */}
-              <div style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.5)", marginTop: 8 }}>
+              <div style={{ fontSize: 14, fontWeight: 500, color: "var(--c2)", marginTop: 8 }}>
                 {card.label}
               </div>
               {/* Delta */}
               {card.delta && (
-                <div style={{ fontSize: 12, marginTop: 4, color: "rgba(255,255,255,0.28)" }}>
+                <div style={{ fontSize: 12, marginTop: 4, color: "var(--c4)" }}>
                   {card.delta}
                 </div>
               )}
@@ -367,7 +367,7 @@ export default function DashboardPage() {
         {/* Workflow runs panel */}
         <div style={{
           borderRadius: 16, overflow: "hidden",
-          background: "rgba(255,255,255,0.03)",
+          background: "var(--o1)",
           border: "1px solid rgba(255,255,255,0.07)",
           display: "flex", flexDirection: "column",
         }}>
@@ -377,10 +377,10 @@ export default function DashboardPage() {
             padding: "22px 28px", borderBottom: "1px solid rgba(255,255,255,0.06)",
           }}>
             <div>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: "rgba(255,255,255,0.88)", margin: 0 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--c1)", margin: 0 }}>
                 Recent Workflow Runs
               </h2>
-              <p style={{ fontSize: 13, marginTop: 5, color: "rgba(255,255,255,0.32)", margin: "5px 0 0" }}>
+              <p style={{ fontSize: 13, marginTop: 5, color: "var(--c3)", margin: "5px 0 0" }}>
                 Last {Math.min(runs.length || 8, 8)} automation runs
               </p>
             </div>
@@ -409,8 +409,8 @@ export default function DashboardPage() {
                     <path d="M11 3v16M3 11h16" stroke="#a78bfa" strokeWidth="1.8" strokeLinecap="round"/>
                   </svg>
                 </div>
-                <p style={{ fontSize: 15, fontWeight: 600, color: "rgba(255,255,255,0.65)", margin: "0 0 6px" }}>No runs yet</p>
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", margin: 0 }}>
+                <p style={{ fontSize: 15, fontWeight: 600, color: "var(--c2)", margin: "0 0 6px" }}>No runs yet</p>
+                <p style={{ fontSize: 13, color: "var(--c3)", margin: 0 }}>
                   Start by running a lead discovery or generating content
                 </p>
               </div>
@@ -420,7 +420,7 @@ export default function DashboardPage() {
                   return (
                     <div key={idx} style={{
                       margin: "12px 20px", height: 56, borderRadius: 12,
-                      background: "rgba(255,255,255,0.04)",
+                      background: "var(--o1)",
                       animation: "pulse 1.5s ease-in-out infinite",
                     }} />
                   );
@@ -444,7 +444,7 @@ export default function DashboardPage() {
                     }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.82)" }}>
+                        <span style={{ fontSize: 14, fontWeight: 500, color: "var(--c2)" }}>
                           {TYPE_LABELS[r.workflow_type] ?? r.workflow_type}
                         </span>
                         {r.output_summary?.leads_found != null && r.output_summary.leads_found > 0 && (
@@ -456,7 +456,7 @@ export default function DashboardPage() {
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: 12, marginTop: 4, color: "rgba(255,255,255,0.28)" }}>
+                      <div style={{ fontSize: 12, marginTop: 4, color: "var(--c4)" }}>
                         {timeAgo(r.started_at)}
                       </div>
                     </div>
@@ -476,14 +476,14 @@ export default function DashboardPage() {
         {/* Quick actions panel */}
         <div style={{
           borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column",
-          background: "rgba(255,255,255,0.03)",
+          background: "var(--o1)",
           border: "1px solid rgba(255,255,255,0.07)",
         }}>
           <div style={{
             padding: "22px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)",
           }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: "rgba(255,255,255,0.88)", margin: 0 }}>Quick Actions</h2>
-            <p style={{ fontSize: 13, marginTop: 5, color: "rgba(255,255,255,0.32)", margin: "5px 0 0" }}>Jump to any tool instantly</p>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--c1)", margin: 0 }}>Quick Actions</h2>
+            <p style={{ fontSize: 13, marginTop: 5, color: "var(--c3)", margin: "5px 0 0" }}>Jump to any tool instantly</p>
           </div>
 
           <div style={{ padding: "12px", display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
@@ -512,10 +512,10 @@ export default function DashboardPage() {
                   {action.icon}
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>{action.label}</div>
-                  <div style={{ fontSize: 13, marginTop: 3, color: "rgba(255,255,255,0.32)" }}>{action.description}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--c1)" }}>{action.label}</div>
+                  <div style={{ fontSize: 13, marginTop: 3, color: "var(--c3)" }}>{action.description}</div>
                 </div>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: "rgba(255,255,255,0.2)", flexShrink: 0 }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: "var(--c4)", flexShrink: 0 }}>
                   <path d="M5 3.5l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </Link>
@@ -534,11 +534,11 @@ export default function DashboardPage() {
                   <span style={{ fontSize: 13, fontWeight: 700, color: "#a78bfa", textTransform: "capitalize" }}>
                     {data.org.plan} Plan
                   </span>
-                  <Link href="/settings" style={{ fontSize: 12, color: "rgba(255,255,255,0.28)", textDecoration: "none" }}>
+                  <Link href="/settings" style={{ fontSize: 12, color: "var(--c4)", textDecoration: "none" }}>
                     Upgrade →
                   </Link>
                 </div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.28)", lineHeight: 1.6 }}>
+                <div style={{ fontSize: 12, color: "var(--c4)", lineHeight: 1.6 }}>
                   {data.stats.leads_total.toLocaleString()} leads · {data.stats.content_total.toLocaleString()} content pieces
                 </div>
               </div>

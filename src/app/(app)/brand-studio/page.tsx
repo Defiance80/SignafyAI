@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 
@@ -108,7 +108,7 @@ function ScoreRing({ value }: { value: number }) {
   const color = value >= 80 ? "#10b981" : value >= 60 ? "#3b82f6" : value >= 40 ? "#f59e0b" : "#ef4444";
   return (
     <svg width="60" height="60" style={{ transform: "rotate(-90deg)" }}>
-      <circle cx="30" cy="30" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4" />
+      <circle cx="30" cy="30" r={r} fill="none" stroke="var(--o2)" strokeWidth="4" />
       <circle cx="30" cy="30" r={r} fill="none" stroke={color} strokeWidth="4"
         strokeDasharray={c} strokeDashoffset={c * (1 - pct)} strokeLinecap="round"
         style={{ transition: "stroke-dashoffset 1s ease" }} />
@@ -201,7 +201,7 @@ export default function BrandStudioPage() {
 
   if (loading) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh", color: "rgba(255,255,255,0.4)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh", color: "var(--c3)" }}>
         Loading brand profile…
       </div>
     );
@@ -212,8 +212,8 @@ export default function BrandStudioPage() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 36 }}>
         <div>
-          <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.03em", color: "rgba(255,255,255,0.95)", margin: 0 }}>Brand Studio</h1>
-          <p style={{ color: "rgba(255,255,255,0.38)", marginTop: 8, fontSize: 15, lineHeight: 1.5 }}>
+          <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.03em", color: "var(--c1)", margin: 0 }}>Brand Studio</h1>
+          <p style={{ color: "var(--c3)", marginTop: 8, fontSize: 15, lineHeight: 1.5 }}>
             Your AI content engine. The richer this is, the better your content suggestions will be.
           </p>
         </div>
@@ -232,12 +232,12 @@ export default function BrandStudioPage() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 2, marginBottom: 28, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4 }}>
+      <div style={{ display: "flex", gap: 2, marginBottom: 28, background: "var(--o1)", borderRadius: 10, padding: 4 }}>
         {tabs.map((tab, i) => (
           <button key={tab} onClick={() => setActiveTab(i)} style={{
             flex: 1, padding: "9px 4px", borderRadius: 8, border: "none", cursor: "pointer",
             background: activeTab === i ? "rgba(124,58,237,0.3)" : "transparent",
-            color: activeTab === i ? "#a78bfa" : "rgba(255,255,255,0.45)",
+            color: activeTab === i ? "#a78bfa" : "var(--c3)",
             fontSize: 13, fontWeight: activeTab === i ? 600 : 400, transition: "all 0.2s",
           }}>{tab}</button>
         ))}
@@ -253,13 +253,13 @@ export default function BrandStudioPage() {
                 <button key={t.value} onClick={() => setProfile(p => ({ ...p, company_type: t.value }))}
                   style={{
                     padding: "14px 16px", borderRadius: 10, cursor: "pointer", textAlign: "left",
-                    border: `1.5px solid ${profile.company_type === t.value ? "#7c3aed" : "rgba(255,255,255,0.1)"}`,
-                    background: profile.company_type === t.value ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.03)",
+                    border: `1.5px solid ${profile.company_type === t.value ? "#7c3aed" : "var(--c5)"}`,
+                    background: profile.company_type === t.value ? "rgba(124,58,237,0.15)" : "var(--o1)",
                     color: "#fff", transition: "all 0.2s",
                   }}>
                   <div style={{ fontSize: 22, marginBottom: 4 }}>{t.icon}</div>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{t.label}</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{t.desc}</div>
+                  <div style={{ fontSize: 12, color: "var(--c3)", marginTop: 2 }}>{t.desc}</div>
                 </button>
               ))}
             </div>
@@ -292,7 +292,7 @@ export default function BrandStudioPage() {
               <input type="color" value={profile.primary_color}
                 onChange={e => setProfile(p => ({ ...p, primary_color: e.target.value }))}
                 style={{ width: 48, height: 40, borderRadius: 8, border: "none", cursor: "pointer", background: "none" }} />
-              <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 14 }}>{profile.primary_color}</span>
+              <span style={{ color: "var(--c2)", fontSize: 14 }}>{profile.primary_color}</span>
             </div>
           </Field>
         </div>
@@ -308,9 +308,9 @@ export default function BrandStudioPage() {
                 return (
                   <button key={t} onClick={() => setProfile(p => ({ ...p, personality_traits: toggleArray(p.personality_traits, t) }))}
                     style={{
-                      padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${on ? "#7c3aed" : "rgba(255,255,255,0.12)"}`,
-                      background: on ? "rgba(124,58,237,0.2)" : "rgba(255,255,255,0.04)",
-                      color: on ? "#a78bfa" : "rgba(255,255,255,0.6)", cursor: "pointer", fontSize: 13, fontWeight: on ? 600 : 400,
+                      padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${on ? "#7c3aed" : "var(--c5)"}`,
+                      background: on ? "rgba(124,58,237,0.2)" : "var(--o1)",
+                      color: on ? "#a78bfa" : "var(--c2)", cursor: "pointer", fontSize: 13, fontWeight: on ? 600 : 400,
                       transition: "all 0.15s",
                     }}>{t}</button>
                 );
@@ -327,9 +327,9 @@ export default function BrandStudioPage() {
                     onClick={() => setProfile(p => ({ ...p, posting_goals: toggleArray(p.posting_goals, g.value) }))}
                     style={{
                       padding: "10px 12px", borderRadius: 8, cursor: "pointer",
-                      border: `1.5px solid ${on ? "#7c3aed" : "rgba(255,255,255,0.1)"}`,
-                      background: on ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.03)",
-                      color: on ? "#a78bfa" : "rgba(255,255,255,0.55)", fontSize: 13, display: "flex",
+                      border: `1.5px solid ${on ? "#7c3aed" : "var(--c5)"}`,
+                      background: on ? "rgba(124,58,237,0.15)" : "var(--o1)",
+                      color: on ? "#a78bfa" : "var(--c2)", fontSize: 13, display: "flex",
                       alignItems: "center", gap: 6, transition: "all 0.15s",
                     }}>
                     <span>{g.icon}</span>{g.label}
@@ -347,9 +347,9 @@ export default function BrandStudioPage() {
                   <button key={t} onClick={() => setProfile(p => ({ ...p, content_themes: toggleArray(p.content_themes, t) }))}
                     style={{
                       padding: "6px 14px", borderRadius: 20,
-                      border: `1.5px solid ${on ? "#7c3aed" : "rgba(255,255,255,0.12)"}`,
-                      background: on ? "rgba(124,58,237,0.2)" : "rgba(255,255,255,0.04)",
-                      color: on ? "#a78bfa" : "rgba(255,255,255,0.6)", cursor: "pointer", fontSize: 13,
+                      border: `1.5px solid ${on ? "#7c3aed" : "var(--c5)"}`,
+                      background: on ? "rgba(124,58,237,0.2)" : "var(--o1)",
+                      color: on ? "#a78bfa" : "var(--c2)", cursor: "pointer", fontSize: 13,
                       transition: "all 0.15s",
                     }}>{t}</button>
                 );
@@ -387,14 +387,14 @@ export default function BrandStudioPage() {
             borderRadius: 10, padding: "14px 18px",
           }}>
             <div style={{ fontSize: 13, color: "#a78bfa", fontWeight: 600, marginBottom: 4 }}>How this works</div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.5 }}>
+            <div style={{ fontSize: 13, color: "var(--c2)", lineHeight: 1.5 }}>
               Add accounts you admire or want to emulate. The AI will study their content style, posting patterns, and engagement tactics — then suggest content with a similar energy but 100% your own voice.
             </div>
           </div>
 
           {/* Add new account */}
-          <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 20, border: "1px solid rgba(255,255,255,0.08)" }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 14 }}>Add Account</div>
+          <div style={{ background: "var(--o1)", borderRadius: 12, padding: 20, border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--c2)", marginBottom: 14 }}>Add Account</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: 12, marginBottom: 12 }}>
               <div>
                 <Label>Platform</Label>
@@ -434,7 +434,7 @@ export default function BrandStudioPage() {
 
           {/* List */}
           {inspoAccounts.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "40px 20px", color: "rgba(255,255,255,0.3)", fontSize: 14 }}>
+            <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--c3)", fontSize: 14 }}>
               No inspiration accounts yet. Add some above to help the AI understand your style.
             </div>
           ) : (
@@ -442,7 +442,7 @@ export default function BrandStudioPage() {
               {inspoAccounts.map(acc => (
                 <div key={acc.id} style={{
                   display: "flex", alignItems: "center", gap: 14,
-                  background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "14px 16px",
+                  background: "var(--o1)", borderRadius: 10, padding: "14px 16px",
                   border: "1px solid rgba(255,255,255,0.08)",
                 }}>
                   <div style={{
@@ -458,10 +458,10 @@ export default function BrandStudioPage() {
                         background: "rgba(124,58,237,0.15)", color: "#a78bfa",
                       }}>{acc.category.replace("_", " ")}</span>
                     </div>
-                    {acc.why && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{acc.why}</div>}
+                    {acc.why && <div style={{ fontSize: 12, color: "var(--c3)", marginTop: 2 }}>{acc.why}</div>}
                   </div>
                   <button onClick={() => removeInspoAccount(acc.id)}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.3)", fontSize: 18, lineHeight: 1 }}>
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--c3)", fontSize: 18, lineHeight: 1 }}>
                     ×
                   </button>
                 </div>
@@ -484,9 +484,9 @@ export default function BrandStudioPage() {
                     onClick={() => setCalSettings(s => ({ ...s, platforms: toggleArray(s.platforms, p.value) }))}
                     style={{
                       padding: "8px 18px", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600,
-                      border: `1.5px solid ${on ? p.color : "rgba(255,255,255,0.1)"}`,
-                      background: on ? `${p.color}22` : "rgba(255,255,255,0.04)",
-                      color: on ? p.color : "rgba(255,255,255,0.55)",
+                      border: `1.5px solid ${on ? p.color : "var(--c5)"}`,
+                      background: on ? `${p.color}22` : "var(--o1)",
+                      color: on ? p.color : "var(--c2)",
                       transition: "all 0.15s",
                     }}>{p.label}</button>
                 );
@@ -503,9 +503,9 @@ export default function BrandStudioPage() {
                   <button key={f.value}
                     onClick={() => setCalSettings(s => ({ ...s, posting_frequency: f.value }))}
                     style={{
-                      padding: "12px 8px", borderRadius: 8, border: `1.5px solid ${on ? "#7c3aed" : "rgba(255,255,255,0.1)"}`,
-                      background: on ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.03)",
-                      color: on ? "#a78bfa" : "rgba(255,255,255,0.5)", cursor: "pointer", textAlign: "center",
+                      padding: "12px 8px", borderRadius: 8, border: `1.5px solid ${on ? "#7c3aed" : "var(--c5)"}`,
+                      background: on ? "rgba(124,58,237,0.15)" : "var(--o1)",
+                      color: on ? "#a78bfa" : "var(--c2)", cursor: "pointer", textAlign: "center",
                     }}>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{f.label}</div>
                     <div style={{ fontSize: 11, marginTop: 2, opacity: 0.7 }}>{f.sub}</div>
@@ -523,7 +523,7 @@ export default function BrandStudioPage() {
                 return (
                   <div key={type.key}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>{type.label}</span>
+                      <span style={{ fontSize: 13, color: "var(--c2)" }}>{type.label}</span>
                       <span style={{ fontSize: 13, fontWeight: 700, color: type.color }}>{val}%</span>
                     </div>
                     <div style={{ position: "relative" }}>
@@ -556,9 +556,9 @@ export default function BrandStudioPage() {
                 <button key={n} onClick={() => setCalSettings(s => ({ ...s, generate_variations: n }))}
                   style={{
                     width: 48, height: 48, borderRadius: 8, cursor: "pointer", fontSize: 16, fontWeight: 700,
-                    border: `1.5px solid ${calSettings.generate_variations === n ? "#7c3aed" : "rgba(255,255,255,0.1)"}`,
-                    background: calSettings.generate_variations === n ? "rgba(124,58,237,0.2)" : "rgba(255,255,255,0.04)",
-                    color: calSettings.generate_variations === n ? "#a78bfa" : "rgba(255,255,255,0.5)",
+                    border: `1.5px solid ${calSettings.generate_variations === n ? "#7c3aed" : "var(--c5)"}`,
+                    background: calSettings.generate_variations === n ? "rgba(124,58,237,0.2)" : "var(--o1)",
+                    color: calSettings.generate_variations === n ? "#a78bfa" : "var(--c2)",
                   }}>{n}</button>
               ))}
             </div>
@@ -593,9 +593,9 @@ function Field({ label, hint, required, children }: { label: string; hint?: stri
   return (
     <div>
       <div style={{ marginBottom: 10 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>{label}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--c1)" }}>{label}</span>
         {required && <span style={{ color: "#7c3aed", marginLeft: 4 }}>*</span>}
-        {hint && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 3 }}>{hint}</div>}
+        {hint && <div style={{ fontSize: 12, color: "var(--c3)", marginTop: 3 }}>{hint}</div>}
       </div>
       {children}
     </div>
@@ -603,12 +603,12 @@ function Field({ label, hint, required, children }: { label: string; hint?: stri
 }
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.45)", marginBottom: 6 }}>{children}</div>;
+  return <div style={{ fontSize: 12, fontWeight: 500, color: "var(--c3)", marginBottom: 6 }}>{children}</div>;
 }
 
 const inputBase: React.CSSProperties = {
   width: "100%", padding: "10px 14px", borderRadius: 8, boxSizing: "border-box",
-  border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)",
+  border: "1px solid rgba(255,255,255,0.1)", background: "var(--o1)",
   color: "#fff", fontSize: 14, outline: "none",
 };
 
@@ -635,14 +635,14 @@ function Textarea({ value, onChange, placeholder, rows = 3 }: { value: string; o
 function Toggle({ label, sub, value, onChange }: { label: string; sub?: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16,
-      background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: "12px 14px" }}>
+      background: "var(--o1)", borderRadius: 8, padding: "12px 14px" }}>
       <div>
-        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", fontWeight: 500 }}>{label}</div>
-        {sub && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 3 }}>{sub}</div>}
+        <div style={{ fontSize: 13, color: "var(--c2)", fontWeight: 500 }}>{label}</div>
+        {sub && <div style={{ fontSize: 12, color: "var(--c3)", marginTop: 3 }}>{sub}</div>}
       </div>
       <button onClick={() => onChange(!value)} style={{
         width: 44, height: 24, borderRadius: 12, border: "none", cursor: "pointer", flexShrink: 0,
-        background: value ? "#7c3aed" : "rgba(255,255,255,0.1)", transition: "background 0.2s", position: "relative",
+        background: value ? "#7c3aed" : "var(--c5)", transition: "background 0.2s", position: "relative",
       }}>
         <div style={{
           width: 18, height: 18, borderRadius: "50%", background: "#fff", position: "absolute",
