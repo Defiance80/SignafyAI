@@ -822,18 +822,20 @@ function DiscoveryModal({
   onClose,
   onLaunched,
   onB2cSearchStart,
+  initialMode = "b2b",
 }: {
   onClose: () => void;
   onLaunched: (
     runId: string,
     market: string,
     n8nTriggered: boolean,
-    b2cResult?: { profiles: SocialProfile[]; productContext: string }
+    b2cResult?: { profiles: SocialProfile[]; productContext: string; error?: string }
   ) => void;
   onB2cSearchStart?: () => void;
+  initialMode?: "b2b" | "b2c" | "both";
 }) {
   const discover = useDiscoverLeads();
-  const [targetMarket, setTargetMarket] = useState<"b2b" | "b2c" | "both">("b2b");
+  const [targetMarket, setTargetMarket] = useState<"b2b" | "b2c" | "both">(initialMode);
   const [targetDescription, setTargetDescription] = useState("");
   const [location, setLocation] = useState("");
   const [clientService, setClientService] = useState("");
@@ -897,8 +899,12 @@ function DiscoveryModal({
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Conversation search failed";
         setError(msg);
-        // Clear loading state on error — show empty state not old results
-        onLaunched(`b2c-err-${Date.now()}`, "b2c", false, { profiles: [], productContext: clientService.trim() });
+        // Pass error to parent panel so it shows even after modal closes
+        onLaunched(`b2c-err-${Date.now()}`, "b2c", false, {
+          profiles: [],
+          productContext: clientService.trim(),
+          error: msg,
+        });
       } finally {
         setB2cSearching(false);
       }
@@ -1905,11 +1911,13 @@ function ConversationsPanel({
   productContext,
   onSearch,
   searching,
+  searchError,
 }: {
   profiles: SocialProfile[];
   productContext: string;
   onSearch: () => void;
   searching?: boolean;
+  searchError?: string | null;
 }) {
   const [search, setSearch] = useState("");
   const [platformFilter, setPlatformFilter] = useState("");
@@ -2055,8 +2063,8 @@ function ConversationsPanel({
         <div className="text-center">
           <div className="text-lg font-bold mb-2" style={{ color: "var(--color-text-1)" }}>Scanning conversations…</div>
           <div className="text-sm max-w-sm leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
-            AI is generating queries, scanning platforms, and filtering for real consumers.
-            This takes 20–40 seconds — results will appear here automatically.
+            AI is scanning social platforms and filtering for real consumers.
+            This takes 10–20 seconds — results will appear here automatically.
           </div>
         </div>
         <div className="flex gap-2 flex-wrap justify-center mt-2">
@@ -2074,20 +2082,38 @@ function ConversationsPanel({
   if (profiles.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-5">
-        <div style={{ fontSize: 56 }}>💬</div>
-        <div className="text-center">
-          <div className="text-xl font-bold mb-2" style={{ color: "var(--color-text-1)" }}>Business to Conversation</div>
-          <div className="text-sm max-w-md leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
-            Find real people talking about what you sell — on Reddit, Twitter, YouTube, and more.
-            AI reads their exact conversations to build rich profiles and craft hyper-personalized messages.
-          </div>
-        </div>
+        {searchError ? (
+          <>
+            <div style={{ fontSize: 48 }}>⚠️</div>
+            <div className="text-center max-w-md">
+              <div className="text-lg font-bold mb-2" style={{ color: "#f87171" }}>Search failed</div>
+              <div className="text-sm leading-relaxed px-4 py-3 rounded-xl mb-2"
+                style={{ background: "rgba(248,113,113,0.08)", color: "#fca5a5", border: "1px solid rgba(248,113,113,0.2)" }}>
+                {searchError}
+              </div>
+              <div className="text-xs mt-2" style={{ color: "var(--color-text-muted)" }}>
+                If you see a timeout or network error, the search is taking too long — try again or use fewer keywords.
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: 56 }}>💬</div>
+            <div className="text-center">
+              <div className="text-xl font-bold mb-2" style={{ color: "var(--color-text-1)" }}>Business to Conversation</div>
+              <div className="text-sm max-w-md leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
+                Find real people talking about what you sell — on Reddit, Twitter, YouTube, and more.
+                AI reads their exact conversations to build rich profiles and craft hyper-personalized messages.
+              </div>
+            </div>
+          </>
+        )}
         <button
           onClick={onSearch}
           className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold mt-2"
           style={{ background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)", color: "white", boxShadow: "0 4px 12px rgba(124,58,237,0.3)" }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.5"/><path d="M9 9l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          Search Conversations
+          {searchError ? "Try Again" : "Search Conversations"}
         </button>
       </div>
     );
@@ -2717,6 +2743,7 @@ export default function LeadsPage() {
   const [b2cProductContext, setB2cProductContext] = useState("");
   const [b2cSearching, setB2cSearching] = useState(false);
   const [b2cSearchKey, setB2cSearchKey] = useState(0); // increments to reset panel state
+  const [b2cSearchError, setB2cSearchError] = useState<string | null>(null); // persists in panel after modal closes
 
   // ── Supabase Realtime: invalidate queries when new rows arrive ──────────────
   useEffect(() => {
@@ -2772,6 +2799,7 @@ export default function LeadsPage() {
     // Called the moment the user hits "Search Conversations" — before the API call
     setB2cProfiles([]);          // clear old results immediately
     setB2cSearching(true);       // show spinner in panel
+    setB2cSearchError(null);     // clear any previous error
     setB2cSearchKey((k) => k + 1); // reset panel's internal filter/selection state
     setActiveTab("conversations"); // switch tab right away so user sees it's working
   }
@@ -2780,13 +2808,14 @@ export default function LeadsPage() {
     runId: string,
     market: string,
     n8nTriggered: boolean,
-    b2cResult?: { profiles: SocialProfile[]; productContext: string }
+    b2cResult?: { profiles: SocialProfile[]; productContext: string; error?: string }
   ) {
     // Always update B2C state when result is provided (even if empty — clears old data)
     if (b2cResult !== undefined) {
       setB2cProfiles(b2cResult.profiles ?? []);
       setB2cProductContext(b2cResult.productContext ?? "");
       setB2cSearching(false);
+      if (b2cResult.error) setB2cSearchError(b2cResult.error);
     }
 
     // Auto-switch to the relevant tab
@@ -2966,15 +2995,23 @@ export default function LeadsPage() {
             key={b2cSearchKey}
             profiles={b2cProfiles}
             productContext={b2cProductContext}
-            onSearch={() => setShowDiscovery(true)}
+            onSearch={() => { setShowDiscovery(true); }}
             searching={b2cSearching}
+            searchError={b2cSearchError}
           />
         )}
         {activeTab === "assets"        && <AssetsPanel          onSelectAsset={(a) => setSelectedAsset(a)} />}
       </div>
 
       {/* Modals + Drawers */}
-      {showDiscovery && <DiscoveryModal onClose={() => setShowDiscovery(false)} onLaunched={handleLaunched} onB2cSearchStart={handleB2cSearchStart} />}
+      {showDiscovery && (
+        <DiscoveryModal
+          onClose={() => setShowDiscovery(false)}
+          onLaunched={handleLaunched}
+          onB2cSearchStart={handleB2cSearchStart}
+          initialMode={activeTab === "conversations" ? "b2c" : "b2b"}
+        />
+      )}
       {showAddLead && <AddLeadModal onClose={() => setShowAddLead(false)} />}
       {selectedLeadId && <LeadDrawer leadId={selectedLeadId} onClose={() => setSelectedLeadId(null)} />}
       {selectedBiz && <BusinessDrawer biz={selectedBiz} onClose={() => setSelectedBiz(null)} />}
