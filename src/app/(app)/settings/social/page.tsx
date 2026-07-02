@@ -18,6 +18,7 @@ const PLATFORMS = [
     label:    "LinkedIn",
     color:    "#0a66c2",
     bg:       "rgba(10,102,194,0.12)",
+    b2cScan:  true,
     icon: (
       <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
         <rect width="28" height="28" rx="6" fill="#0a66c2"/>
@@ -32,6 +33,7 @@ const PLATFORMS = [
     label:    "Instagram",
     color:    "#e1306c",
     bg:       "rgba(225,48,108,0.1)",
+    b2cScan:  true,
     icon: (
       <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
         <rect width="28" height="28" rx="6" fill="url(#ig)"/>
@@ -41,7 +43,7 @@ const PLATFORMS = [
         <circle cx="18.5" cy="9.5" r="1" fill="#fff"/>
       </svg>
     ),
-    scopes: "Post photos/reels, read insights",
+    scopes: "Post photos/reels, read insights, B2C scanning",
     devConsole: "https://developers.facebook.com/apps",
   },
   {
@@ -49,13 +51,14 @@ const PLATFORMS = [
     label:    "Facebook",
     color:    "#1877f2",
     bg:       "rgba(24,119,242,0.1)",
+    b2cScan:  true,
     icon: (
       <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
         <rect width="28" height="28" rx="6" fill="#1877f2"/>
         <path d="M18 8h-2.5A1.5 1.5 0 0 0 14 9.5V12h4l-.5 3h-3.5v7h-3v-7H9v-3h2.5V9.5A4.5 4.5 0 0 1 16 5h2v3z" fill="#fff"/>
       </svg>
     ),
-    scopes: "Post to pages, read page analytics",
+    scopes: "Post to pages, read page analytics, B2C scanning",
     devConsole: "https://developers.facebook.com/apps",
   },
   {
@@ -63,13 +66,14 @@ const PLATFORMS = [
     label:    "X (Twitter)",
     color:    "#e7e9ea",
     bg:       "rgba(231,233,234,0.08)",
+    b2cScan:  true,
     icon: (
       <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
         <rect width="28" height="28" rx="6" fill="#000"/>
         <path d="M7 7l5.5 6.5L7 21h2l4.3-5 3.7 5H21l-5.8-7.8L21 7h-2l-3.9 4.6L11.4 7H7z" fill="#fff"/>
       </svg>
     ),
-    scopes: "Post tweets, read timeline",
+    scopes: "Post tweets, read timeline, DM conversations",
     devConsole: "https://developer.twitter.com/en/portal/dashboard",
   },
   {
@@ -77,14 +81,53 @@ const PLATFORMS = [
     label:    "TikTok",
     color:    "#00f2ea",
     bg:       "rgba(0,242,234,0.08)",
+    b2cScan:  true,
     icon: (
       <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
         <rect width="28" height="28" rx="6" fill="#010101"/>
         <path d="M19 10.5c-1 0-2.5-1-3-2.5h-2.5v12A2.5 2.5 0 0 1 11 22.5a2.5 2.5 0 0 1-2.5-2.5A2.5 2.5 0 0 1 11 17.5c.3 0 .6 0 .9.1V15a5 5 0 0 0-5.4 7.3A5 5 0 0 0 16 20V14.3c.8.5 1.9.7 3 .7v-4.5z" fill="#fff"/>
       </svg>
     ),
-    scopes: "Post videos, read account info",
+    scopes: "Post videos, read account info, view comments",
     devConsole: "https://developers.tiktok.com/",
+  },
+  {
+    id:       "reddit",
+    label:    "Reddit",
+    color:    "#ff4500",
+    bg:       "rgba(255,69,0,0.1)",
+    b2cScan:  true,
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="6" fill="#ff4500"/>
+        <circle cx="14" cy="15" r="6" stroke="#fff" strokeWidth="1.4"/>
+        <circle cx="10.5" cy="14" r="1.2" fill="#fff"/>
+        <circle cx="17.5" cy="14" r="1.2" fill="#fff"/>
+        <path d="M11 17.5c.8.8 2 1.2 3 1.2s2.2-.4 3-1.2" stroke="#fff" strokeWidth="1.2" strokeLinecap="round"/>
+        <path d="M17.5 10a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z" fill="#fff"/>
+        <path d="M14 10V8.5" stroke="#fff" strokeWidth="1.2" strokeLinecap="round"/>
+        <circle cx="20" cy="9" r="2" fill="#fff"/>
+        <circle cx="20" cy="9" r="1" fill="#ff4500"/>
+      </svg>
+    ),
+    scopes: "Read posts, send DMs, B2C conversation scanning",
+    devConsole: "https://www.reddit.com/prefs/apps",
+  },
+  {
+    id:       "youtube",
+    label:    "YouTube",
+    color:    "#ff0000",
+    bg:       "rgba(255,0,0,0.08)",
+    b2cScan:  true,
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="6" fill="#ff0000"/>
+        <rect x="5" y="8" width="18" height="12" rx="3" fill="#fff"/>
+        <path d="M12 11l6 3-6 3V11z" fill="#ff0000"/>
+      </svg>
+    ),
+    scopes: "Read comments, view channel analytics, B2C scanning",
+    devConsole: "https://console.cloud.google.com/apis",
   },
 ];
 
@@ -158,13 +201,14 @@ function SocialSettingsContent() {
         <p style={{ color: "var(--c3)", marginTop: 8, fontSize: 14, lineHeight: 1.6 }}>
           Connect your social media accounts. SignafyAI uses these to post content,
           reply to comments, and monitor engagement — all from inside the app.
+          When logged in, you can reply directly to leads found in B2C conversation scanning.
         </p>
       </div>
 
       {/* Info banner */}
       <div style={{
         background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)",
-        borderRadius: 10, padding: "14px 18px", marginBottom: 28,
+        borderRadius: 10, padding: "14px 18px", marginBottom: 16,
         display: "flex", gap: 12, alignItems: "flex-start",
       }}>
         <span style={{ fontSize: 18, flexShrink: 0 }}>🔐</span>
@@ -172,6 +216,21 @@ function SocialSettingsContent() {
           <strong style={{ color: "#a78bfa" }}>OAuth 2.0 secured.</strong>{" "}
           We never store your password. Each platform grants SignafyAI specific permissions
           you approve during login. You can disconnect at any time.
+        </div>
+      </div>
+
+      {/* B2C scanning info */}
+      <div style={{
+        background: "rgba(255,69,0,0.06)", border: "1px solid rgba(255,69,0,0.2)",
+        borderRadius: 10, padding: "14px 18px", marginBottom: 28,
+        display: "flex", gap: 12, alignItems: "flex-start",
+      }}>
+        <span style={{ fontSize: 18, flexShrink: 0 }}>💬</span>
+        <div style={{ fontSize: 13, color: "var(--c2)", lineHeight: 1.6 }}>
+          <strong style={{ color: "#ff4500" }}>B2C Conversation Scanning.</strong>{" "}
+          Reddit and YouTube are the most productive platforms for finding real consumers
+          asking questions and seeking recommendations. Connecting them enables the &ldquo;Reply as
+          @handle&rdquo; button when viewing leads found in conversation scanning.
         </div>
       </div>
 
@@ -199,7 +258,7 @@ function SocialSettingsContent() {
 
                 {/* Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>{platform.label}</span>
                     {account && !expired && (
                       <span style={{
@@ -215,6 +274,13 @@ function SocialSettingsContent() {
                     )}
                     {!account && (
                       <span style={{ fontSize: 11, color: "var(--c4)" }}>Not connected</span>
+                    )}
+                    {platform.b2cScan && (
+                      <span style={{
+                        fontSize: 10, padding: "1px 7px", borderRadius: 8, fontWeight: 600,
+                        background: "rgba(255,69,0,0.12)", color: "#ff6b35",
+                        border: "1px solid rgba(255,69,0,0.2)",
+                      }}>💬 B2C Scan</span>
                     )}
                   </div>
 

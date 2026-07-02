@@ -68,6 +68,8 @@ interface SocialProfile {
   keywords_matched: string[];
   interest_score: number;
   purchase_intent: "browsing" | "researching" | "ready_to_buy" | null;
+  consumer_signals: string[];
+  is_seller: boolean;
   shopping_signals: {
     mentions_buying: boolean;
     platform_mentions: string[];
@@ -1682,12 +1684,20 @@ function SocialProfileCard({
   onSelect,
   onClick,
   audiences,
+  saved,
+  onSave,
+  connectedPlatforms,
+  connectedHandle,
 }: {
   profile: SocialProfile;
   selected: boolean;
   onSelect: () => void;
   onClick: () => void;
   audiences: AudienceItem[];
+  saved?: boolean;
+  onSave?: () => void;
+  connectedPlatforms?: string[];
+  connectedHandle?: Record<string, string>;
 }) {
   const { color: ic } = scoreColor(profile.interest_score);
   const pInfo = B2C_PLATFORM[profile.platform] ?? { label: profile.platform, color: "#6b7280", icon: "🌐", dmVerb: "View" };
@@ -1698,10 +1708,8 @@ function SocialProfileCard({
     browsing:     { label: "Browsing",     color: "#a78bfa" },
   };
   const intent = profile.purchase_intent ? intentBadge[profile.purchase_intent] : null;
-
-  const shownName = profile.first_name
-    ? `${profile.first_name}${profile.last_name ? ` ${profile.last_name}` : ""}`
-    : profile.display_name;
+  const isConnected = connectedPlatforms?.includes(profile.platform);
+  const replyHandle = connectedHandle?.[profile.platform];
 
   return (
     <div
@@ -1716,7 +1724,7 @@ function SocialProfileCard({
       onMouseLeave={(e) => { if (!selected) (e.currentTarget as HTMLElement).style.border = "1px solid var(--color-border)"; }}
     >
       {/* Card header */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-3">
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <div className="flex items-center gap-2 min-w-0">
           {/* Checkbox */}
           <button
@@ -1730,19 +1738,54 @@ function SocialProfileCard({
             style={{ background: `${pInfo.color}18`, color: pInfo.color }}>
             {pInfo.icon} {pInfo.label}
           </span>
-          {/* Username */}
-          <span className="text-sm font-semibold truncate" style={{ color: "var(--color-text-1)" }}>
-            {profile.username}
+          {/* Username handle */}
+          <span className="text-xs font-mono truncate" style={{ color: "var(--color-text-muted)" }}>
+            @{profile.username}
           </span>
-          {shownName && shownName !== profile.username && (
-            <span className="text-xs truncate hidden sm:block" style={{ color: "var(--color-text-muted)" }}>· {shownName}</span>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Save button */}
+          {onSave && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onSave(); }}
+              title={saved ? "Unsave" : "Save profile"}
+              className="p-1 rounded transition-all"
+              style={{ color: saved ? "#fbbf24" : "var(--color-text-muted)", background: saved ? "rgba(251,191,36,0.1)" : "transparent" }}>
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <path d="M6.5 1.5l1.4 3.1 3.3.4-2.4 2.4.6 3.3L6.5 9l-2.9 1.7.6-3.3L1.8 5l3.3-.4z"
+                  stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"
+                  fill={saved ? "currentColor" : "none"} />
+              </svg>
+            </button>
           )}
+          {/* Interest score */}
+          <div className="text-right">
+            <div className="text-base font-bold tabular-nums" style={{ color: ic }}>{profile.interest_score}</div>
+            <div className="text-[9px]" style={{ color: "var(--color-text-muted)" }}>interest</div>
+          </div>
         </div>
-        {/* Interest score */}
-        <div className="flex-shrink-0 text-right">
-          <div className="text-base font-bold tabular-nums" style={{ color: ic }}>{profile.interest_score}</div>
-          <div className="text-[9px]" style={{ color: "var(--color-text-muted)" }}>interest</div>
-        </div>
+      </div>
+
+      {/* Identity row — distinct name fields */}
+      <div className="px-4 pb-2 flex items-center gap-3 flex-wrap">
+        {profile.first_name && (
+          <div className="flex items-baseline gap-1">
+            <span className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>First</span>
+            <span className="text-sm font-semibold" style={{ color: "var(--color-text-1)" }}>{profile.first_name}</span>
+          </div>
+        )}
+        {profile.last_name && (
+          <div className="flex items-baseline gap-1">
+            <span className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Last</span>
+            <span className="text-sm font-semibold" style={{ color: "var(--color-text-1)" }}>{profile.last_name}</span>
+          </div>
+        )}
+        {!profile.first_name && !profile.last_name && profile.display_name && (
+          <div className="flex items-baseline gap-1">
+            <span className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Name</span>
+            <span className="text-sm" style={{ color: "var(--color-text-2)" }}>{profile.display_name}</span>
+          </div>
+        )}
       </div>
 
       {/* Post text */}
@@ -1797,7 +1840,7 @@ function SocialProfileCard({
 
       {/* Action row */}
       <div
-        className="px-4 py-3 flex items-center gap-2"
+        className="px-4 py-3 flex items-center gap-2 flex-wrap"
         style={{ borderTop: "1px solid var(--color-border-subtle)" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -1812,6 +1855,17 @@ function SocialProfileCard({
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = `${pInfo.color}14`; }}
           >
             → {pInfo.dmVerb}
+          </a>
+        )}
+        {isConnected && replyHandle && profile.contact.dm_url && (
+          <a
+            href={profile.contact.dm_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] px-2 py-1 rounded-lg font-semibold"
+            style={{ background: "rgba(52,211,153,0.1)", color: "#34d399", border: "1px solid rgba(52,211,153,0.25)" }}
+          >
+            ↩ Reply as @{replyHandle}
           </a>
         )}
         {profile.profile_url && (
@@ -1847,23 +1901,76 @@ function ConversationsPanel({
   const [search, setSearch] = useState("");
   const [platformFilter, setPlatformFilter] = useState("");
   const [intentFilter, setIntentFilter] = useState("");
+  const [savedFilter, setSavedFilter] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selectedProfile, setSelectedProfile] = useState<SocialProfile | null>(null);
   const [audiences, setAudiences] = useState<AudienceItem[]>([]);
   const [showAudienceModal, setShowAudienceModal] = useState(false);
   const [newAudienceName, setNewAudienceName] = useState("");
   const [creatingAudience, setCreatingAudience] = useState(false);
+  // Saved profiles (localStorage fallback)
+  const [savedIds, setSavedIds] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem("b2c_saved_ids");
+      return raw ? new Set<string>(JSON.parse(raw) as string[]) : new Set<string>();
+    } catch { return new Set<string>(); }
+  });
+  // Connected platform accounts
+  const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
+  const [connectedHandles, setConnectedHandles] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetch("/api/social/accounts")
+      .then((r) => r.ok ? r.json() as Promise<{ accounts?: Array<{ platform: string; handle?: string; username?: string }> }> : null)
+      .then((data) => {
+        if (!data?.accounts) return;
+        const platforms: string[] = [];
+        const handles: Record<string, string> = {};
+        for (const acc of data.accounts) {
+          if (acc.platform) {
+            platforms.push(acc.platform);
+            const h = acc.handle ?? acc.username ?? "";
+            if (h) handles[acc.platform] = h.replace(/^@/, "");
+          }
+        }
+        setConnectedPlatforms(platforms);
+        setConnectedHandles(handles);
+      })
+      .catch(() => {});
+  }, []);
+
+  function toggleSave(profileId: string) {
+    setSavedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(profileId)) {
+        next.delete(profileId);
+        // Fire delete (best-effort)
+        fetch(`/api/b2c/saved?profile_id=${encodeURIComponent(profileId)}`, { method: "DELETE" }).catch(() => {});
+      } else {
+        next.add(profileId);
+        const profile = profiles.find((p) => p.id === profileId);
+        if (profile) {
+          fetch("/api/b2c/saved", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ profile }) }).catch(() => {});
+        }
+      }
+      try { localStorage.setItem("b2c_saved_ids", JSON.stringify([...next])); } catch { /* ignore */ }
+      return next;
+    });
+  }
 
   const filtered = profiles.filter((p) => {
     if (
       search &&
       !p.post_text.toLowerCase().includes(search.toLowerCase()) &&
       !p.username.toLowerCase().includes(search.toLowerCase()) &&
-      !(p.display_name ?? "").toLowerCase().includes(search.toLowerCase())
+      !(p.display_name ?? "").toLowerCase().includes(search.toLowerCase()) &&
+      !(p.first_name ?? "").toLowerCase().includes(search.toLowerCase()) &&
+      !(p.last_name ?? "").toLowerCase().includes(search.toLowerCase())
     )
       return false;
     if (platformFilter && p.platform !== platformFilter) return false;
     if (intentFilter && p.purchase_intent !== intentFilter) return false;
+    if (savedFilter && !savedIds.has(p.id)) return false;
     return true;
   });
 
@@ -1986,6 +2093,11 @@ function ConversationsPanel({
             {label}
           </button>
         ))}
+        <button onClick={() => setSavedFilter((v) => !v)}
+          className="px-3 py-1.5 rounded-lg text-xs font-medium"
+          style={{ background: savedFilter ? "rgba(251,191,36,0.15)" : "var(--color-surface-2)", border: savedFilter ? "1px solid rgba(251,191,36,0.35)" : "1px solid var(--color-border-subtle)", color: savedFilter ? "#fbbf24" : "var(--color-text-muted)" }}>
+          ★ Saved {savedIds.size > 0 ? `(${savedIds.size})` : ""}
+        </button>
         <div className="ml-auto flex items-center gap-2">
           {selected.size > 0 && (
             <span className="text-xs px-3 py-1.5 rounded-lg" style={{ color: "#a78bfa", background: "rgba(124,58,237,0.1)" }}>
@@ -2028,6 +2140,10 @@ function ConversationsPanel({
             onSelect={() => toggleSelect(profile.id)}
             onClick={() => setSelectedProfile(profile)}
             audiences={audiences}
+            saved={savedIds.has(profile.id)}
+            onSave={() => toggleSave(profile.id)}
+            connectedPlatforms={connectedPlatforms}
+            connectedHandle={connectedHandles}
           />
         ))}
       </div>
@@ -2053,6 +2169,10 @@ function ConversationsPanel({
           }}
           onClose={() => setSelectedProfile(null)}
           onCreateAudience={() => setShowAudienceModal(true)}
+          saved={savedIds.has(selectedProfile.id)}
+          onSave={() => toggleSave(selectedProfile.id)}
+          connectedPlatforms={connectedPlatforms}
+          connectedHandles={connectedHandles}
         />
       )}
 
@@ -2168,6 +2288,10 @@ function ProfileDrawer({
   onAddToAudience,
   onClose,
   onCreateAudience,
+  saved,
+  onSave,
+  connectedPlatforms,
+  connectedHandles,
 }: {
   profile: SocialProfile;
   productContext: string;
@@ -2175,6 +2299,10 @@ function ProfileDrawer({
   onAddToAudience: (audienceId: string) => void;
   onClose: () => void;
   onCreateAudience: () => void;
+  saved?: boolean;
+  onSave?: () => void;
+  connectedPlatforms?: string[];
+  connectedHandles?: Record<string, string>;
 }) {
   const { color: ic } = scoreColor(profile.interest_score);
   const pInfo = B2C_PLATFORM[profile.platform] ?? { label: profile.platform, color: "#6b7280", icon: "🌐", dmVerb: "View" };
@@ -2190,10 +2318,8 @@ function ProfileDrawer({
     browsing:     { label: "Browsing",     color: "#a78bfa" },
   };
   const intent = profile.purchase_intent ? intentBadge[profile.purchase_intent] : null;
-
-  const shownName = profile.first_name
-    ? `${profile.first_name}${profile.last_name ? ` ${profile.last_name}` : ""}`
-    : profile.display_name;
+  const isConnected = connectedPlatforms?.includes(profile.platform);
+  const replyHandle = connectedHandles?.[profile.platform];
 
   async function craftMessage() {
     setCraftingMsg(true);
@@ -2247,47 +2373,80 @@ function ProfileDrawer({
                 </span>
               )}
             </div>
-            <h2 className="text-base font-bold" style={{ color: "var(--color-text-1)" }}>
-              {profile.username}{shownName && shownName !== profile.username ? ` · ${shownName}` : ""}
-            </h2>
+            <div className="font-mono text-sm" style={{ color: "var(--color-text-muted)" }}>@{profile.username}</div>
           </div>
-          <div className="text-right flex-shrink-0">
-            <div className="text-2xl font-bold tabular-nums" style={{ color: ic }}>{profile.interest_score}</div>
-            <div className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>/ 100</div>
+          <div className="flex items-start gap-2 flex-shrink-0">
+            {onSave && (
+              <button
+                onClick={onSave}
+                title={saved ? "Unsave" : "Save profile"}
+                className="p-1.5 rounded-lg transition-all mt-0.5"
+                style={{ color: saved ? "#fbbf24" : "var(--color-text-muted)", background: saved ? "rgba(251,191,36,0.1)" : "transparent", border: saved ? "1px solid rgba(251,191,36,0.25)" : "1px solid transparent" }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M7 1.5l1.6 3.5 3.7.5-2.7 2.7.7 3.8L7 10.3l-3.3 1.7.7-3.8L1.7 5.5l3.7-.5z"
+                    stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"
+                    fill={saved ? "currentColor" : "none"} />
+                </svg>
+              </button>
+            )}
+            <div className="text-right">
+              <div className="text-2xl font-bold tabular-nums" style={{ color: ic }}>{profile.interest_score}</div>
+              <div className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>/ 100</div>
+            </div>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
 
-          {/* Profile info */}
-          {(profile.first_name || profile.last_name || profile.display_name) && (
-            <div className="px-6 py-4 grid grid-cols-2 gap-3" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-              {(profile.first_name || profile.last_name) && (
-                <div>
-                  <div className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>NAME (from public profile)</div>
-                  <div className="text-sm font-semibold" style={{ color: "var(--color-text-1)" }}>
-                    {[profile.first_name, profile.last_name].filter(Boolean).join(" ")}
-                  </div>
+          {/* Identity fields — distinct labeled sections */}
+          <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+            <div className="text-[10px] font-semibold mb-3" style={{ color: "var(--color-text-muted)" }}>PROFILE IDENTITY</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="text-[10px] mb-0.5 font-medium" style={{ color: "var(--color-text-muted)" }}>USERNAME / HANDLE</div>
+                <div className="text-sm font-mono font-semibold" style={{ color: "var(--color-text-1)" }}>@{profile.username}</div>
+              </div>
+              <div>
+                <div className="text-[10px] mb-0.5 font-medium" style={{ color: "var(--color-text-muted)" }}>FIRST NAME</div>
+                <div className="text-sm font-semibold" style={{ color: profile.first_name ? "var(--color-text-1)" : "var(--color-text-muted)" }}>
+                  {profile.first_name ?? "—"}
                 </div>
-              )}
+              </div>
+              <div>
+                <div className="text-[10px] mb-0.5 font-medium" style={{ color: "var(--color-text-muted)" }}>LAST NAME</div>
+                <div className="text-sm font-semibold" style={{ color: profile.last_name ? "var(--color-text-1)" : "var(--color-text-muted)" }}>
+                  {profile.last_name ?? "—"}
+                </div>
+              </div>
               {profile.display_name && profile.display_name !== profile.username && (
                 <div>
-                  <div className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>DISPLAY NAME</div>
+                  <div className="text-[10px] mb-0.5 font-medium" style={{ color: "var(--color-text-muted)" }}>DISPLAY NAME</div>
                   <div className="text-sm" style={{ color: "var(--color-text-2)" }}>{profile.display_name}</div>
                 </div>
               )}
               <div>
-                <div className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>PLATFORM</div>
+                <div className="text-[10px] mb-0.5 font-medium" style={{ color: "var(--color-text-muted)" }}>PLATFORM</div>
                 <div className="text-sm font-semibold" style={{ color: pInfo.color }}>{pInfo.icon} {pInfo.label}</div>
               </div>
               {profile.post_date && (
                 <div>
-                  <div className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>POSTED</div>
+                  <div className="text-[10px] mb-0.5 font-medium" style={{ color: "var(--color-text-muted)" }}>POSTED</div>
                   <div className="text-sm" style={{ color: "var(--color-text-2)" }}>{relativeTime(profile.post_date)}</div>
                 </div>
               )}
             </div>
-          )}
+            {/* Connected account reply button */}
+            {isConnected && replyHandle && profile.contact.dm_url && (
+              <div className="mt-3">
+                <a href={profile.contact.dm_url} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
+                  style={{ background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.25)", color: "#34d399" }}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2h8v6H4l-2 2V2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>
+                  Reply as @{replyHandle} on {pInfo.label}
+                </a>
+              </div>
+            )}
+          </div>
 
           {/* The post */}
           <div className="px-6 py-5" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
@@ -2347,6 +2506,19 @@ function ProfileDrawer({
                       style={{ background: "rgba(251,191,36,0.1)", color: "#fbbf24" }}>
                       🛒 {p}
                     </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {profile.consumer_signals && profile.consumer_signals.length > 0 && (
+              <div className="mt-3">
+                <div className="text-[10px] mb-1.5" style={{ color: "var(--color-text-muted)" }}>CONSUMER SIGNALS DETECTED</div>
+                <div className="flex flex-col gap-1">
+                  {profile.consumer_signals.map((s, i) => (
+                    <div key={i} className="flex items-start gap-1.5">
+                      <span style={{ color: "#34d399", marginTop: 1, flexShrink: 0 }}>✓</span>
+                      <span className="text-xs" style={{ color: "var(--color-text-2)" }}>{s}</span>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -2422,6 +2594,15 @@ function ProfileDrawer({
                 style={{ background: `${pInfo.color}14`, border: `1px solid ${pInfo.color}30`, color: pInfo.color }}>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1.5 2.5h11v8l-2-2h-9v-6z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>
                 {pInfo.dmVerb} on {pInfo.label}
+              </a>
+            )}
+
+            {isConnected && replyHandle && profile.contact.dm_url && (
+              <a href={profile.contact.dm_url} target="_blank" rel="noopener noreferrer"
+                className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+                style={{ background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.3)", color: "#34d399" }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2h10v7H5l-3 3V2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>
+                Reply as @{replyHandle}
               </a>
             )}
 
