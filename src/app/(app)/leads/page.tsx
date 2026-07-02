@@ -4,12 +4,12 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useLeads, useUpdateLead, useDeleteLead, useDiscoverLeads, useLeadDetail,
-  useBusinesses, useIntentSignals, useGeneratedAssets,
+  useBusinesses, useGeneratedAssets,
   useWebsiteAudit, useSocialChatter,
 } from "@/hooks/use-leads";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { scoreColor, relativeTime } from "@/lib/utils";
-import type { Lead, LeadStatus, Business, IntentSignal, GeneratedAsset } from "@/lib/supabase/types";
+import type { Lead, LeadStatus, Business, GeneratedAsset } from "@/lib/supabase/types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -40,6 +40,52 @@ const STAGE_COLORS: Record<string, string> = {
   "Vendor Selection":"#fbbf24",
   "Ready To Buy":    "#34d399",
 };
+
+const B2C_PLATFORM: Record<string, { label: string; icon: string; color: string; dmVerb: string }> = {
+  reddit:    { label: "Reddit",    icon: "🔴", color: "#ff4500", dmVerb: "Send DM" },
+  twitter:   { label: "Twitter",   icon: "𝕏",  color: "#1da1f2", dmVerb: "Send DM" },
+  youtube:   { label: "YouTube",   icon: "▶",  color: "#ff0000", dmVerb: "View Post" },
+  google:    { label: "Google",    icon: "G",  color: "#4285f4", dmVerb: "View" },
+  instagram: { label: "Instagram", icon: "📸", color: "#e040fb", dmVerb: "Send DM" },
+  tiktok:    { label: "TikTok",    icon: "🎵", color: "#00f2ea", dmVerb: "View Profile" },
+  facebook:  { label: "Facebook",  icon: "🔵", color: "#1877f2", dmVerb: "Message" },
+  linkedin:  { label: "LinkedIn",  icon: "💼", color: "#0a66c2", dmVerb: "Connect" },
+  yelp:      { label: "Yelp",      icon: "⭐", color: "#d32323", dmVerb: "View" },
+  web:       { label: "Web",       icon: "🌐", color: "#6b7280", dmVerb: "View" },
+};
+
+interface SocialProfile {
+  id: string;
+  platform: string;
+  username: string;
+  display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  profile_url: string | null;
+  post_text: string;
+  post_url: string | null;
+  post_date: string | null;
+  keywords_matched: string[];
+  interest_score: number;
+  purchase_intent: "browsing" | "researching" | "ready_to_buy" | null;
+  shopping_signals: {
+    mentions_buying: boolean;
+    platform_mentions: string[];
+    frequency: "occasional" | "frequent" | null;
+  };
+  contact: {
+    dm_url: string | null;
+    type: "DM" | "Message" | "Inbox" | "Connect" | "View";
+  };
+  ai_message: string | null;
+  similar_products: string[];
+}
+
+interface AudienceItem {
+  id: string;
+  name: string;
+  members: Set<string>;
+}
 
 // ─── Shared sub-components ────────────────────────────────────────────────────
 
@@ -770,7 +816,18 @@ function AssetDrawer({ asset, onClose }: { asset: GeneratedAsset; onClose: () =>
 
 // ─── Discovery Modal ──────────────────────────────────────────────────────────
 
-function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunched: (runId: string, market: string, n8nTriggered: boolean) => void }) {
+function DiscoveryModal({
+  onClose,
+  onLaunched,
+}: {
+  onClose: () => void;
+  onLaunched: (
+    runId: string,
+    market: string,
+    n8nTriggered: boolean,
+    b2cResult?: { profiles: SocialProfile[]; productContext: string }
+  ) => void;
+}) {
   const discover = useDiscoverLeads();
   const [targetMarket, setTargetMarket] = useState<"b2b" | "b2c" | "both">("b2b");
   const [targetDescription, setTargetDescription] = useState("");
@@ -781,14 +838,16 @@ function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunch
   const [generateLandingPage, setGenerateLandingPage] = useState(false);
   const [forClient, setForClient] = useState(false);
   const [saveName, setSaveName] = useState("");
-  const [b2cSources, setB2cSources] = useState<string[]>(["reddit", "yelp"]);
+  const [b2cPlatforms, setB2cPlatforms] = useState<string[]>(["reddit", "google"]);
+  const [longTail, setLongTail] = useState("");
+  const [b2cSearching, setB2cSearching] = useState(false);
+  const [error, setError] = useState("");
 
-  function toggleB2cSource(id: string) {
-    setB2cSources((prev) =>
+  function toggleB2cPlatform(id: string) {
+    setB2cPlatforms((prev) =>
       prev.includes(id) ? (prev.length > 1 ? prev.filter((s) => s !== id) : prev) : [...prev, id]
     );
   }
-  const [error, setError] = useState("");
 
   async function handleLaunch() {
     setError("");
@@ -796,19 +855,84 @@ function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunch
       setError("Describe who you want to target so the AI knows what to look for.");
       return;
     }
+
+    const kwList = keywords.trim() ? keywords.split(",").map((k) => k.trim()).filter(Boolean) : undefined;
+    const ltList = longTail.trim()
+      ? longTail.split("\n").map((l) => l.trim()).filter(Boolean)
+      : undefined;
+
+    // B2C: call the conversation search API directly (no n8n)
+    if (targetMarket === "b2c") {
+      setB2cSearching(true);
+      try {
+        const resp = await fetch("/api/b2c/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            description: targetDescription.trim(),
+            platforms: b2cPlatforms,
+            keywords: kwList ?? [],
+            product_context: clientService.trim() || undefined,
+            location: location || undefined,
+            long_tail: ltList ?? [],
+          }),
+        });
+        const data = await resp.json() as { profiles?: SocialProfile[]; error?: string };
+        if (!resp.ok) throw new Error(data.error ?? "Search failed");
+        onLaunched(`b2c-${Date.now()}`, "b2c", false, {
+          profiles: data.profiles ?? [],
+          productContext: clientService.trim(),
+        });
+        onClose();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Conversation search failed");
+      } finally {
+        setB2cSearching(false);
+      }
+      return;
+    }
+
+    // B2B (or "both"): call n8n discovery, plus run B2C if "both"
     try {
       const result = await discover.mutateAsync({
         target_market: targetMarket,
         target_description: targetDescription.trim(),
         location: location || undefined,
         client_service: clientService.trim() || undefined,
-        keywords: keywords.trim() ? keywords.split(",").map((k) => k.trim()).filter(Boolean) : undefined,
+        keywords: kwList,
         min_score: minScore,
-        b2c_sources: (targetMarket === "b2c" || targetMarket === "both") ? b2cSources as Array<"reddit" | "twitter" | "yelp" | "youtube"> : undefined,
-        generate_landing_page: (targetMarket === "b2c" || targetMarket === "both") ? generateLandingPage || undefined : undefined,
+        b2c_sources: targetMarket === "both" ? (b2cPlatforms as Array<"reddit" | "twitter" | "yelp" | "youtube">) : undefined,
+        generate_landing_page: targetMarket === "both" ? generateLandingPage || undefined : undefined,
         for_client: forClient || undefined,
         save_config_name: saveName.trim() || undefined,
       });
+
+      // If "both", also run B2C search
+      if (targetMarket === "both") {
+        fetch("/api/b2c/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            description: targetDescription.trim(),
+            platforms: b2cPlatforms,
+            keywords: kwList ?? [],
+            product_context: clientService.trim() || undefined,
+            location: location || undefined,
+            long_tail: ltList ?? [],
+          }),
+        })
+          .then((r) => r.json() as Promise<{ profiles?: SocialProfile[] }>)
+          .then((data) => {
+            if (data.profiles?.length) {
+              onLaunched(result.run_id, "both", result.n8n_triggered ?? false, {
+                profiles: data.profiles,
+                productContext: clientService.trim(),
+              });
+            }
+          })
+          .catch(() => {});
+      }
+
       onLaunched(result.run_id, result.target_market ?? targetMarket, result.n8n_triggered ?? false);
       onClose();
     } catch (err) {
@@ -817,14 +941,14 @@ function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunch
   }
 
   const marketOptions = [
-    { id: "b2b"  as const, label: "B2B Prospects", emoji: "🏢", desc: "Scored businesses ready for outreach" },
-    { id: "b2c"  as const, label: "B2C Intent",    emoji: "🔍", desc: "Consumer signals & buying intent" },
-    { id: "both" as const, label: "Full Stack",     emoji: "⚡", desc: "Prospects + intent + funnel assets" },
+    { id: "b2b"  as const, label: "B2B Prospects",        emoji: "🏢", desc: "AI finds scored businesses ready for outreach" },
+    { id: "b2c"  as const, label: "B2C Conversations",    emoji: "💬", desc: "Find real people talking about what you sell" },
+    { id: "both" as const, label: "Full Stack",            emoji: "⚡", desc: "Businesses + conversations + funnel assets" },
   ];
 
   const descPlaceholders: Record<typeof targetMarket, string> = {
-    b2b:  "e.g. Marketing agencies in Austin TX running Facebook ads that need help with lead generation and client acquisition",
-    b2c:  "e.g. Homeowners on Reddit asking about HVAC repair in Phoenix who are ready to book a service this week",
+    b2b:  "e.g. Marketing agencies in Austin TX running Facebook ads that need help with lead generation and client acquisition — be as specific as possible about size, tools, pain points",
+    b2c:  "e.g. Homeowners on Reddit asking about HVAC repair in Phoenix who mentioned getting quotes but haven't hired anyone yet",
     both: "e.g. MedSpas in Southern California needing more patient bookings, and people searching for CoolSculpting treatments nearby",
   };
 
@@ -937,13 +1061,13 @@ function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunch
               className={inputCls} style={inputStyle} onFocus={onFocusIn} onBlur={onFocusOut} />
           </div>
 
-          {/* ── Generate landing pages (B2C / both) ── */}
-          {(targetMarket === "b2c" || targetMarket === "both") && (
+          {/* ── Generate landing pages (B2B "both" only) ── */}
+          {targetMarket === "both" && (
             <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
               style={{ background: generateLandingPage ? "rgba(167,139,250,0.08)" : "var(--color-surface-2)", border: generateLandingPage ? "1px solid rgba(167,139,250,0.25)" : "1px solid var(--color-border-subtle)" }}>
               <div className="flex-1">
                 <div className="text-xs font-semibold" style={{ color: generateLandingPage ? "#a78bfa" : "var(--color-text-2)" }}>Generate Landing Pages</div>
-                <div className="text-[10px] mt-0.5" style={{ color: "var(--color-text-muted)" }}>AI creates organic opt-in pages for top intent signals (WF3)</div>
+                <div className="text-[10px] mt-0.5" style={{ color: "var(--color-text-muted)" }}>AI creates opt-in pages for top signals</div>
               </div>
               <button onClick={() => setGenerateLandingPage((v) => !v)}
                 className="w-10 h-5 rounded-full transition-all relative flex-shrink-0"
@@ -954,22 +1078,41 @@ function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunch
             </div>
           )}
 
+          {/* ── B2C: What you're selling ── */}
+          {(targetMarket === "b2c" || targetMarket === "both") && (
+            <div>
+              <label className="text-xs font-semibold block mb-1.5" style={{ color: "var(--color-text-muted)" }}>
+                WHAT YOU&apos;RE SELLING <span style={{ color: "#f87171" }}>*</span>
+              </label>
+              <input value={clientService} onChange={(e) => setClientService(e.target.value)}
+                placeholder="e.g. HVAC repair services in Phoenix AZ starting at $89/visit"
+                className={inputCls} style={inputStyle} onFocus={onFocusIn} onBlur={onFocusOut} />
+              <div className="mt-1 text-[10px]" style={{ color: "var(--color-text-muted)" }}>
+                Used to score relevance, find shopping signals, and craft personalized messages for each person found.
+              </div>
+            </div>
+          )}
+
           {/* ── B2C Platform Sources ── */}
           {(targetMarket === "b2c" || targetMarket === "both") && (
             <div>
               <label className="text-xs font-semibold block mb-2" style={{ color: "var(--color-text-muted)" }}>
-                SEARCH PLATFORMS <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>(at least 1)</span>
+                PLATFORMS TO SEARCH <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>(select at least 1)</span>
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {([
-                  { id: "reddit",  label: "Reddit",     icon: "🔴", desc: "Community Q&A · advice seeking" },
-                  { id: "yelp",    label: "Yelp",       icon: "⭐", desc: "Local reviews · complaints" },
-                  { id: "youtube", label: "YouTube",    icon: "▶", desc: "How-to · comparison searches" },
-                  { id: "twitter", label: "Twitter / X", icon: "𝕏", desc: "Real-time needs · complaints" },
+                  { id: "reddit",    label: "Reddit",      icon: "🔴", desc: "Forums · Q&A · community posts" },
+                  { id: "twitter",   label: "Twitter / X", icon: "𝕏",  desc: "Real-time · opinions · DMs" },
+                  { id: "youtube",   label: "YouTube",     icon: "▶",  desc: "Comments · how-to · comparisons" },
+                  { id: "google",    label: "Google / Web", icon: "🌐", desc: "Reviews · blogs · forums" },
+                  { id: "instagram", label: "Instagram",   icon: "📸", desc: "Posts · stories · hashtags" },
+                  { id: "tiktok",    label: "TikTok",      icon: "🎵", desc: "Viral content · comments" },
+                  { id: "facebook",  label: "Facebook",    icon: "🔵", desc: "Groups · Marketplace · comments" },
+                  { id: "linkedin",  label: "LinkedIn",    icon: "💼", desc: "Professional posts · B2B signals" },
                 ] as const).map(({ id, label, icon, desc }) => {
-                  const active = b2cSources.includes(id);
+                  const active = b2cPlatforms.includes(id);
                   return (
-                    <button key={id} onClick={() => toggleB2cSource(id)} type="button"
+                    <button key={id} onClick={() => toggleB2cPlatform(id)} type="button"
                       className="text-left px-3 py-2 rounded-xl text-xs transition-all"
                       style={{ background: active ? "rgba(124,58,237,0.12)" : "var(--color-surface-2)", border: active ? "1px solid rgba(124,58,237,0.35)" : "1px solid var(--color-border-subtle)", color: active ? "#a78bfa" : "var(--color-text-2)" }}>
                       <div className="font-semibold">{icon} {label}</div>
@@ -978,10 +1121,31 @@ function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunch
                   );
                 })}
               </div>
+
+              {/* Long-tail queries */}
+              <div className="mt-3">
+                <label className="text-xs font-semibold block mb-1.5" style={{ color: "var(--color-text-muted)" }}>
+                  LONG-TAIL &amp; ANSWER-BASED QUERIES <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>(one per line, optional)</span>
+                </label>
+                <textarea
+                  value={longTail}
+                  onChange={(e) => setLongTail(e.target.value)}
+                  rows={3}
+                  placeholder={"best HVAC company Phoenix\nwhere to find AC repair near me\nhow much does HVAC repair cost"}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none resize-none transition-all"
+                  style={{ ...inputStyle, lineHeight: "1.5", fontFamily: "monospace", fontSize: 11 }}
+                  onFocus={onFocusIn}
+                  onBlur={onFocusOut}
+                />
+                <div className="mt-1 text-[10px]" style={{ color: "var(--color-text-muted)" }}>
+                  These are run as-is — great for question-style searches like &ldquo;how do I find...&rdquo; or &ldquo;best ... near me&rdquo;
+                </div>
+              </div>
             </div>
           )}
 
-          {/* ── Min Score ── */}
+          {/* ── Min Score (B2B only) ── */}
+          {targetMarket !== "b2c" && (
           <div>
             <label className="text-xs font-semibold block mb-1.5" style={{ color: "var(--color-text-muted)" }}>
               MINIMUM SCORE: <span style={{ color: "#a78bfa" }}>{minScore}</span>
@@ -991,14 +1155,17 @@ function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunch
               <span>0 (all)</span><span>50 (recommended)</span><span>100 (perfect)</span>
             </div>
           </div>
+          )}
 
-          {/* ── Save config ── */}
+          {/* ── Save config (B2B only) ── */}
+          {targetMarket !== "b2c" && (
           <div>
             <label className="text-xs font-semibold block mb-1.5" style={{ color: "var(--color-text-muted)" }}>SAVE THIS SEARCH (optional)</label>
             <input value={saveName} onChange={(e) => setSaveName(e.target.value)}
               placeholder="e.g. Austin Marketing Agencies Q3"
               className={inputCls} style={inputStyle} onFocus={onFocusIn} onBlur={onFocusOut} />
           </div>
+          )}
 
           {error && <div className="px-3 py-2 rounded-xl text-xs" style={{ background: "rgba(248,113,113,0.1)", color: "#f87171", border: "1px solid rgba(248,113,113,0.2)" }}>{error}</div>}
 
@@ -1007,9 +1174,18 @@ function DiscoveryModal({ onClose, onLaunched }: { onClose: () => void; onLaunch
               style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}>
               Cancel
             </button>
-            <button onClick={handleLaunch} disabled={discover.isPending} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-              style={{ background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)", color: "white", boxShadow: "0 4px 12px rgba(124,58,237,0.3)", opacity: discover.isPending ? 0.7 : 1 }}>
-              {discover.isPending ? "Launching..." : "🚀 Launch Discovery"}
+            <button
+              onClick={handleLaunch}
+              disabled={discover.isPending || b2cSearching}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+              style={{ background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)", color: "white", boxShadow: "0 4px 12px rgba(124,58,237,0.3)", opacity: (discover.isPending || b2cSearching) ? 0.7 : 1 }}>
+              {(discover.isPending || b2cSearching) ? (
+                <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />{targetMarket === "b2c" ? "Searching conversations..." : "Launching..."}</>
+              ) : targetMarket === "b2c" ? (
+                <>💬 Search Conversations</>
+              ) : (
+                <>🚀 Launch Discovery</>
+              )}
             </button>
           </div>
         </div>
@@ -1083,7 +1259,7 @@ function AddLeadModal({ onClose }: { onClose: () => void }) {
 
 // ─── Tab panels ───────────────────────────────────────────────────────────────
 
-type TabType = "leads" | "prospects" | "intent" | "assets";
+type TabType = "leads" | "prospects" | "conversations" | "assets";
 
 function LeadsPanel({ onSelectLead }: { onSelectLead: (id: string) => void }) {
   const [page, setPage] = useState(1);
@@ -1498,103 +1674,417 @@ function ProspectsPanel({ onSelectBiz, activeRunId }: { onSelectBiz: (b: Busines
   );
 }
 
-function IntentPanel({ onSelectSignal }: { onSelectSignal: (s: IntentSignal) => void }) {
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [urgencyFilter, setUrgencyFilter] = useState("");
-  const [stageFilter, setStageFilter] = useState("");
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { data, isLoading } = useIntentSignals({ search: debouncedSearch || undefined, urgency: urgencyFilter || undefined, stage: stageFilter || undefined, sort: "intent_score" });
-  const signals = data?.data ?? [];
+// ─── Social Profile Card ──────────────────────────────────────────────────────
 
-  function onSearchChange(v: string) {
-    setSearch(v);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setDebouncedSearch(v), 400);
-  }
+function SocialProfileCard({
+  profile,
+  selected,
+  onSelect,
+  onClick,
+  audiences,
+}: {
+  profile: SocialProfile;
+  selected: boolean;
+  onSelect: () => void;
+  onClick: () => void;
+  audiences: AudienceItem[];
+}) {
+  const { color: ic } = scoreColor(profile.interest_score);
+  const pInfo = B2C_PLATFORM[profile.platform] ?? { label: profile.platform, color: "#6b7280", icon: "🌐", dmVerb: "View" };
 
-  if (isLoading) return (
-    <div className="space-y-3">
-      {Array.from({ length: 4 }).map((_, i) => <div key={i} className="rounded-2xl p-5 animate-pulse" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", height: 100 }} />)}
+  const intentBadge: Record<string, { label: string; color: string }> = {
+    ready_to_buy: { label: "Ready to Buy", color: "#34d399" },
+    researching:  { label: "Researching",  color: "#60a5fa" },
+    browsing:     { label: "Browsing",     color: "#a78bfa" },
+  };
+  const intent = profile.purchase_intent ? intentBadge[profile.purchase_intent] : null;
+
+  const shownName = profile.first_name
+    ? `${profile.first_name}${profile.last_name ? ` ${profile.last_name}` : ""}`
+    : profile.display_name;
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden cursor-pointer transition-all"
+      style={{
+        background: "var(--color-surface)",
+        border: selected ? "1px solid rgba(124,58,237,0.45)" : "1px solid var(--color-border)",
+        boxShadow: selected ? "0 0 0 2px rgba(124,58,237,0.12)" : "none",
+      }}
+      onClick={onClick}
+      onMouseEnter={(e) => { if (!selected) (e.currentTarget as HTMLElement).style.border = "1px solid rgba(124,58,237,0.25)"; }}
+      onMouseLeave={(e) => { if (!selected) (e.currentTarget as HTMLElement).style.border = "1px solid var(--color-border)"; }}
+    >
+      {/* Card header */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          {/* Checkbox */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onSelect(); }}
+            className="w-4 h-4 rounded flex-shrink-0 flex items-center justify-center border transition-all"
+            style={{ background: selected ? "#7c3aed" : "transparent", border: selected ? "1px solid #7c3aed" : "1px solid var(--color-border)" }}>
+            {selected && <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+          </button>
+          {/* Platform badge */}
+          <span className="text-xs font-bold px-2 py-0.5 rounded-md flex-shrink-0"
+            style={{ background: `${pInfo.color}18`, color: pInfo.color }}>
+            {pInfo.icon} {pInfo.label}
+          </span>
+          {/* Username */}
+          <span className="text-sm font-semibold truncate" style={{ color: "var(--color-text-1)" }}>
+            {profile.username}
+          </span>
+          {shownName && shownName !== profile.username && (
+            <span className="text-xs truncate hidden sm:block" style={{ color: "var(--color-text-muted)" }}>· {shownName}</span>
+          )}
+        </div>
+        {/* Interest score */}
+        <div className="flex-shrink-0 text-right">
+          <div className="text-base font-bold tabular-nums" style={{ color: ic }}>{profile.interest_score}</div>
+          <div className="text-[9px]" style={{ color: "var(--color-text-muted)" }}>interest</div>
+        </div>
+      </div>
+
+      {/* Post text */}
+      <div className="px-4 pb-3">
+        <p className="text-xs leading-relaxed line-clamp-3" style={{ color: "var(--color-text-2)", borderLeft: `2px solid ${ic}44`, paddingLeft: 10 }}>
+          &ldquo;{profile.post_text}&rdquo;
+        </p>
+      </div>
+
+      {/* Badges row */}
+      <div className="px-4 pb-3 flex flex-wrap gap-1.5">
+        {intent && (
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md"
+            style={{ background: `${intent.color}18`, color: intent.color }}>
+            {intent.label}
+          </span>
+        )}
+        {profile.shopping_signals.mentions_buying && (
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded-md"
+            style={{ background: "rgba(251,191,36,0.12)", color: "#fbbf24" }}>
+            💳 Mentions buying
+          </span>
+        )}
+        {profile.shopping_signals.platform_mentions.map((p) => (
+          <span key={p} className="text-[10px] font-medium px-2 py-0.5 rounded-md capitalize"
+            style={{ background: "var(--color-surface-2)", color: "var(--color-text-muted)" }}>
+            {p}
+          </span>
+        ))}
+        {profile.keywords_matched.slice(0, 3).map((kw) => (
+          <span key={kw} className="text-[10px] px-2 py-0.5 rounded-md"
+            style={{ background: "rgba(124,58,237,0.08)", color: "#a78bfa" }}>
+            {kw}
+          </span>
+        ))}
+      </div>
+
+      {/* Similar products */}
+      {profile.similar_products.length > 0 && (
+        <div className="px-4 pb-3">
+          <div className="text-[9px] font-semibold mb-1" style={{ color: "var(--color-text-muted)" }}>ALSO INTERESTED IN</div>
+          <div className="flex flex-wrap gap-1">
+            {profile.similar_products.slice(0, 3).map((p) => (
+              <span key={p} className="text-[10px] px-2 py-0.5 rounded-md"
+                style={{ background: "var(--color-surface-2)", color: "var(--color-text-2)" }}>
+                {p}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Action row */}
+      <div
+        className="px-4 py-3 flex items-center gap-2"
+        style={{ borderTop: "1px solid var(--color-border-subtle)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {profile.contact.dm_url && (
+          <a
+            href={profile.contact.dm_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-all"
+            style={{ background: `${pInfo.color}14`, color: pInfo.color, border: `1px solid ${pInfo.color}30` }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${pInfo.color}28`; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = `${pInfo.color}14`; }}
+          >
+            → {pInfo.dmVerb}
+          </a>
+        )}
+        {profile.profile_url && (
+          <a
+            href={profile.profile_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs px-3 py-1.5 rounded-lg transition-all"
+            style={{ background: "var(--color-surface-2)", color: "var(--color-text-muted)", border: "1px solid var(--color-border-subtle)" }}
+          >
+            Profile ↗
+          </a>
+        )}
+        <span className="ml-auto text-[10px]" style={{ color: "var(--color-text-muted)" }}>
+          {profile.post_date ? relativeTime(profile.post_date) : ""}
+        </span>
+      </div>
     </div>
   );
+}
 
-  const stages = ["Research", "Comparison", "Vendor Selection", "Ready To Buy"];
+// ─── Conversations Panel ──────────────────────────────────────────────────────
+
+function ConversationsPanel({
+  profiles,
+  productContext,
+  onSearch,
+}: {
+  profiles: SocialProfile[];
+  productContext: string;
+  onSearch: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [platformFilter, setPlatformFilter] = useState("");
+  const [intentFilter, setIntentFilter] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selectedProfile, setSelectedProfile] = useState<SocialProfile | null>(null);
+  const [audiences, setAudiences] = useState<AudienceItem[]>([]);
+  const [showAudienceModal, setShowAudienceModal] = useState(false);
+  const [newAudienceName, setNewAudienceName] = useState("");
+  const [creatingAudience, setCreatingAudience] = useState(false);
+
+  const filtered = profiles.filter((p) => {
+    if (
+      search &&
+      !p.post_text.toLowerCase().includes(search.toLowerCase()) &&
+      !p.username.toLowerCase().includes(search.toLowerCase()) &&
+      !(p.display_name ?? "").toLowerCase().includes(search.toLowerCase())
+    )
+      return false;
+    if (platformFilter && p.platform !== platformFilter) return false;
+    if (intentFilter && p.purchase_intent !== intentFilter) return false;
+    return true;
+  });
+
+  const platforms = [...new Set(profiles.map((p) => p.platform))];
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  }
+
+  function exportCSV() {
+    const toExport = selected.size > 0 ? profiles.filter((p) => selected.has(p.id)) : filtered;
+    const headers = [
+      "Username","Platform","Display Name","First Name","Last Name",
+      "Post","Interest Score","Purchase Intent","Shopping Platforms",
+      "Profile URL","Contact URL","Similar Products",
+    ];
+    const rows = toExport.map((p) => [
+      p.username, p.platform, p.display_name ?? "", p.first_name ?? "", p.last_name ?? "",
+      `"${(p.post_text ?? "").replace(/"/g, '""')}"`,
+      p.interest_score, p.purchase_intent ?? "",
+      p.shopping_signals.platform_mentions.join(";"),
+      p.profile_url ?? "", p.contact.dm_url ?? "",
+      p.similar_products.join(";"),
+    ]);
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `b2c-conversations-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function createAudience() {
+    if (!newAudienceName.trim()) return;
+    setCreatingAudience(true);
+    try {
+      const resp = await fetch("/api/audiences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newAudienceName.trim() }),
+      });
+      const data = await resp.json() as { audience?: { id: string; name: string } };
+      if (data.audience) {
+        setAudiences((prev) => [{ id: data.audience!.id, name: data.audience!.name, members: new Set<string>() }, ...prev]);
+        setNewAudienceName("");
+        setShowAudienceModal(false);
+      }
+    } finally {
+      setCreatingAudience(false);
+    }
+  }
+
+  if (profiles.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-5">
+        <div style={{ fontSize: 56 }}>💬</div>
+        <div className="text-center">
+          <div className="text-xl font-bold mb-2" style={{ color: "var(--color-text-1)" }}>Business to Conversation</div>
+          <div className="text-sm max-w-md leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
+            Find real people talking about what you sell — on Reddit, Twitter, YouTube, and more.
+            AI reads their exact conversations to build rich profiles and craft hyper-personalized messages.
+          </div>
+        </div>
+        <button
+          onClick={onSearch}
+          className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold mt-2"
+          style={{ background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)", color: "white", boxShadow: "0 4px 12px rgba(124,58,237,0.3)" }}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.5"/><path d="M9 9l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          Search Conversations
+        </button>
+      </div>
+    );
+  }
+
+  const intentFilterOptions = [
+    { id: "ready_to_buy", label: "Ready to Buy", color: "#34d399" },
+    { id: "researching",  label: "Researching",  color: "#60a5fa" },
+    { id: "browsing",     label: "Browsing",     color: "#a78bfa" },
+  ];
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3">
-        <SearchBar value={search} onChange={onSearchChange} placeholder="Search questions, service, location..." />
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <SearchBar value={search} onChange={setSearch} placeholder="Search posts, usernames..." />
         <div className="flex gap-1.5 flex-wrap">
-          <button onClick={() => setUrgencyFilter("")} className="px-3 py-2 rounded-xl text-xs font-medium" style={{ background: !urgencyFilter ? "rgba(124,58,237,0.15)" : "var(--color-surface)", border: !urgencyFilter ? "1px solid rgba(124,58,237,0.3)" : "1px solid var(--color-border)", color: !urgencyFilter ? "#a78bfa" : "var(--color-text-2)" }}>All</button>
-          {["High","Medium","Low"].map((u) => {
-            const uc = URGENCY_COLORS[u];
-            return <button key={u} onClick={() => setUrgencyFilter(urgencyFilter === u ? "" : u)} className="px-3 py-2 rounded-xl text-xs font-medium" style={{ background: urgencyFilter === u ? uc.bg : "var(--color-surface)", border: urgencyFilter === u ? `1px solid ${uc.color}40` : "1px solid var(--color-border)", color: urgencyFilter === u ? uc.color : "var(--color-text-2)" }}>{u}</button>;
-          })}
-        </div>
-      </div>
-
-      {/* Stage pipeline tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        <button onClick={() => setStageFilter("")} className="px-3 py-1.5 rounded-lg text-xs font-medium flex-shrink-0"
-          style={{ background: !stageFilter ? "rgba(124,58,237,0.15)" : "var(--color-surface-2)", border: !stageFilter ? "1px solid rgba(124,58,237,0.3)" : "1px solid var(--color-border-subtle)", color: !stageFilter ? "#a78bfa" : "var(--color-text-muted)" }}>All Stages</button>
-        {stages.map((s) => {
-          const c = STAGE_COLORS[s] ?? "#6b7280";
-          const active = stageFilter === s;
-          return <button key={s} onClick={() => setStageFilter(active ? "" : s)} className="px-3 py-1.5 rounded-lg text-xs font-medium flex-shrink-0"
-            style={{ background: active ? `${c}18` : "var(--color-surface-2)", border: active ? `1px solid ${c}40` : "1px solid var(--color-border-subtle)", color: active ? c : "var(--color-text-muted)" }}>{s}</button>;
-        })}
-      </div>
-
-      {signals.length === 0 ? (
-        <EmptyState icon="📡" title="No intent signals yet" desc="Run B2C discovery to find consumers actively seeking your service." />
-      ) : (
-        <div className="space-y-3">
-          {signals.map((sig) => {
-            const uc = sig.urgency ? URGENCY_COLORS[sig.urgency] : null;
-            const sc = sig.buying_stage ? STAGE_COLORS[sig.buying_stage] : "#6b7280";
-            const { color: ic } = scoreColor(sig.intent_score);
+          <button
+            onClick={() => setPlatformFilter("")}
+            className="px-3 py-2 rounded-xl text-xs font-medium"
+            style={{ background: !platformFilter ? "rgba(124,58,237,0.15)" : "var(--color-surface)", border: !platformFilter ? "1px solid rgba(124,58,237,0.3)" : "1px solid var(--color-border)", color: !platformFilter ? "#a78bfa" : "var(--color-text-2)" }}>
+            All
+          </button>
+          {platforms.map((p) => {
+            const info = B2C_PLATFORM[p] ?? { label: p, color: "#6b7280", icon: "🌐" };
+            const active = platformFilter === p;
             return (
-              <div key={sig.id} onClick={() => onSelectSignal(sig)} className="rounded-2xl p-5 cursor-pointer transition-all"
-                style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
-                onMouseEnter={(e) => { (e.currentTarget).style.border = "1px solid rgba(124,58,237,0.3)"; }}
-                onMouseLeave={(e) => { (e.currentTarget).style.border = "1px solid var(--color-border)"; }}>
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm leading-relaxed" style={{ color: "var(--color-text-1)" }}>
-                      &ldquo;{sig.question.length > 180 ? sig.question.slice(0, 180) + "…" : sig.question}&rdquo;
-                    </p>
-                    <div className="flex items-center gap-2 mt-3 flex-wrap">
-                      {sig.urgency && uc && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md" style={{ background: uc.bg, color: uc.color }}>
-                          {sig.urgency.toUpperCase()} URGENCY
-                        </span>
-                      )}
-                      {sig.buying_stage && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: `${sc}18`, color: sc }}>
-                          {sig.buying_stage}
-                        </span>
-                      )}
-                      <span className="text-[10px] px-2 py-0.5 rounded-md capitalize" style={{ background: "var(--color-surface-2)", color: "var(--color-text-muted)" }}>
-                        {sig.source}
-                      </span>
-                      {sig.location && <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>📍 {sig.location}</span>}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <div className="text-lg font-bold" style={{ color: ic }}>{sig.intent_score}</div>
-                    <div className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>intent</div>
-                    {sig.source_url && (
-                      <a href={sig.source_url} target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()}
-                        className="text-[10px] px-2 py-0.5 rounded transition-colors"
-                        style={{ color: "#a78bfa", background: "rgba(124,58,237,0.1)" }}>View Post</a>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <button key={p} onClick={() => setPlatformFilter(active ? "" : p)}
+                className="px-3 py-2 rounded-xl text-xs font-medium"
+                style={{ background: active ? `${info.color}18` : "var(--color-surface)", border: active ? `1px solid ${info.color}40` : "1px solid var(--color-border)", color: active ? info.color : "var(--color-text-2)" }}>
+                {info.icon} {info.label}
+              </button>
             );
           })}
         </div>
+      </div>
+
+      {/* Intent filter + bulk actions */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {intentFilterOptions.map(({ id, label, color }) => (
+          <button key={id} onClick={() => setIntentFilter(intentFilter === id ? "" : id)}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium"
+            style={{ background: intentFilter === id ? `${color}18` : "var(--color-surface-2)", border: intentFilter === id ? `1px solid ${color}40` : "1px solid var(--color-border-subtle)", color: intentFilter === id ? color : "var(--color-text-muted)" }}>
+            {label}
+          </button>
+        ))}
+        <div className="ml-auto flex items-center gap-2">
+          {selected.size > 0 && (
+            <span className="text-xs px-3 py-1.5 rounded-lg" style={{ color: "#a78bfa", background: "rgba(124,58,237,0.1)" }}>
+              {selected.size} selected
+            </span>
+          )}
+          <button onClick={exportCSV}
+            className="text-xs px-3 py-1.5 rounded-lg font-medium"
+            style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}>
+            ↓ Export {selected.size > 0 ? `(${selected.size})` : "All"}
+          </button>
+          <button onClick={() => setShowAudienceModal(true)}
+            className="text-xs px-3 py-1.5 rounded-lg font-medium"
+            style={{ background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.25)", color: "#a78bfa" }}>
+            + Audience
+          </button>
+        </div>
+      </div>
+
+      {/* Audiences strip */}
+      {audiences.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {audiences.map((aud) => (
+            <div key={aud.id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg flex-shrink-0"
+              style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)" }}>
+              <span className="text-xs font-medium" style={{ color: "#a78bfa" }}>{aud.name}</span>
+              <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>{aud.members.size} members</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Profile cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {filtered.map((profile) => (
+          <SocialProfileCard
+            key={profile.id}
+            profile={profile}
+            selected={selected.has(profile.id)}
+            onSelect={() => toggleSelect(profile.id)}
+            onClick={() => setSelectedProfile(profile)}
+            audiences={audiences}
+          />
+        ))}
+      </div>
+
+      {filtered.length === 0 && profiles.length > 0 && (
+        <EmptyState icon="🔍" title="No matches" desc="Try adjusting the platform or intent filter." />
+      )}
+
+      {/* Profile Drawer */}
+      {selectedProfile && (
+        <ProfileDrawer
+          profile={selectedProfile}
+          productContext={productContext}
+          audiences={audiences}
+          onAddToAudience={(audienceId) => {
+            setAudiences((prev) =>
+              prev.map((a) =>
+                a.id === audienceId
+                  ? { ...a, members: new Set([...a.members, selectedProfile.id]) }
+                  : a
+              )
+            );
+          }}
+          onClose={() => setSelectedProfile(null)}
+          onCreateAudience={() => setShowAudienceModal(true)}
+        />
+      )}
+
+      {/* Create Audience Modal */}
+      {showAudienceModal && (
+        <>
+          <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.5)" }} onClick={() => setShowAudienceModal(false)} />
+          <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm p-6 rounded-2xl"
+            style={{ transform: "translate(-50%,-50%)", background: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "0 24px 80px rgba(0,0,0,0.5)" }}>
+            <h3 className="text-base font-bold mb-4" style={{ color: "var(--color-text-1)" }}>Create Audience</h3>
+            <input
+              value={newAudienceName}
+              onChange={(e) => setNewAudienceName(e.target.value)}
+              placeholder="e.g. Phoenix HVAC — Ready to Buy"
+              className="w-full px-3 py-2.5 rounded-xl text-sm outline-none mb-4"
+              style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", color: "var(--color-text-1)" }}
+              onKeyDown={(e) => { if (e.key === "Enter") createAudience(); }}
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button onClick={() => setShowAudienceModal(false)} className="flex-1 py-2.5 rounded-xl text-sm"
+                style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}>
+                Cancel
+              </button>
+              <button onClick={createAudience} disabled={creatingAudience || !newAudienceName.trim()}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)", color: "white", opacity: (creatingAudience || !newAudienceName.trim()) ? 0.6 : 1 }}>
+                {creatingAudience ? "Creating..." : "Create"}
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
@@ -1669,69 +2159,72 @@ function AssetsPanel({ onSelectAsset }: { onSelectAsset: (a: GeneratedAsset) => 
   );
 }
 
-// ─── Signal Drawer ────────────────────────────────────────────────────────────
+// ─── Profile Drawer (B2C Conversation Detail) ─────────────────────────────────
 
-function SignalDrawer({
-  signal,
+function ProfileDrawer({
+  profile,
+  productContext,
+  audiences,
+  onAddToAudience,
   onClose,
-  onNavigateAssets,
+  onCreateAudience,
 }: {
-  signal: IntentSignal;
+  profile: SocialProfile;
+  productContext: string;
+  audiences: AudienceItem[];
+  onAddToAudience: (audienceId: string) => void;
   onClose: () => void;
-  onNavigateAssets: () => void;
+  onCreateAudience: () => void;
 }) {
-  const [generating, setGenerating] = useState(false);
-  const [genStatus, setGenStatus] = useState<"idle" | "queued" | "complete" | "error">("idle");
-  const [genMessage, setGenMessage] = useState("");
-  const [copied, setCopied] = useState<string | null>(null);
+  const { color: ic } = scoreColor(profile.interest_score);
+  const pInfo = B2C_PLATFORM[profile.platform] ?? { label: profile.platform, color: "#6b7280", icon: "🌐", dmVerb: "View" };
+  const [craftedMsg, setCraftedMsg] = useState(profile.ai_message ?? "");
+  const [craftingMsg, setCraftingMsg] = useState(false);
+  const [msgTone, setMsgTone] = useState<"casual" | "professional" | "friendly">("friendly");
+  const [copied, setCopied] = useState(false);
+  const [showAudiencePicker, setShowAudiencePicker] = useState(false);
 
-  const { color: ic } = scoreColor(signal.intent_score);
-  const uc = signal.urgency ? URGENCY_COLORS[signal.urgency] : null;
-  const sc = signal.buying_stage ? STAGE_COLORS[signal.buying_stage] : "#6b7280";
-
-  const SOURCE_ICONS: Record<string, string> = {
-    reddit: "🔴", yelp: "⭐", youtube: "▶", twitter: "𝕏", "twitter/x": "𝕏", google: "🔍", facebook: "📘",
+  const intentBadge: Record<string, { label: string; color: string }> = {
+    ready_to_buy: { label: "Ready to Buy", color: "#34d399" },
+    researching:  { label: "Researching",  color: "#60a5fa" },
+    browsing:     { label: "Browsing",     color: "#a78bfa" },
   };
-  const sourceIcon = SOURCE_ICONS[signal.source?.toLowerCase() ?? ""] ?? "📡";
+  const intent = profile.purchase_intent ? intentBadge[profile.purchase_intent] : null;
 
-  async function generateAssets() {
-    setGenerating(true);
-    setGenStatus("idle");
-    setGenMessage("");
+  const shownName = profile.first_name
+    ? `${profile.first_name}${profile.last_name ? ` ${profile.last_name}` : ""}`
+    : profile.display_name;
+
+  async function craftMessage() {
+    setCraftingMsg(true);
     try {
-      const res = await fetch("/api/generated-assets/generate", {
+      const resp = await fetch("/api/b2c/message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ signal_id: signal.id, signal }),
+        body: JSON.stringify({ profile, product_context: productContext, tone: msgTone }),
       });
-      const data = await res.json() as { status?: string; message?: string; error?: string };
-      if (!res.ok) throw new Error(data.error ?? "Generation failed");
-      setGenStatus(data.status === "processing" ? "queued" : "complete");
-      setGenMessage(data.message ?? "Assets generated successfully!");
-    } catch (e) {
-      setGenStatus("error");
-      setGenMessage(e instanceof Error ? e.message : "Generation failed");
+      const data = await resp.json() as { message?: string; error?: string };
+      if (!resp.ok) throw new Error(data.error ?? "Failed");
+      setCraftedMsg(data.message ?? "");
+    } catch {
+      // silently fail
     } finally {
-      setGenerating(false);
+      setCraftingMsg(false);
     }
   }
 
-  function copyText(text: string, key: string) {
-    navigator.clipboard.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(null), 1500); });
+  function copyMessage() {
+    navigator.clipboard.writeText(craftedMsg).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   }
-
-  const stageExplainer: Record<string, string> = {
-    "Ready To Buy": "This consumer is comparing providers right now. A targeted offer page + retargeting ads can capture this demand today.",
-    "Vendor Selection": "Evaluating specific providers. A compelling page with social proof and a strong CTA can win this conversion.",
-    "Comparison": "Weighing options. Comparison guides, FAQs, and video explainers position your client as the obvious choice.",
-    "Research": "Early-stage explorer. Lead magnets and informational content capture them before competitors do.",
-  };
 
   return (
     <>
       <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.5)" }} onClick={onClose} />
       <div className="fixed right-0 top-0 bottom-0 z-50 flex flex-col overflow-hidden"
-        style={{ width: "min(560px, 100vw)", background: "var(--color-surface)", borderLeft: "1px solid var(--color-border)", boxShadow: "-16px 0 64px rgba(0,0,0,0.4)" }}>
+        style={{ width: "min(600px, 100vw)", background: "var(--color-surface)", borderLeft: "1px solid var(--color-border)", boxShadow: "-16px 0 64px rgba(0,0,0,0.4)" }}>
 
         {/* Header */}
         <div className="flex items-start gap-3 px-6 py-5" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
@@ -1739,119 +2232,242 @@ function SignalDrawer({
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </button>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {signal.urgency && uc && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md" style={{ background: uc.bg, color: uc.color }}>{signal.urgency.toUpperCase()} URGENCY</span>
-              )}
-              {signal.buying_stage && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: `${sc}18`, color: sc }}>{signal.buying_stage}</span>
-              )}
-              <span className="text-[10px] px-2 py-0.5 rounded-md capitalize" style={{ background: "var(--color-surface-2)", color: "var(--color-text-muted)" }}>
-                {sourceIcon} {signal.source}
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-md" style={{ background: `${pInfo.color}18`, color: pInfo.color }}>
+                {pInfo.icon} {pInfo.label}
               </span>
+              {intent && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: `${intent.color}18`, color: intent.color }}>
+                  {intent.label}
+                </span>
+              )}
+              {profile.shopping_signals.mentions_buying && (
+                <span className="text-[10px] px-2 py-0.5 rounded-md" style={{ background: "rgba(251,191,36,0.1)", color: "#fbbf24" }}>
+                  💳 Buying intent
+                </span>
+              )}
             </div>
-            <h2 className="text-base font-bold mt-1.5" style={{ color: "var(--color-text-1)" }}>Intent Signal</h2>
+            <h2 className="text-base font-bold" style={{ color: "var(--color-text-1)" }}>
+              {profile.username}{shownName && shownName !== profile.username ? ` · ${shownName}` : ""}
+            </h2>
           </div>
           <div className="text-right flex-shrink-0">
-            <div className="text-2xl font-bold" style={{ color: ic }}>{signal.intent_score}</div>
+            <div className="text-2xl font-bold tabular-nums" style={{ color: ic }}>{profile.interest_score}</div>
             <div className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>/ 100</div>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
 
-          {/* Full question */}
-          <div className="px-6 py-5" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-[10px] font-semibold" style={{ color: "var(--color-text-muted)" }}>CONSUMER QUESTION / POST</div>
-              <button onClick={() => copyText(signal.question, "q")} className="text-[10px] px-2 py-0.5 rounded" style={{ color: copied === "q" ? "#34d399" : "#a78bfa", background: "rgba(124,58,237,0.1)" }}>
-                {copied === "q" ? "Copied!" : "Copy"}
-              </button>
-            </div>
-            <blockquote className="text-sm leading-relaxed" style={{ color: "var(--color-text-1)", borderLeft: `3px solid ${ic}`, paddingLeft: 12 }}>
-              &ldquo;{signal.question}&rdquo;
-            </blockquote>
-          </div>
-
-          {/* Intent score bar */}
-          <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-            <div className="text-[10px] font-semibold mb-2" style={{ color: "var(--color-text-muted)" }}>INTENT STRENGTH</div>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "var(--color-surface-2)" }}>
-                <div className="h-full rounded-full" style={{ width: `${signal.intent_score}%`, background: `linear-gradient(90deg, ${ic}88, ${ic})` }} />
+          {/* Profile info */}
+          {(profile.first_name || profile.last_name || profile.display_name) && (
+            <div className="px-6 py-4 grid grid-cols-2 gap-3" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+              {(profile.first_name || profile.last_name) && (
+                <div>
+                  <div className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>NAME (from public profile)</div>
+                  <div className="text-sm font-semibold" style={{ color: "var(--color-text-1)" }}>
+                    {[profile.first_name, profile.last_name].filter(Boolean).join(" ")}
+                  </div>
+                </div>
+              )}
+              {profile.display_name && profile.display_name !== profile.username && (
+                <div>
+                  <div className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>DISPLAY NAME</div>
+                  <div className="text-sm" style={{ color: "var(--color-text-2)" }}>{profile.display_name}</div>
+                </div>
+              )}
+              <div>
+                <div className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>PLATFORM</div>
+                <div className="text-sm font-semibold" style={{ color: pInfo.color }}>{pInfo.icon} {pInfo.label}</div>
               </div>
-              <span className="text-sm font-bold tabular-nums" style={{ color: ic }}>{signal.intent_score}/100</span>
-            </div>
-            <div className="flex justify-between mt-1">
-              <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>Passive browsing</span>
-              <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>Ready to buy</span>
-            </div>
-          </div>
-
-          {/* Metadata */}
-          <div className="px-6 py-4 grid grid-cols-2 gap-3" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-            {signal.service && <div><div className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Service</div><div className="text-xs font-medium" style={{ color: "var(--color-text-1)" }}>{signal.service}</div></div>}
-            {signal.industry && <div><div className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Industry</div><div className="text-xs font-medium" style={{ color: "var(--color-text-1)" }}>{signal.industry}</div></div>}
-            {signal.location && <div><div className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Location</div><div className="text-xs font-medium" style={{ color: "var(--color-text-1)" }}>📍 {signal.location}</div></div>}
-            <div><div className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>Detected</div><div className="text-xs" style={{ color: "var(--color-text-2)" }}>{relativeTime(signal.date_found ?? signal.created_at)}</div></div>
-          </div>
-
-          {/* Strategy insight */}
-          {signal.buying_stage && stageExplainer[signal.buying_stage] && (
-            <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)", background: "rgba(124,58,237,0.03)" }}>
-              <div className="text-[10px] font-semibold mb-1.5" style={{ color: "#a78bfa" }}>💡 RECOMMENDED STRATEGY</div>
-              <p className="text-xs leading-relaxed" style={{ color: "var(--color-text-2)" }}>{stageExplainer[signal.buying_stage]}</p>
+              {profile.post_date && (
+                <div>
+                  <div className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>POSTED</div>
+                  <div className="text-sm" style={{ color: "var(--color-text-2)" }}>{relativeTime(profile.post_date)}</div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Actions */}
-          <div className="px-6 py-5 space-y-3">
-            <div className="text-[10px] font-semibold" style={{ color: "var(--color-text-muted)" }}>ACTIONS</div>
-
-            {genStatus === "idle" && (
-              <button onClick={generateAssets} disabled={generating}
-                className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
-                style={{ background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)", color: "white", boxShadow: "0 4px 12px rgba(124,58,237,0.3)", opacity: generating ? 0.7 : 1 }}>
-                {generating ? (
-                  <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />Generating assets…</>
-                ) : <>✨ Generate Funnel Assets</>}
-              </button>
-            )}
-
-            {genStatus === "queued" && (
-              <div className="p-3 rounded-xl text-xs" style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", color: "#a78bfa" }}>
-                <div className="font-semibold mb-1">⏳ Asset generation queued</div>
-                <div className="mb-2" style={{ color: "var(--color-text-muted)" }}>{genMessage}</div>
-                <button onClick={() => { onClose(); onNavigateAssets(); }} className="underline text-[11px]" style={{ color: "#a78bfa" }}>
-                  Go to Funnel Assets →
-                </button>
-              </div>
-            )}
-
-            {genStatus === "complete" && (
-              <div className="p-3 rounded-xl text-xs" style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.2)", color: "#34d399" }}>
-                <div className="font-semibold mb-1">✓ Assets generated!</div>
-                <button onClick={() => { onClose(); onNavigateAssets(); }} className="underline text-[11px]" style={{ color: "#34d399" }}>
-                  View Funnel Assets →
-                </button>
-              </div>
-            )}
-
-            {genStatus === "error" && (
-              <div className="p-3 rounded-xl text-xs" style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", color: "#f87171" }}>
-                <div className="font-semibold mb-1">⚠ {genMessage}</div>
-                <button onClick={() => setGenStatus("idle")} className="underline text-[11px]" style={{ color: "#f87171" }}>Try again</button>
-              </div>
-            )}
-
-            {signal.source_url && (
-              <a href={signal.source_url} target="_blank" rel="noopener noreferrer"
-                className="w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all"
-                style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}>
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M5 2H2a1 1 0 00-1 1v8a1 1 0 001 1h8a1 1 0 001-1V8M8 1h4m0 0v4m0-4L5 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                View Original Post on {signal.source ?? "platform"}
+          {/* The post */}
+          <div className="px-6 py-5" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+            <div className="text-[10px] font-semibold mb-2" style={{ color: "var(--color-text-muted)" }}>THEIR EXACT POST / COMMENT</div>
+            <blockquote className="text-sm leading-relaxed" style={{ color: "var(--color-text-1)", borderLeft: `3px solid ${ic}`, paddingLeft: 12 }}>
+              &ldquo;{profile.post_text}&rdquo;
+            </blockquote>
+            {profile.post_url && (
+              <a href={profile.post_url} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 mt-3 text-xs"
+                style={{ color: "#a78bfa" }}>
+                View original post ↗
               </a>
             )}
+          </div>
+
+          {/* Interest analysis */}
+          <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+            <div className="text-[10px] font-semibold mb-2" style={{ color: "var(--color-text-muted)" }}>INTEREST LEVEL</div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "var(--color-surface-2)" }}>
+                <div className="h-full rounded-full" style={{ width: `${profile.interest_score}%`, background: `linear-gradient(90deg, ${ic}88, ${ic})` }} />
+              </div>
+              <span className="text-sm font-bold tabular-nums" style={{ color: ic }}>{profile.interest_score}/100</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {profile.keywords_matched.map((kw) => (
+                <span key={kw} className="text-[10px] px-2 py-0.5 rounded-md" style={{ background: "rgba(124,58,237,0.08)", color: "#a78bfa" }}>{kw}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Shopping signals */}
+          <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+            <div className="text-[10px] font-semibold mb-3" style={{ color: "var(--color-text-muted)" }}>SHOPPING BEHAVIOR</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>BUYING INTENT</div>
+                <div className="text-xs font-semibold" style={{ color: profile.shopping_signals.mentions_buying ? "#34d399" : "var(--color-text-muted)" }}>
+                  {profile.shopping_signals.mentions_buying ? "✓ Actively looking to buy" : "Not explicitly mentioned"}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] mb-0.5" style={{ color: "var(--color-text-muted)" }}>SHOPPING FREQUENCY</div>
+                <div className="text-xs font-semibold" style={{ color: "var(--color-text-2)" }}>
+                  {profile.shopping_signals.frequency === "frequent" ? "🛍️ Frequent shopper" :
+                   profile.shopping_signals.frequency === "occasional" ? "🛒 Occasional buyer" : "Unknown"}
+                </div>
+              </div>
+            </div>
+            {profile.shopping_signals.platform_mentions.length > 0 && (
+              <div className="mt-3">
+                <div className="text-[10px] mb-1.5" style={{ color: "var(--color-text-muted)" }}>MENTIONED PLATFORMS</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {profile.shopping_signals.platform_mentions.map((p) => (
+                    <span key={p} className="text-[10px] font-semibold px-2 py-0.5 rounded-md capitalize"
+                      style={{ background: "rgba(251,191,36,0.1)", color: "#fbbf24" }}>
+                      🛒 {p}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Similar products */}
+          {profile.similar_products.length > 0 && (
+            <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+              <div className="text-[10px] font-semibold mb-2" style={{ color: "var(--color-text-muted)" }}>SIMILAR PRODUCTS THEY MAY WANT</div>
+              <div className="flex flex-wrap gap-1.5">
+                {profile.similar_products.map((p) => (
+                  <span key={p} className="text-xs px-2 py-1 rounded-lg" style={{ background: "var(--color-surface-2)", color: "var(--color-text-2)", border: "1px solid var(--color-border-subtle)" }}>
+                    {p}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* AI Message Crafter */}
+          <div className="px-6 py-5" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+            <div className="text-[10px] font-semibold mb-3" style={{ color: "var(--color-text-muted)" }}>AI-CRAFTED MESSAGE</div>
+
+            {/* Tone selector */}
+            <div className="flex gap-2 mb-3">
+              {(["friendly", "casual", "professional"] as const).map((tone) => (
+                <button key={tone} onClick={() => setMsgTone(tone)}
+                  className="px-3 py-1 rounded-lg text-xs font-medium capitalize transition-all"
+                  style={{ background: msgTone === tone ? "rgba(124,58,237,0.15)" : "var(--color-surface-2)", border: msgTone === tone ? "1px solid rgba(124,58,237,0.3)" : "1px solid var(--color-border-subtle)", color: msgTone === tone ? "#a78bfa" : "var(--color-text-muted)" }}>
+                  {tone}
+                </button>
+              ))}
+            </div>
+
+            {craftedMsg ? (
+              <div className="space-y-3">
+                <div className="p-4 rounded-xl text-sm leading-relaxed whitespace-pre-wrap"
+                  style={{ background: "rgba(124,58,237,0.05)", border: "1px solid rgba(124,58,237,0.15)", color: "var(--color-text-1)" }}>
+                  {craftedMsg}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={copyMessage}
+                    className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"
+                    style={{ background: copied ? "rgba(52,211,153,0.15)" : "rgba(124,58,237,0.1)", border: copied ? "1px solid rgba(52,211,153,0.3)" : "1px solid rgba(124,58,237,0.2)", color: copied ? "#34d399" : "#a78bfa" }}>
+                    {copied ? "✓ Copied!" : "Copy Message"}
+                  </button>
+                  <button onClick={craftMessage} disabled={craftingMsg}
+                    className="flex-1 py-2 rounded-xl text-xs font-semibold"
+                    style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}>
+                    {craftingMsg ? "Crafting..." : "↺ Regenerate"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={craftMessage} disabled={craftingMsg}
+                className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+                style={{ background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)", color: "white", boxShadow: "0 4px 12px rgba(124,58,237,0.25)", opacity: craftingMsg ? 0.7 : 1 }}>
+                {craftingMsg ? (
+                  <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />Crafting personalized message…</>
+                ) : <>✨ Craft Personalized Message</>}
+              </button>
+            )}
+          </div>
+
+          {/* Contact + Audience actions */}
+          <div className="px-6 py-5 space-y-3">
+            <div className="text-[10px] font-semibold" style={{ color: "var(--color-text-muted)" }}>CONTACT &amp; ORGANIZE</div>
+
+            {profile.contact.dm_url && (
+              <a href={profile.contact.dm_url} target="_blank" rel="noopener noreferrer"
+                className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+                style={{ background: `${pInfo.color}14`, border: `1px solid ${pInfo.color}30`, color: pInfo.color }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1.5 2.5h11v8l-2-2h-9v-6z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>
+                {pInfo.dmVerb} on {pInfo.label}
+              </a>
+            )}
+
+            {profile.profile_url && (
+              <a href={profile.profile_url} target="_blank" rel="noopener noreferrer"
+                className="w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+                style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}>
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M5 2H2a1 1 0 00-1 1v8a1 1 0 001 1h8a1 1 0 001-1V8M8 1h4m0 0v4m0-4L5 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                View Profile ↗
+              </a>
+            )}
+
+            {/* Add to audience */}
+            <div className="relative">
+              <button onClick={() => setShowAudiencePicker((v) => !v)}
+                className="w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+                style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", color: "var(--color-text-2)" }}>
+                + Add to Audience
+              </button>
+              {showAudiencePicker && (
+                <div className="absolute bottom-12 left-0 right-0 rounded-xl overflow-hidden z-10"
+                  style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
+                  {audiences.length === 0 ? (
+                    <div className="p-4 text-center">
+                      <div className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>No audiences yet</div>
+                      <button onClick={() => { setShowAudiencePicker(false); onCreateAudience(); }}
+                        className="text-xs font-semibold" style={{ color: "#a78bfa" }}>
+                        + Create your first audience
+                      </button>
+                    </div>
+                  ) : (
+                    audiences.map((aud) => (
+                      <button key={aud.id}
+                        onClick={() => { onAddToAudience(aud.id); setShowAudiencePicker(false); }}
+                        className="w-full flex items-center justify-between px-4 py-3 text-sm transition-all"
+                        style={{ color: "var(--color-text-1)" }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--o1)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
+                        <span>{aud.name}</span>
+                        <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>{aud.members.size} members</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1868,12 +2484,15 @@ export default function LeadsPage() {
   const [showAddLead, setShowAddLead] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [selectedBiz, setSelectedBiz] = useState<Business | null>(null);
-  const [selectedSignal, setSelectedSignal] = useState<IntentSignal | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<GeneratedAsset | null>(null);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [activeRunMarket, setActiveRunMarket] = useState<string>("");
   const [discoveryWarning, setDiscoveryWarning] = useState<string | null>(null);
   const runPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // B2C Conversation state
+  const [b2cProfiles, setB2cProfiles] = useState<SocialProfile[]>([]);
+  const [b2cProductContext, setB2cProductContext] = useState("");
 
   // ── Supabase Realtime: invalidate queries when new rows arrive ──────────────
   useEffect(() => {
@@ -1925,31 +2544,41 @@ export default function LeadsPage() {
     };
   }, [activeRunId, qc]);
 
-  function handleLaunched(runId: string, market: string, n8nTriggered: boolean) {
+  function handleLaunched(
+    runId: string,
+    market: string,
+    n8nTriggered: boolean,
+    b2cResult?: { profiles: SocialProfile[]; productContext: string }
+  ) {
+    // Store B2C profiles if returned
+    if (b2cResult?.profiles?.length) {
+      setB2cProfiles(b2cResult.profiles);
+      setB2cProductContext(b2cResult.productContext ?? "");
+    }
+
     // Auto-switch to the relevant tab
     if (market === "b2b") setActiveTab("prospects");
-    else if (market === "b2c") setActiveTab("intent");
+    else if (market === "b2c") setActiveTab("conversations");
     else setActiveTab("prospects"); // "both" — start at prospects
 
-    if (!n8nTriggered) {
-      // n8n not reachable — show a one-time warning instead of an infinite spinner
+    if (!n8nTriggered && market !== "b2c") {
       setDiscoveryWarning("n8n automation is not connected — configure N8N_WEBHOOK_BASE_URL in Vercel to enable live discovery. Any AI-generated leads have been added.");
       setTimeout(() => setDiscoveryWarning(null), 12_000);
       return;
     }
-    setActiveRunId(runId);
-    setActiveRunMarket(market);
+    if (market !== "b2c") {
+      setActiveRunId(runId);
+      setActiveRunMarket(market);
+    }
   }
 
   // Stat summaries per tab
   const { data: leadsData } = useLeads({ per_page: 100 });
   const { data: bizData } = useBusinesses({ per_page: 100 });
-  const { data: intentData } = useIntentSignals({ per_page: 100 });
   const { data: assetsData } = useGeneratedAssets({ per_page: 100 });
 
   const leads = leadsData?.data ?? [];
   const businesses = bizData?.data ?? [];
-  const signals = intentData?.data ?? [];
   const assets = assetsData?.data ?? [];
 
   const STATS: Record<TabType, { label: string; value: number | string; color: string }[]> = {
@@ -1965,11 +2594,11 @@ export default function LeadsPage() {
       { label: "Avg Opp. Score", value: businesses.length ? Math.round(businesses.reduce((s, b) => s + b.opportunity_score, 0) / businesses.length) : 0, color: "#0891b2" },
       { label: "Have Email", value: businesses.filter((b) => b.email).length, color: "#fbbf24" },
     ],
-    intent: [
-      { label: "Total Signals", value: intentData?.total ?? 0, color: "#7c3aed" },
-      { label: "Ready To Buy", value: signals.filter((s) => s.buying_stage === "Ready To Buy").length, color: "#34d399" },
-      { label: "High Urgency", value: signals.filter((s) => s.urgency === "High").length, color: "#f87171" },
-      { label: "Avg Intent", value: signals.length ? Math.round(signals.reduce((a, s) => a + s.intent_score, 0) / signals.length) : 0, color: "#0891b2" },
+    conversations: [
+      { label: "Profiles Found", value: b2cProfiles.length, color: "#7c3aed" },
+      { label: "Ready to Buy", value: b2cProfiles.filter((p) => p.purchase_intent === "ready_to_buy").length, color: "#34d399" },
+      { label: "High Interest (≥75)", value: b2cProfiles.filter((p) => p.interest_score >= 75).length, color: "#f87171" },
+      { label: "Avg Interest", value: b2cProfiles.length ? Math.round(b2cProfiles.reduce((a, p) => a + p.interest_score, 0) / b2cProfiles.length) : 0, color: "#0891b2" },
     ],
     assets: [
       { label: "Total Assets", value: assetsData?.total ?? 0, color: "#7c3aed" },
@@ -1980,10 +2609,10 @@ export default function LeadsPage() {
   };
 
   const TABS: { id: TabType; label: string; icon: string }[] = [
-    { id: "leads", label: "Leads", icon: "👤" },
-    { id: "prospects", label: "Prospects", icon: "🏢" },
-    { id: "intent", label: "Intent Signals", icon: "📡" },
-    { id: "assets", label: "Funnel Assets", icon: "🎨" },
+    { id: "leads",         label: "Leads",          icon: "👤" },
+    { id: "prospects",     label: "Prospects",       icon: "🏢" },
+    { id: "conversations", label: "Conversations",   icon: "💬" },
+    { id: "assets",        label: "Funnel Assets",   icon: "🎨" },
   ];
 
   const bannerEngines: Record<string, string[]> = {
@@ -2085,8 +2714,8 @@ export default function LeadsPage() {
             {id === "prospects" && businesses.length > 0 && (
               <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 999, background: "rgba(124,58,237,0.2)", color: "#a78bfa" }}>{businesses.length}</span>
             )}
-            {id === "intent" && signals.length > 0 && (
-              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 999, background: "rgba(124,58,237,0.2)", color: "#a78bfa" }}>{signals.length}</span>
+            {id === "conversations" && b2cProfiles.length > 0 && (
+              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 999, background: "rgba(124,58,237,0.2)", color: "#a78bfa" }}>{b2cProfiles.length}</span>
             )}
             {id === "assets" && assets.length > 0 && (
               <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 999, background: "rgba(124,58,237,0.2)", color: "#a78bfa" }}>{assets.length}</span>
@@ -2097,10 +2726,16 @@ export default function LeadsPage() {
 
       {/* Tab content */}
       <div className="animate-fade-up" style={{ animationDelay: "0.1s" }}>
-        {activeTab === "leads"     && <LeadsPanel     onSelectLead={(id) => setSelectedLeadId(id)} />}
-        {activeTab === "prospects" && <ProspectsPanel  onSelectBiz={(b) => setSelectedBiz(b)} activeRunId={activeRunId} />}
-        {activeTab === "intent"    && <IntentPanel     onSelectSignal={(s) => setSelectedSignal(s)} />}
-        {activeTab === "assets"    && <AssetsPanel     onSelectAsset={(a) => setSelectedAsset(a)} />}
+        {activeTab === "leads"         && <LeadsPanel          onSelectLead={(id) => setSelectedLeadId(id)} />}
+        {activeTab === "prospects"     && <ProspectsPanel       onSelectBiz={(b) => setSelectedBiz(b)} activeRunId={activeRunId} />}
+        {activeTab === "conversations" && (
+          <ConversationsPanel
+            profiles={b2cProfiles}
+            productContext={b2cProductContext}
+            onSearch={() => setShowDiscovery(true)}
+          />
+        )}
+        {activeTab === "assets"        && <AssetsPanel          onSelectAsset={(a) => setSelectedAsset(a)} />}
       </div>
 
       {/* Modals + Drawers */}
@@ -2109,8 +2744,6 @@ export default function LeadsPage() {
       {selectedLeadId && <LeadDrawer leadId={selectedLeadId} onClose={() => setSelectedLeadId(null)} />}
       {selectedBiz && <BusinessDrawer biz={selectedBiz} onClose={() => setSelectedBiz(null)} />}
       {selectedAsset && <AssetDrawer asset={selectedAsset} onClose={() => setSelectedAsset(null)} />}
-
-      {selectedSignal && <SignalDrawer signal={selectedSignal} onClose={() => setSelectedSignal(null)} onNavigateAssets={() => { setSelectedSignal(null); setActiveTab("assets"); }} />}
     </div>
   );
 }
