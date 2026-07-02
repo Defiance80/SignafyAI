@@ -821,6 +821,7 @@ function AssetDrawer({ asset, onClose }: { asset: GeneratedAsset; onClose: () =>
 function DiscoveryModal({
   onClose,
   onLaunched,
+  onB2cSearchStart,
 }: {
   onClose: () => void;
   onLaunched: (
@@ -829,6 +830,7 @@ function DiscoveryModal({
     n8nTriggered: boolean,
     b2cResult?: { profiles: SocialProfile[]; productContext: string }
   ) => void;
+  onB2cSearchStart?: () => void;
 }) {
   const discover = useDiscoverLeads();
   const [targetMarket, setTargetMarket] = useState<"b2b" | "b2c" | "both">("b2b");
@@ -866,6 +868,7 @@ function DiscoveryModal({
     // B2C: call the conversation search API directly (no n8n)
     if (targetMarket === "b2c") {
       setB2cSearching(true);
+      onB2cSearchStart?.(); // immediately switch tab + show loading in panel
       try {
         const resp = await fetch("/api/b2c/search", {
           method: "POST",
@@ -879,15 +882,22 @@ function DiscoveryModal({
             long_tail: ltList ?? [],
           }),
         });
-        const data = await resp.json() as { profiles?: SocialProfile[]; error?: string };
+        const data = await resp.json() as { profiles?: SocialProfile[]; demo?: boolean; error?: string };
         if (!resp.ok) throw new Error(data.error ?? "Search failed");
+        const profiles = data.profiles ?? [];
+        if (data.demo) {
+          setError(`Demo results shown — Firecrawl is not configured. Add FIRECRAWL_API_KEY to your environment to get real results.`);
+        }
         onLaunched(`b2c-${Date.now()}`, "b2c", false, {
-          profiles: data.profiles ?? [],
+          profiles,
           productContext: clientService.trim(),
         });
-        onClose();
+        if (!data.demo) onClose();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Conversation search failed");
+        const msg = err instanceof Error ? err.message : "Conversation search failed";
+        setError(msg);
+        // Clear loading state on error — show empty state not old results
+        onLaunched(`b2c-err-${Date.now()}`, "b2c", false, { profiles: [], productContext: clientService.trim() });
       } finally {
         setB2cSearching(false);
       }
@@ -1893,10 +1903,12 @@ function ConversationsPanel({
   profiles,
   productContext,
   onSearch,
+  searching,
 }: {
   profiles: SocialProfile[];
   productContext: string;
   onSearch: () => void;
+  searching?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [platformFilter, setPlatformFilter] = useState("");
@@ -2028,6 +2040,34 @@ function ConversationsPanel({
     } finally {
       setCreatingAudience(false);
     }
+  }
+
+  // Loading state — show immediately when search starts
+  if (searching) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-6">
+        <div className="relative">
+          <div className="w-14 h-14 rounded-full border-4 border-t-transparent animate-spin"
+            style={{ borderColor: "#7c3aed", borderTopColor: "transparent" }} />
+          <div className="absolute inset-0 flex items-center justify-center text-xl">💬</div>
+        </div>
+        <div className="text-center">
+          <div className="text-lg font-bold mb-2" style={{ color: "var(--color-text-1)" }}>Scanning conversations…</div>
+          <div className="text-sm max-w-sm leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
+            AI is generating queries, scanning platforms, and filtering for real consumers.
+            This takes 20–40 seconds — results will appear here automatically.
+          </div>
+        </div>
+        <div className="flex gap-2 flex-wrap justify-center mt-2">
+          {["Generating queries", "Scanning platforms", "Filtering consumers", "Building profiles"].map((step) => (
+            <span key={step} className="text-[10px] px-3 py-1 rounded-full animate-pulse"
+              style={{ background: "rgba(124,58,237,0.12)", color: "#a78bfa" }}>
+              ● {step}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (profiles.length === 0) {
@@ -2674,6 +2714,8 @@ export default function LeadsPage() {
   // B2C Conversation state
   const [b2cProfiles, setB2cProfiles] = useState<SocialProfile[]>([]);
   const [b2cProductContext, setB2cProductContext] = useState("");
+  const [b2cSearching, setB2cSearching] = useState(false);
+  const [b2cSearchKey, setB2cSearchKey] = useState(0); // increments to reset panel state
 
   // ── Supabase Realtime: invalidate queries when new rows arrive ──────────────
   useEffect(() => {
@@ -2725,16 +2767,25 @@ export default function LeadsPage() {
     };
   }, [activeRunId, qc]);
 
+  function handleB2cSearchStart() {
+    // Called the moment the user hits "Search Conversations" — before the API call
+    setB2cProfiles([]);          // clear old results immediately
+    setB2cSearching(true);       // show spinner in panel
+    setB2cSearchKey((k) => k + 1); // reset panel's internal filter/selection state
+    setActiveTab("conversations"); // switch tab right away so user sees it's working
+  }
+
   function handleLaunched(
     runId: string,
     market: string,
     n8nTriggered: boolean,
     b2cResult?: { profiles: SocialProfile[]; productContext: string }
   ) {
-    // Store B2C profiles if returned
-    if (b2cResult?.profiles?.length) {
-      setB2cProfiles(b2cResult.profiles);
+    // Always update B2C state when result is provided (even if empty — clears old data)
+    if (b2cResult !== undefined) {
+      setB2cProfiles(b2cResult.profiles ?? []);
       setB2cProductContext(b2cResult.productContext ?? "");
+      setB2cSearching(false);
     }
 
     // Auto-switch to the relevant tab
@@ -2911,16 +2962,18 @@ export default function LeadsPage() {
         {activeTab === "prospects"     && <ProspectsPanel       onSelectBiz={(b) => setSelectedBiz(b)} activeRunId={activeRunId} />}
         {activeTab === "conversations" && (
           <ConversationsPanel
+            key={b2cSearchKey}
             profiles={b2cProfiles}
             productContext={b2cProductContext}
             onSearch={() => setShowDiscovery(true)}
+            searching={b2cSearching}
           />
         )}
         {activeTab === "assets"        && <AssetsPanel          onSelectAsset={(a) => setSelectedAsset(a)} />}
       </div>
 
       {/* Modals + Drawers */}
-      {showDiscovery && <DiscoveryModal onClose={() => setShowDiscovery(false)} onLaunched={handleLaunched} />}
+      {showDiscovery && <DiscoveryModal onClose={() => setShowDiscovery(false)} onLaunched={handleLaunched} onB2cSearchStart={handleB2cSearchStart} />}
       {showAddLead && <AddLeadModal onClose={() => setShowAddLead(false)} />}
       {selectedLeadId && <LeadDrawer leadId={selectedLeadId} onClose={() => setSelectedLeadId(null)} />}
       {selectedBiz && <BusinessDrawer biz={selectedBiz} onClose={() => setSelectedBiz(null)} />}

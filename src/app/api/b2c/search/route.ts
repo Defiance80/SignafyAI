@@ -58,8 +58,8 @@ export async function POST(request: Request) {
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: process.env.OPENAI_BASE_URL });
   const firecrawlKey = process.env.FIRECRAWL_API_KEY;
 
-  // Step 1: AI generates 12-15 targeted consumer-intent search queries
-  let searchQueries: Array<{ query: string; platform: string; intent: string }> = [];
+  // Step 1: AI generates 8 targeted consumer-intent search queries
+  let searchQueries: Array<{ query: string; platform: string }> = [];
 
   try {
     const queryGenResp = await openai.chat.completions.create({
@@ -67,61 +67,59 @@ export async function POST(request: Request) {
       messages: [
         {
           role: "system",
-          content: `You are a social media research expert specializing in finding CONSUMER purchase intent signals.
-Your job is to generate search queries that find BUYERS — people seeking to purchase, hire, or find a product or service.
-You must AVOID queries that would surface sellers, service providers, or businesses promoting themselves.
-Focus on questions people ask when they NEED something, not when they SELL something.`,
+          content: `You generate search queries that find REAL CONSUMER posts — people seeking to buy, hire, or find a product/service.
+AVOID queries that find sellers, businesses promoting themselves, or service providers advertising.
+Focus on question-style queries that surface buyers: "looking for", "anyone recommend", "how much does X cost", "need help with".`,
         },
         {
           role: "user",
-          content: `Goal: Find potential CONSUMERS who want to BUY or hire: "${description}"
-Product/service being sold: ${product_context || "Not specified"}
-Location: ${location || "Any"}
-Extra keywords: ${keywords.join(", ") || "derive from goal"}
-Platforms: ${platforms.join(", ")}
+          content: `Find CONSUMERS who want to buy/hire: "${description}"
+Product/service context: ${product_context || "not specified"}
+Location: ${location || "any"}
+Keywords: ${keywords.join(", ") || "derive from description"}
+Platforms available: ${platforms.join(", ")}
 
-Generate 12-15 search queries to find people who are CONSUMERS — asking questions, seeking help,
-looking for recommendations, or expressing a need. Target signals like:
-- "looking for", "need help with", "can anyone recommend", "best [service] near me"
-- "how much does X cost", "comparing options for", "anyone tried X", "is X worth it"
-- "where can I find", "struggling with", "I need someone who", "frustrated with"
+Generate exactly 8 search queries. Use platform site: operators where helpful (site:reddit.com, site:quora.com).
+Vary the angle: questions, complaints, recommendation requests, price questions, comparison posts.
 
-Use platform site: operators (site:reddit.com, site:twitter.com) and question-style phrasing.
-Vary across: ask questions, complaint phrasing, recommendation requests, price inquiries, beginner questions.
-
-STRICTLY AVOID queries that would find: "we offer", "our services", "hire us", business promotions.
-
-Return JSON: { "queries": [{ "query": string, "platform": string, "intent": string }] }`,
+Return JSON: { "queries": [{ "query": string, "platform": string }] }`,
         },
       ],
       response_format: { type: "json_object" },
-      max_tokens: 1200,
-      temperature: 0.7,
+      max_tokens: 800,
+      temperature: 0.8,
     });
 
     const data = JSON.parse(queryGenResp.choices[0]?.message?.content ?? "{}") as {
-      queries?: Array<{ query: string; platform: string; intent: string }>;
+      queries?: Array<{ query: string; platform: string }>;
     };
-    searchQueries = data.queries ?? [];
+    searchQueries = (data.queries ?? []).slice(0, 8);
   } catch {
-    searchQueries = platforms.flatMap((p) => [
-      { query: `"looking for" ${description} site:${p === "google" ? "reddit.com" : `${p}.com`}`, platform: p, intent: "need" },
-      { query: `"recommend" OR "best" ${description} ${location}`, platform: p, intent: "recommendation" },
-    ]);
+    // Fallback queries if AI fails
+    const terms = description.split(" ").slice(0, 4).join(" ");
+    searchQueries = [
+      { query: `"looking for" ${terms} ${location} site:reddit.com`, platform: "reddit" },
+      { query: `"anyone recommend" ${terms} ${location}`, platform: "google" },
+      { query: `"need help" ${terms} ${location} site:reddit.com`, platform: "reddit" },
+      { query: `"how much does" ${terms} cost ${location}`, platform: "google" },
+      { query: `${terms} recommendation ${location} site:reddit.com`, platform: "reddit" },
+      { query: `best ${terms} near me ${location}`, platform: "google" },
+    ];
   }
 
-  // Merge user long-tail queries
-  const allQueries = [
-    ...searchQueries,
-    ...(long_tail as string[]).map((q: string) => ({ query: q, platform: "web", intent: "long-tail" })),
-  ].slice(0, 15);
+  // Add user-supplied long-tail queries (max 4 extra)
+  const ltQueries = (long_tail as string[])
+    .slice(0, 4)
+    .map((q) => ({ query: q, platform: "web" }));
 
-  // Step 2: Firecrawl — 8-10 results per query for deep coverage
-  const searchResults: Array<{ url: string; content: string; title: string; query: string }> = [];
+  const allQueries = [...searchQueries, ...ltQueries].slice(0, 10);
+
+  // Step 2: Firecrawl — 5 results per query, 8s timeout, use allSettled so one failure doesn't kill all
+  const searchResults: Array<{ url: string; content: string; title: string }> = [];
 
   if (firecrawlKey && allQueries.length > 0) {
-    const searchPromises = allQueries.map(async (q) => {
-      try {
+    const results = await Promise.allSettled(
+      allQueries.map(async (q) => {
         const resp = await fetch("https://api.firecrawl.dev/v1/search", {
           method: "POST",
           headers: {
@@ -130,26 +128,28 @@ Return JSON: { "queries": [{ "query": string, "platform": string, "intent": stri
           },
           body: JSON.stringify({
             query: q.query,
-            limit: 8,
+            limit: 5,
             scrapeOptions: { formats: ["markdown"], onlyMainContent: true },
           }),
-          signal: AbortSignal.timeout(15000),
+          signal: AbortSignal.timeout(8000),
         });
-        if (!resp.ok) return;
+        if (!resp.ok) return [];
         const data = await resp.json() as { data?: Array<{ url: string; markdown?: string; metadata?: { title?: string } }> };
-        for (const r of data.data ?? []) {
-          if (r.markdown && r.markdown.length > 100) {
-            searchResults.push({
-              url: r.url ?? "",
-              content: r.markdown.slice(0, 4000),
-              title: r.metadata?.title ?? "",
-              query: q.query,
-            });
-          }
-        }
-      } catch { /* timeout — skip */ }
-    });
-    await Promise.all(searchPromises);
+        return (data.data ?? [])
+          .filter((r) => r.markdown && r.markdown.length > 80)
+          .map((r) => ({
+            url: r.url ?? "",
+            content: r.markdown!.slice(0, 3000),
+            title: r.metadata?.title ?? "",
+          }));
+      })
+    );
+
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        searchResults.push(...result.value);
+      }
+    }
   }
 
   if (searchResults.length === 0) {
@@ -161,94 +161,90 @@ Return JSON: { "queries": [{ "query": string, "platform": string, "intent": stri
     });
   }
 
-  // Step 3: AI consumer-only extraction — target 20+ profiles, weed out sellers
+  // Step 3: AI extraction in one batch (up to 50 pages) — consumer-only, no sellers
   let profiles: SocialProfile[] = [];
 
-  // Process in batches of 8 results to maximize extraction
-  const batchSize = 8;
-  const batches: Array<typeof searchResults> = [];
-  for (let i = 0; i < searchResults.length; i += batchSize) {
-    batches.push(searchResults.slice(i, i + batchSize));
+  // Process in chunks of 10 pages at a time
+  const chunks: typeof searchResults[] = [];
+  for (let i = 0; i < searchResults.length; i += 10) {
+    chunks.push(searchResults.slice(i, i + 10));
   }
 
-  const extractionPromises = batches.map(async (batch) => {
-    try {
+  const extractionResults = await Promise.allSettled(
+    chunks.map(async (chunk) => {
       const resp = await openai.chat.completions.create({
         model: process.env.AI_MODEL ?? "gpt-4o-mini",
         messages: [
           {
             role: "system",
-            content: `You extract CONSUMER lead profiles from social media content.
+            content: `Extract CONSUMER lead profiles from social content.
 
-CRITICAL RULES:
-1. Only include REAL people who are SEEKING to buy, hire, or find: "${description}"
-2. EXCLUDE anyone who is SELLING, promoting services, or posting as a business
-3. EXCLUDE bots, spam accounts, or automated posts
-4. Consumer signals to INCLUDE: asking questions, seeking recommendations, expressing need/frustration,
-   comparing options, asking about pricing, looking for help, sharing a problem they need solved
-5. Seller signals to EXCLUDE: "we offer", "our services", "hire us", "visit our website", "DM for services",
-   "check out our", "we provide", "our team", "book with us", promotional language
-6. A seller can still be a consumer if they're asking about a DIFFERENT need — judge the specific post only
+INCLUDE: real people asking questions, seeking recommendations, comparing options, mentioning they need something, frustrated with a current solution, asking about pricing.
 
-Target: Extract as many distinct CONSUMER users as possible (aim for 5+ per batch).`,
+EXCLUDE (mark is_seller=true or skip entirely):
+- Anyone posting "we offer", "our services", "hire us", "contact us for", "DM for pricing"
+- Business accounts or anyone promoting/advertising
+- Generic news articles, blog posts with no individual poster
+- Automated or bot posts
+
+Only extract REAL individual users with genuine consumer need. Return as many distinct consumers as possible (aim for 5+ per chunk).`,
           },
           {
             role: "user",
-            content: `Find CONSUMER leads seeking: "${description}"
-What's being sold: ${product_context || "Not specified"}
-Location context: ${location || "Any"}
+            content: `Find consumers seeking: "${description}"
+What's being sold: ${product_context || "not specified"}
+Location: ${location || "any"}
 
-Search results:
-${batch.map((r, i) => `[${i + 1}] URL: ${r.url}\nTitle: ${r.title}\nContent:\n${r.content}`).join("\n\n---\n\n")}
+Pages to analyze:
+${chunk.map((r, i) => `[${i + 1}] ${r.url}\n${r.title}\n${r.content}`).join("\n\n---\n\n")}
 
-For each distinct CONSUMER user found, extract:
+For each CONSUMER found, return:
 {
   "platform": "reddit|twitter|youtube|google|yelp|web|tiktok|instagram|facebook|linkedin",
-  "username": "handle without @ prefix",
-  "display_name": "their displayed name if shown",
-  "first_name": "extract ONLY if clearly stated in their post/profile (not guessed)",
-  "last_name": "extract ONLY if clearly visible in their profile/post (not guessed)",
+  "username": "handle (no @ prefix)",
+  "display_name": "shown display name or null",
+  "first_name": "only if explicitly visible in their post/profile, else null",
+  "last_name": "only if explicitly visible, else null",
   "profile_url": "direct URL to their profile",
-  "post_text": "their EXACT post/comment showing the consumer need, max 300 chars",
-  "post_url": "direct URL to this specific post",
-  "post_date": "ISO 8601 if visible, else null",
-  "keywords_matched": ["keywords from their post matching the search"],
-  "interest_score": 0-100 (100=urgent active buyer, 50=curious, 0=barely related),
+  "post_text": "exact quote of their post showing need, max 280 chars",
+  "post_url": "URL to this specific post",
+  "post_date": "ISO date if visible, else null",
+  "keywords_matched": ["terms from their post matching the search"],
+  "interest_score": 0-100,
   "purchase_intent": "ready_to_buy|researching|browsing|null",
-  "consumer_signals": ["specific phrases showing consumer intent, e.g. 'asked for quote', 'comparing prices', 'mentioned budget'],
+  "consumer_signals": ["e.g. asked for price", "requested recommendation", "mentioned budget"],
   "is_seller": false,
   "shopping_signals": {
     "mentions_buying": true/false,
-    "platform_mentions": ["amazon","ebay","etsy","walmart","google shopping"] — only explicit mentions,
+    "platform_mentions": ["amazon","ebay","etsy","walmart" — only explicit mentions],
     "frequency": "frequent|occasional|null"
   },
   "contact": {
-    "dm_url": "construct where possible: reddit→https://reddit.com/message/compose?to=USERNAME",
+    "dm_url": "e.g. https://reddit.com/message/compose?to=USERNAME for reddit",
     "type": "DM|Message|Inbox|Connect|View"
   },
-  "similar_products": ["related products/services they might also want"]
+  "similar_products": ["other things they might want"]
 }
 
 Return JSON: { "profiles": [...] }
-Return empty array if no genuine consumers found — do NOT fabricate users.`,
+Return empty array if no real consumers found.`,
           },
         ],
         response_format: { type: "json_object" },
         max_tokens: 4000,
-        temperature: 0.25,
+        temperature: 0.2,
       });
 
-      const extracted = JSON.parse(resp.choices[0]?.message?.content ?? "{}") as {
+      const data = JSON.parse(resp.choices[0]?.message?.content ?? "{}") as {
         profiles?: Array<Partial<SocialProfile>>;
       };
-      return (extracted.profiles ?? []).filter((p) => !p.is_seller && p.username && p.post_text);
-    } catch {
-      return [];
-    }
-  });
+      return (data.profiles ?? []).filter((p) => !p.is_seller && p.username && p.post_text);
+    })
+  );
 
-  const batchResults = await Promise.all(extractionPromises);
-  const rawProfiles = batchResults.flat();
+  const rawProfiles = extractionResults
+    .filter((r) => r.status === "fulfilled")
+    .flatMap((r) => (r as PromiseFulfilledResult<Partial<SocialProfile>[]>).value);
 
   // Deduplicate by username+platform
   const seen = new Set<string>();
@@ -281,9 +277,7 @@ Return empty array if no genuine consumers found — do NOT fabricate users.`,
         frequency: p.shopping_signals?.frequency ?? null,
       },
       contact: {
-        dm_url:
-          p.contact?.dm_url ??
-          buildDmUrl(p.platform ?? "web", (p.username ?? "").replace(/^@/, "")),
+        dm_url: p.contact?.dm_url ?? buildDmUrl(p.platform ?? "web", (p.username ?? "").replace(/^@/, "")),
         type: (p.contact?.type ?? getPlatformContactType(p.platform ?? "web")) as SocialProfile["contact"]["type"],
       },
       ai_message: null,
@@ -313,9 +307,9 @@ function buildDmUrl(platform: string, username: string): string | null {
 
 function getPlatformContactType(platform: string): SocialProfile["contact"]["type"] {
   switch (platform.toLowerCase()) {
-    case "reddit":    return "DM";
-    case "twitter":   return "DM";
-    case "instagram": return "DM";
+    case "reddit":
+    case "twitter":
+    case "instagram":
     case "tiktok":    return "DM";
     case "facebook":  return "Message";
     case "linkedin":  return "Connect";
@@ -323,52 +317,52 @@ function getPlatformContactType(platform: string): SocialProfile["contact"]["typ
   }
 }
 
+// Demo profiles — unique IDs per call, clearly labelled as demo
 function buildDemoProfiles(description: string, _ctx: string): SocialProfile[] {
+  const ts = Date.now();
+  const snippet = description.slice(0, 50);
   return [
     {
-      id: "demo-1", platform: "reddit", username: "homefix_seeker",
-      display_name: "Sarah Mitchell", first_name: "Sarah", last_name: "Mitchell",
+      id: `demo-${ts}-1`, platform: "reddit", username: "homefix_seeker",
+      display_name: "Sarah M.", first_name: "Sarah", last_name: "M.",
       profile_url: "https://reddit.com/user/homefix_seeker",
-      post_text: `Just got quoted $3,200 for what sounds like a basic fix. Anyone know a reliable, honest company for "${description.slice(0, 50)}"? Already called 2 places and getting different stories. Really frustrated.`,
-      post_url: "https://reddit.com/r/AskReddit/comments/example1",
-      post_date: new Date(Date.now() - 7200000).toISOString(),
-      keywords_matched: description.split(" ").slice(0, 5),
-      interest_score: 96, purchase_intent: "ready_to_buy",
-      consumer_signals: ["asked for recommendation", "mentioned getting quotes", "expressed frustration"],
+      post_text: `Just got quoted $3,200 for what sounds basic. Anyone know a reliable place for "${snippet}"? Called 2 places already — stories don't match. Really frustrated.`,
+      post_url: null, post_date: new Date(Date.now() - 7200000).toISOString(),
+      keywords_matched: description.split(" ").slice(0, 4),
+      interest_score: 92, purchase_intent: "ready_to_buy",
+      consumer_signals: ["requested recommendation", "mentioned getting quotes", "expressed urgency"],
       is_seller: false,
       shopping_signals: { mentions_buying: true, platform_mentions: [], frequency: "occasional" },
       contact: { dm_url: "https://reddit.com/message/compose?to=homefix_seeker", type: "DM" },
-      ai_message: null, similar_products: ["consultation", "free estimate", "service warranty"],
+      ai_message: null, similar_products: ["free estimate", "consultation", "service warranty"],
     },
     {
-      id: "demo-2", platform: "twitter", username: "jk_dealfinder",
+      id: `demo-${ts}-2`, platform: "twitter", username: "comparing_options_now",
       display_name: "James K.", first_name: "James", last_name: "K.",
-      profile_url: "https://twitter.com/jk_dealfinder",
-      post_text: `Comparing 3 different options for ${description.slice(0, 60)}. Prices are all over the place. Anyone have personal experience? Looking to make a decision this week.`,
-      post_url: "https://twitter.com/jk_dealfinder/status/example2",
-      post_date: new Date(Date.now() - 14400000).toISOString(),
+      profile_url: "https://twitter.com/comparing_options_now",
+      post_text: `Comparing 3 options for ${snippet}. Prices all over the place. Anyone have firsthand experience? Making a decision this week.`,
+      post_url: null, post_date: new Date(Date.now() - 14400000).toISOString(),
       keywords_matched: description.split(" ").slice(0, 3),
-      interest_score: 88, purchase_intent: "researching",
-      consumer_signals: ["comparing prices", "decision timeline mentioned", "seeking personal recommendations"],
+      interest_score: 85, purchase_intent: "researching",
+      consumer_signals: ["comparing prices", "mentioned decision timeline", "seeking personal experience"],
       is_seller: false,
-      shopping_signals: { mentions_buying: true, platform_mentions: ["amazon"], frequency: "frequent" },
-      contact: { dm_url: "https://twitter.com/jk_dealfinder", type: "DM" },
-      ai_message: null, similar_products: ["price comparison", "free quote"],
+      shopping_signals: { mentions_buying: true, platform_mentions: [], frequency: "occasional" },
+      contact: { dm_url: "https://twitter.com/comparing_options_now", type: "DM" },
+      ai_message: null, similar_products: ["price comparison guide", "free quote"],
     },
     {
-      id: "demo-3", platform: "reddit", username: "firsttimer_needs_help",
+      id: `demo-${ts}-3`, platform: "reddit", username: "first_timer_q",
       display_name: null, first_name: null, last_name: null,
-      profile_url: "https://reddit.com/user/firsttimer_needs_help",
-      post_text: `Complete newbie here. Never dealt with ${description.slice(0, 50)} before. What should I look for? What's a fair price? Any red flags to watch out for when choosing someone?`,
-      post_url: "https://reddit.com/r/DIY/comments/example3",
-      post_date: new Date(Date.now() - 86400000).toISOString(),
-      keywords_matched: description.split(" ").slice(1, 4),
-      interest_score: 72, purchase_intent: "browsing",
-      consumer_signals: ["first-time buyer questions", "price guidance needed", "vetting criteria questions"],
+      profile_url: "https://reddit.com/user/first_timer_q",
+      post_text: `Never dealt with ${snippet} before. What should I look for? What's a fair price? Any red flags when choosing someone?`,
+      post_url: null, post_date: new Date(Date.now() - 86400000).toISOString(),
+      keywords_matched: description.split(" ").slice(0, 3),
+      interest_score: 68, purchase_intent: "browsing",
+      consumer_signals: ["first-time buyer", "asked for price guidance", "researching what to look for"],
       is_seller: false,
-      shopping_signals: { mentions_buying: false, platform_mentions: ["google"], frequency: null },
-      contact: { dm_url: "https://reddit.com/message/compose?to=firsttimer_needs_help", type: "DM" },
-      ai_message: null, similar_products: ["beginner guide", "consultation"],
+      shopping_signals: { mentions_buying: false, platform_mentions: [], frequency: null },
+      contact: { dm_url: "https://reddit.com/message/compose?to=first_timer_q", type: "DM" },
+      ai_message: null, similar_products: ["beginner consultation", "free inspection"],
     },
   ];
 }
