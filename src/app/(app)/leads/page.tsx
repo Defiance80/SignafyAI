@@ -881,6 +881,7 @@ function DiscoveryModal({
             location: location || undefined,
             long_tail: ltList ?? [],
           }),
+          signal: AbortSignal.timeout(55000), // 55s client timeout — prevents infinite spinner
         });
         const data = await resp.json() as { profiles?: SocialProfile[]; demo?: boolean; error?: string };
         if (!resp.ok) throw new Error(data.error ?? "Search failed");
