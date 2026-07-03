@@ -142,15 +142,48 @@ export async function POST(request: Request) {
   const redditClientId = process.env.REDDIT_CLIENT_ID;
   const redditSecret = process.env.REDDIT_CLIENT_SECRET;
 
-  // Get Reddit OAuth token if credentials are configured — bypasses datacenter IP blocks
+  // Get Reddit OAuth token — bypasses datacenter IP block on Vercel
   const redditToken = (redditClientId && redditSecret)
     ? await getRedditToken(redditClientId, redditSecret)
     : null;
 
-  const kw = keywords.length > 0
-    ? keywords.slice(0, 5).join(" ")
-    : description.trim().split(/\s+/).slice(0, 6).join(" ");
-  const loc = location.trim() ? ` ${location.trim()}` : "";
+  // ── Generate targeted search queries via AI ──────────────────────────────
+  // Word-slicing the description produces garbage queries ("People interested in").
+  // OpenAI extracts the actual intent and generates 5 sharp search strings.
+  let searchQueries: string[] = [];
+  try {
+    const qGen = await openai.chat.completions.create({
+      model: process.env.AI_MODEL ?? "gpt-4o-mini",
+      messages: [{
+        role: "user",
+        content: `Generate 5 short web search queries (under 8 words each) to find REAL PEOPLE who want to buy/hire/use: "${description}"${location ? ` in ${location}` : ""}.
+Focus on purchase intent. No quotes, no site: operators, no fluff.
+Return JSON: { "queries": ["query1", "query2", "query3", "query4", "query5"] }`,
+      }],
+      response_format: { type: "json_object" },
+      max_tokens: 200,
+      temperature: 0.7,
+    });
+    const parsed = JSON.parse(qGen.choices[0]?.message?.content ?? "{}") as { queries?: string[] };
+    searchQueries = (parsed.queries ?? []).filter(Boolean).slice(0, 5);
+  } catch { /* fall through to keyword fallback */ }
+
+  // Fallback: strip stop words and build a clean keyword string
+  if (searchQueries.length === 0) {
+    const stopWords = new Set(["people", "who", "are", "is", "in", "the", "a", "an", "and", "or", "for", "to", "of", "want", "looking", "find", "interested"]);
+    const cleanKw = (keywords.length > 0 ? keywords : description.trim().split(/\s+/))
+      .filter((w) => !stopWords.has(w.toLowerCase()) && w.length > 2)
+      .slice(0, 5)
+      .join(" ");
+    const loc = location.trim();
+    searchQueries = [
+      `${cleanKw}${loc ? " " + loc : ""} recommendation`,
+      `${cleanKw}${loc ? " " + loc : ""} looking for`,
+      `${cleanKw}${loc ? " " + loc : ""} best advice`,
+      `${cleanKw}${loc ? " " + loc : ""} how much cost`,
+      `${cleanKw}${loc ? " " + loc : ""} help needed`,
+    ];
+  }
 
   const ts = Date.now();
   const redditPosts: RedditPost[] = [];
@@ -160,39 +193,36 @@ export async function POST(request: Request) {
 
   const tasks: Promise<void>[] = [];
 
-  // Reddit — OAuth API if credentials set (bypasses datacenter IP block), else unauthenticated
+  // Reddit — OAuth if credentials set, else unauthenticated (may be blocked from datacenter)
   if (platforms.includes("reddit")) {
     tasks.push(
-      searchReddit([
-        `${kw}${loc} recommend`,
-        `${kw}${loc} looking for`,
-        `${kw}${loc} how much cost`,
-        `${kw}${loc} best advice`,
-        `${kw}${loc} need help`,
-      ], redditToken ?? undefined).then((posts) => { redditPosts.push(...posts); })
+      searchReddit(searchQueries, redditToken ?? undefined)
+        .then((posts) => { redditPosts.push(...posts); })
     );
   }
 
-  // All other platforms via Firecrawl (site-specific queries run in parallel)
+  // All other platforms via Firecrawl
   if (firecrawlKey) {
     const platformQueries: Array<{ query: string; platform: string }> = [];
 
-    // Natural-language queries work more reliably with Firecrawl than site: operators
-    if (platforms.includes("quora"))      platformQueries.push({ query: `${kw}${loc} Quora questions answers`, platform: "quora" });
-    if (platforms.includes("yelp"))       platformQueries.push({ query: `${kw}${loc} Yelp reviews local`, platform: "yelp" });
-    if (platforms.includes("trustpilot")) platformQueries.push({ query: `${kw}${loc} Trustpilot reviews`, platform: "trustpilot" });
-    if (platforms.includes("craigslist")) platformQueries.push({ query: `${kw}${loc} Craigslist wanted services`, platform: "craigslist" });
-    if (platforms.includes("youtube"))    platformQueries.push({ query: `${kw}${loc} YouTube comments opinions`, platform: "youtube" });
-    if (platforms.includes("twitter") || platforms.includes("x")) platformQueries.push({ query: `${kw}${loc} Twitter discussion opinions`, platform: "twitter" });
-    if (platforms.includes("facebook"))   platformQueries.push({ query: `${kw}${loc} Facebook groups community`, platform: "facebook" });
-    if (platforms.includes("linkedin"))   platformQueries.push({ query: `${kw}${loc} LinkedIn professional posts`, platform: "linkedin" });
-    // Broad web searches — forums, communities, review sites
-    platformQueries.push(
-      { query: `${kw}${loc} forum community recommendation advice`, platform: "web" },
-      { query: `${kw}${loc} looking for need help reviews`, platform: "web" },
-    );
-    // Always include Quora if not selected
-    if (!platforms.includes("quora")) platformQueries.push({ query: `${kw}${loc} Quora questions`, platform: "quora" });
+    // Add each AI-generated query targeted at the most productive platforms
+    for (const q of searchQueries) {
+      if (platforms.includes("quora"))      platformQueries.push({ query: `${q} site:quora.com`, platform: "quora" });
+      if (platforms.includes("yelp"))       platformQueries.push({ query: `${q} site:yelp.com`, platform: "yelp" });
+      if (platforms.includes("craigslist")) platformQueries.push({ query: `${q} site:craigslist.org`, platform: "craigslist" });
+      if (platforms.includes("google") || platforms.includes("web")) platformQueries.push({ query: q, platform: "web" });
+      break; // one round of platform-targeted queries per AI query to stay within limits
+    }
+    // Additional queries for remaining platforms
+    const baseQ = searchQueries[0] ?? description.slice(0, 60);
+    if (platforms.includes("trustpilot")) platformQueries.push({ query: `${baseQ} site:trustpilot.com`, platform: "trustpilot" });
+    if (platforms.includes("youtube"))    platformQueries.push({ query: `${baseQ} site:youtube.com`, platform: "youtube" });
+    if (platforms.includes("twitter") || platforms.includes("x")) platformQueries.push({ query: `${baseQ} site:twitter.com`, platform: "twitter" });
+    if (platforms.includes("facebook"))   platformQueries.push({ query: `${baseQ} site:facebook.com`, platform: "facebook" });
+    if (platforms.includes("reddit") && !redditToken) platformQueries.push({ query: `${baseQ} site:reddit.com`, platform: "reddit" });
+    // Always include broad web + Quora
+    platformQueries.push({ query: searchQueries[1] ?? baseQ, platform: "web" });
+    if (!platforms.includes("quora")) platformQueries.push({ query: `${baseQ} site:quora.com`, platform: "quora" });
     // Long-tail queries as broad web searches
     (long_tail as string[]).slice(0, 3).forEach((q) => {
       platformQueries.push({ query: q, platform: "web" });
