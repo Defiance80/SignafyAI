@@ -2,7 +2,7 @@ import { requireOrgContext } from "@/lib/supabase/server";
 import { errorResponse, jsonResponse } from "@/lib/utils";
 import OpenAI from "openai";
 
-// Vercel Pro: allow up to 60s for AI + Firecrawl
+// Vercel Pro: allow up to 60s for AI + Serper
 export const maxDuration = 60;
 
 export interface SocialProfile {
@@ -49,6 +49,7 @@ export async function POST(request: Request) {
 
   const {
     description = "",
+    platforms = [],
     keywords = [],
     product_context = "",
     location = "",
@@ -57,11 +58,11 @@ export async function POST(request: Request) {
 
   if (!description.trim()) return errorResponse("Search description is required", 400);
 
-  const firecrawlKey = process.env.FIRECRAWL_API_KEY;
+  const serperKey = process.env.SERPER_API_KEY;
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: process.env.OPENAI_BASE_URL });
 
-  // No key at all → demo immediately
-  if (!firecrawlKey) {
+  // No key → demo
+  if (!serperKey) {
     return jsonResponse({
       profiles: buildDemoProfiles(description, product_context),
       queries_used: [],
@@ -71,94 +72,169 @@ export async function POST(request: Request) {
     });
   }
 
-  // Build search queries from templates
-  const kw = keywords.length > 0
-    ? keywords.slice(0, 4).join(" ")
-    : description.trim().split(/\s+/).slice(0, 5).join(" ");
-  const loc = location.trim() ? ` ${location.trim()}` : "";
+  // Generate search queries with AI
+  let searchQueries: string[] = [];
+  
+  try {
+    const queryGenResp = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "Generate 5 highly targeted search queries to find people expressing consumer intent. Focus on phrases people use when they need help, recommendations, or are actively shopping."
+        },
+        {
+          role: "user",
+          content: `Generate 5 search queries to find: "${description}"${location ? ` in ${location}` : ""}
 
-  // Mix of site-specific and broad queries for better coverage
-  const templateQueries = [
-    `${kw}${loc} looking for OR need OR recommend site:reddit.com`,
-    `${kw}${loc} price OR cost OR quote OR "how much" site:reddit.com`,
-    `${kw}${loc} recommendation OR suggestions`,
-    `${kw}${loc} best OR cheapest OR affordable`,
-    `reddit ${kw}${loc} help`,
-  ];
+Include queries that capture:
+1. Direct need expression ("need", "looking for", "help me find")
+2. Recommendation requests ("recommend", "suggestions", "best")
+3. Price/comparison shopping ("how much", "cost", "vs", "compare")
+4. Frustration/urgency ("frustrated with", "urgent", "ASAP")
+5. Review/experience questions ("anyone used", "experiences with")
 
-  const ltQueries = (long_tail as string[]).slice(0, 3);
-  const allQueries = [...templateQueries, ...ltQueries].slice(0, 6);
+Return JSON: { "queries": ["query1", "query2", ...] }`
+        }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+      max_tokens: 500,
+    });
 
-  // Firecrawl search — 8s timeout, allSettled so one failure doesn't kill the batch
-  const searchResults: Array<{ url: string; content: string; title: string }> = [];
-  const fcErrors: string[] = [];
+    const queryData = JSON.parse(queryGenResp.choices[0]?.message?.content ?? "{}") as { queries?: string[] };
+    searchQueries = (queryData.queries ?? []).slice(0, 5);
+  } catch {
+    // Fallback to keyword extraction if AI fails
+    const kw = keywords.length > 0
+      ? keywords.slice(0, 4).join(" ")
+      : description.trim().split(/\s+/).filter(w => 
+          !["the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for"].includes(w.toLowerCase())
+        ).slice(0, 5).join(" ");
+    const loc = location.trim() ? ` ${location.trim()}` : "";
+    
+    searchQueries = [
+      `${kw}${loc} need OR looking for OR help`,
+      `${kw}${loc} recommend OR suggestions`,
+      `${kw}${loc} best OR cheapest`,
+      `${kw}${loc} price OR cost OR quote`,
+      `${kw}${loc} review OR experience`,
+    ];
+  }
 
-  const fcResults = await Promise.allSettled(
-    allQueries.map(async (query) => {
-      const resp = await fetch("https://api.firecrawl.dev/v1/search", {
+  // Map platforms to site: operators
+  const platformSites: Record<string, string> = {
+    reddit: "reddit.com",
+    twitter: "twitter.com OR x.com",
+    quora: "quora.com",
+    yelp: "yelp.com",
+    youtube: "youtube.com",
+    facebook: "facebook.com",
+    linkedin: "linkedin.com",
+    tiktok: "tiktok.com",
+    instagram: "instagram.com",
+  };
+
+  const selectedPlatforms = platforms.length > 0 ? platforms : Object.keys(platformSites);
+  const siteQueries: string[] = [];
+
+  // Build platform-specific queries
+  for (const query of searchQueries) {
+    for (const platform of selectedPlatforms) {
+      const site = platformSites[platform.toLowerCase()];
+      if (site) {
+        siteQueries.push(`${query} site:${site}`);
+      }
+    }
+  }
+
+  // Limit to 20 total queries to stay within rate limits
+  const finalQueries = siteQueries.slice(0, 20);
+
+  // Serper search
+  const searchResults: Array<{ url: string; content: string; title: string; platform: string }> = [];
+  const serperErrors: string[] = [];
+
+  const serperResults = await Promise.allSettled(
+    finalQueries.map(async (query) => {
+      const resp = await fetch("https://google.serper.dev/search", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${firecrawlKey}`,
+          "X-API-KEY": serperKey,
         },
         body: JSON.stringify({
-          query,
-          limit: 5,
-          scrapeOptions: { formats: ["markdown"], onlyMainContent: true },
+          q: query,
+          num: 10,
         }),
         signal: AbortSignal.timeout(8000),
       });
 
       if (!resp.ok) {
         const errText = await resp.text().catch(() => resp.status.toString());
-        throw new Error(`FC ${resp.status}: ${errText.slice(0, 100)}`);
+        throw new Error(`Serper ${resp.status}: ${errText.slice(0, 100)}`);
       }
 
       const data = await resp.json() as {
-        success?: boolean;
-        data?: Array<{ url: string; markdown?: string; content?: string; metadata?: { title?: string } }>;
+        organic?: Array<{
+          link: string;
+          snippet?: string;
+          title?: string;
+        }>;
       };
 
-      return (data.data ?? [])
-        .filter((r) => (r.markdown ?? r.content ?? "").length > 50)
+      const platform = query.includes("site:reddit") ? "reddit" 
+        : query.includes("site:twitter") || query.includes("site:x.com") ? "twitter"
+        : query.includes("site:quora") ? "quora"
+        : query.includes("site:yelp") ? "yelp"
+        : query.includes("site:youtube") ? "youtube"
+        : query.includes("site:facebook") ? "facebook"
+        : query.includes("site:linkedin") ? "linkedin"
+        : query.includes("site:tiktok") ? "tiktok"
+        : query.includes("site:instagram") ? "instagram"
+        : "web";
+
+      return (data.organic ?? [])
+        .filter((r) => (r.snippet ?? "").length > 30)
         .map((r) => ({
-          url: r.url ?? "",
-          content: (r.markdown ?? r.content ?? "").slice(0, 2000),
-          title: r.metadata?.title ?? "",
+          url: r.link ?? "",
+          content: (r.snippet ?? "").slice(0, 2000),
+          title: r.title ?? "",
+          platform,
         }));
     })
   );
 
-  for (const result of fcResults) {
+  for (const result of serperResults) {
     if (result.status === "fulfilled") {
       searchResults.push(...result.value);
     } else {
-      fcErrors.push(result.reason instanceof Error ? result.reason.message : String(result.reason));
+      serperErrors.push(result.reason instanceof Error ? result.reason.message : String(result.reason));
     }
   }
 
-  // All Firecrawl calls failed → return debug info instead of silent demo
+  // All searches failed → return debug
   if (searchResults.length === 0) {
-    const allFailed = fcErrors.length === allQueries.length;
-    const errSample = fcErrors.slice(0, 2).join("; ");
+    const allFailed = serperErrors.length === finalQueries.length;
+    const errSample = serperErrors.slice(0, 2).join("; ");
     return jsonResponse({
       profiles: buildDemoProfiles(description, product_context),
-      queries_used: allQueries,
+      queries_used: finalQueries,
       total: 3,
       demo: true,
       demo_reason: allFailed ? "api_error" : "no_results",
       debug: {
-        queries_run: allQueries.length,
-        errors: fcErrors,
+        queries_run: finalQueries.length,
+        errors: serperErrors,
         hint: allFailed
-          ? `Firecrawl returned errors for all queries. First error: ${errSample}`
-          : `Firecrawl returned ${fcResults.filter(r => r.status === "fulfilled").length} pages but none had usable content. Errors: ${errSample || "none"}`,
+          ? `Serper returned errors for all queries. First error: ${errSample}`
+          : `Serper returned ${serperResults.filter(r => r.status === "fulfilled").length} results but none had usable content. Errors: ${errSample || "none"}`,
       },
     });
   }
 
-  // OpenAI extraction from all pages
-  const pages = searchResults.slice(0, 25);
+  // OpenAI extraction from search results
+  const pages = searchResults.slice(0, 30);
   let profiles: SocialProfile[] = [];
 
   try {
@@ -184,12 +260,15 @@ Return as many DISTINCT consumers as possible (aim for 10+).`,
 Product/service context: ${product_context || "not specified"}
 Location: ${location || "any"}
 
-Pages:
-${pages.map((r, i) => `[${i + 1}] ${r.url}\n${r.title}\n${r.content}`).join("\n\n---\n\n")}
+Search Results:
+${pages.map((r, i) => `[${i + 1}] Platform: ${r.platform}
+URL: ${r.url}
+Title: ${r.title}
+Content: ${r.content}`).join("\n\n---\n\n")}
 
 For each REAL consumer return:
 {
-  "platform": "reddit|twitter|youtube|google|yelp|web|tiktok|instagram|facebook|linkedin",
+  "platform": "${pages.map(p => p.platform).join("|")}",
   "username": "handle without @",
   "display_name": "shown name or null",
   "first_name": "only if visible, else null",
@@ -258,19 +337,22 @@ Return JSON: { "profiles": [...] }`,
         similar_products: p.similar_products ?? [],
       }))
       .sort((a, b) => b.interest_score - a.interest_score);
-  } catch {
+  } catch (err) {
     return jsonResponse({
       profiles: buildDemoProfiles(description, product_context),
-      queries_used: allQueries,
+      queries_used: finalQueries,
       total: 3,
       demo: true,
       demo_reason: "extraction_failed",
+      debug: {
+        error: err instanceof Error ? err.message : String(err),
+      },
     });
   }
 
   return jsonResponse({
     profiles,
-    queries_used: allQueries,
+    queries_used: finalQueries,
     total: profiles.length,
     demo: false,
   });
@@ -284,6 +366,8 @@ function buildDmUrl(platform: string, username: string): string | null {
     case "instagram": return `https://www.instagram.com/${username}`;
     case "tiktok":    return `https://www.tiktok.com/@${username}`;
     case "linkedin":  return `https://www.linkedin.com/in/${username}`;
+    case "facebook":  return `https://www.facebook.com/${username}`;
+    case "youtube":   return `https://www.youtube.com/@${username}`;
     default:          return null;
   }
 }
