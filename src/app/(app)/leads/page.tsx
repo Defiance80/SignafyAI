@@ -888,22 +888,12 @@ function DiscoveryModal({
         const data = await resp.json() as {
           profiles?: SocialProfile[];
           demo?: boolean;
-          demo_reason?: string;
-          debug?: { queries_run?: number; errors?: string[]; hint?: string };
           error?: string;
         };
         if (!resp.ok) throw new Error(data.error ?? "Search failed");
         const profiles = data.profiles ?? [];
         if (data.demo) {
-          const reason = data.demo_reason ?? "unknown";
-          const hint = data.debug?.hint ?? "";
-          const demoMessages: Record<string, string> = {
-            no_key:             "FIRECRAWL_API_KEY is not set in environment variables.",
-            api_error:          `Firecrawl API returned errors. ${hint}`,
-            no_results:         `Firecrawl found pages but none had usable content. Try broader keywords. ${hint}`,
-            extraction_failed:  "AI extraction failed. Demo results shown.",
-          };
-          setError(`Demo results — ${demoMessages[reason] ?? (hint || "Firecrawl returned no usable results.")}`);
+          setError("No live results found for this search — showing demo profiles. Try different keywords or a broader description.");
         }
         onLaunched(`b2c-${Date.now()}`, "b2c", false, {
           profiles,
