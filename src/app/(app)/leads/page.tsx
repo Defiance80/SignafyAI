@@ -898,12 +898,12 @@ function DiscoveryModal({
           const reason = data.demo_reason ?? "unknown";
           const hint = data.debug?.hint ?? "";
           const demoMessages: Record<string, string> = {
-            no_key:             "FIRECRAWL_API_KEY is not set in environment variables.",
-            api_error:          `Firecrawl API returned errors. ${hint}`,
-            no_results:         `Firecrawl found pages but none had usable content. Try broader keywords. ${hint}`,
+            no_key:             "SERPER_API_KEY is not set in environment variables.",
+            api_error:          `Serper API returned errors. ${hint}`,
+            no_results:         `Serper found pages but none had usable content. Try broader keywords. ${hint}`,
             extraction_failed:  "AI extraction failed. Demo results shown.",
           };
-          setError(`Demo results — ${demoMessages[reason] ?? (hint || "Firecrawl returned no usable results.")}`);
+          setError(`Demo results — ${demoMessages[reason] ?? (hint || "Serper returned no usable results.")}`);
         }
         onLaunched(`b2c-${Date.now()}`, "b2c", false, {
           profiles,
