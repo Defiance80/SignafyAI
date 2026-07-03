@@ -28,28 +28,75 @@ export interface SocialProfile {
     dm_url: string | null;
     type: "DM" | "Message" | "Inbox" | "Connect" | "View";
   };
-  ai_message: string | null;
+  ai_message: null;
   similar_products: string[];
   is_seller: boolean;
 }
+
+// ─── Raw result types ────────────────────────────────────────────────────────
 
 interface RedditPost {
   author: string;
   title: string;
   selftext: string;
-  url: string;
   permalink: string;
   subreddit: string;
   created_utc: number;
-  score: number;
-  is_self: boolean;
 }
 
-interface RedditSearchResponse {
-  data?: {
-    children?: Array<{ data: RedditPost }>;
-  };
+interface ScrapedResult {
+  platform: string;
+  url: string;
+  title: string;
+  content: string;
 }
+
+// ─── Platform search helpers ─────────────────────────────────────────────────
+
+async function searchReddit(queries: string[]): Promise<RedditPost[]> {
+  const results = await Promise.allSettled(
+    queries.map(async (q) => {
+      const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(q)}&sort=relevance&limit=10&type=link`;
+      const resp = await fetch(url, {
+        headers: { "User-Agent": "SignafyAI/1.0 consumer-research" },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!resp.ok) return [];
+      const data = await resp.json() as { data?: { children?: Array<{ data: RedditPost }> } };
+      return (data.data?.children ?? [])
+        .map((c) => c.data)
+        .filter((p) => p.author !== "[deleted]" && p.author !== "AutoModerator");
+    })
+  );
+  return results.flatMap((r) => r.status === "fulfilled" ? r.value : []);
+}
+
+async function firecrawlSearch(query: string, platform: string, apiKey: string): Promise<ScrapedResult[]> {
+  const resp = await fetch("https://api.firecrawl.dev/v1/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      query,
+      limit: 5,
+      scrapeOptions: { formats: ["markdown"], onlyMainContent: true },
+    }),
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!resp.ok) return [];
+  const data = await resp.json() as {
+    data?: Array<{ url: string; markdown?: string; content?: string; metadata?: { title?: string } }>;
+  };
+  return (data.data ?? [])
+    .filter((r) => (r.markdown ?? r.content ?? "").length > 50)
+    .map((r) => ({
+      platform,
+      url: r.url ?? "",
+      title: r.metadata?.title ?? "",
+      content: (r.markdown ?? r.content ?? "").slice(0, 1500),
+    }));
+}
+
+// ─── Main route ──────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
   const ctx = await requireOrgContext(request).catch(() => null);
@@ -57,6 +104,7 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({})) as {
     description?: string;
+    platforms?: string[];
     keywords?: string[];
     product_context?: string;
     location?: string;
@@ -65,6 +113,7 @@ export async function POST(request: Request) {
 
   const {
     description = "",
+    platforms = ["reddit", "twitter", "linkedin", "instagram", "facebook", "tiktok", "youtube", "google"],
     keywords = [],
     product_context = "",
     location = "",
@@ -74,249 +123,299 @@ export async function POST(request: Request) {
   if (!description.trim()) return errorResponse("Search description is required", 400);
 
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: process.env.OPENAI_BASE_URL });
+  const firecrawlKey = process.env.FIRECRAWL_API_KEY;
 
-  // Build search terms
   const kw = keywords.length > 0
     ? keywords.slice(0, 5).join(" ")
     : description.trim().split(/\s+/).slice(0, 6).join(" ");
-  const loc = location.trim();
+  const loc = location.trim() ? ` ${location.trim()}` : "";
 
-  // Reddit search queries — varied angles to find real consumer posts
-  const baseQueries = [
-    `${kw}${loc ? " " + loc : ""} recommend`,
-    `${kw}${loc ? " " + loc : ""} looking for`,
-    `${kw}${loc ? " " + loc : ""} how much`,
-    `${kw}${loc ? " " + loc : ""} best`,
-    `${kw}${loc ? " " + loc : ""} need help`,
-  ];
+  const ts = Date.now();
+  const redditPosts: RedditPost[] = [];
+  const scrapedResults: ScrapedResult[] = [];
 
-  const ltQueries = (long_tail as string[]).slice(0, 3);
-  const allQueries = [...baseQueries, ...ltQueries].slice(0, 7);
+  // ── Build all platform search tasks ────────────────────────────────────────
 
-  // Hit Reddit's JSON search API directly — no key needed, returns structured post data
-  const posts: RedditPost[] = [];
+  const tasks: Promise<void>[] = [];
 
-  const redditResults = await Promise.allSettled(
-    allQueries.map(async (q) => {
-      const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(q)}&sort=relevance&limit=10&type=link`;
-      const resp = await fetch(url, {
-        headers: { "User-Agent": "SignafyAI/1.0 consumer-research-bot" },
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!resp.ok) return [];
-      const data = await resp.json() as RedditSearchResponse;
-      return (data.data?.children ?? [])
-        .map((c) => c.data)
-        .filter((p) => p.author !== "[deleted]" && p.author !== "AutoModerator" && (p.selftext.length > 20 || p.title.length > 20));
-    })
-  );
-
-  for (const result of redditResults) {
-    if (result.status === "fulfilled") {
-      posts.push(...result.value);
-    }
+  // Reddit — public JSON API, no key needed
+  if (platforms.includes("reddit")) {
+    tasks.push(
+      searchReddit([
+        `${kw}${loc} recommend`,
+        `${kw}${loc} looking for`,
+        `${kw}${loc} how much cost`,
+        `${kw}${loc} best help`,
+        `${kw}${loc} need`,
+      ]).then((posts) => { redditPosts.push(...posts); })
+    );
   }
 
-  // Also try Firecrawl for non-Reddit platforms if key is set
-  const firecrawlKey = process.env.FIRECRAWL_API_KEY;
-  const fcTexts: Array<{ url: string; content: string; title: string }> = [];
+  // All other platforms via Firecrawl (site-specific queries run in parallel)
+  if (firecrawlKey) {
+    const platformQueries: Array<{ query: string; platform: string }> = [];
 
-  if (firecrawlKey && posts.length < 10) {
-    const fcQueries = [
-      `${kw}${loc ? " " + loc : ""} quora OR twitter`,
-      `${kw}${loc ? " " + loc : ""} forum review`,
-    ];
-    const fcResults = await Promise.allSettled(
-      fcQueries.map(async (q) => {
-        const resp = await fetch("https://api.firecrawl.dev/v1/search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${firecrawlKey}` },
-          body: JSON.stringify({ query: q, limit: 5, scrapeOptions: { formats: ["markdown"], onlyMainContent: true } }),
-          signal: AbortSignal.timeout(8000),
-        });
-        if (!resp.ok) return [];
-        const data = await resp.json() as { data?: Array<{ url: string; markdown?: string; metadata?: { title?: string } }> };
-        return (data.data ?? [])
-          .filter((r) => (r.markdown ?? "").length > 50)
-          .map((r) => ({ url: r.url ?? "", content: (r.markdown ?? "").slice(0, 1500), title: r.metadata?.title ?? "" }));
+    if (platforms.includes("twitter") || platforms.includes("x")) {
+      platformQueries.push(
+        { query: `${kw}${loc} site:x.com`, platform: "twitter" },
+        { query: `${kw}${loc} site:twitter.com`, platform: "twitter" },
+      );
+    }
+    if (platforms.includes("linkedin")) {
+      platformQueries.push(
+        { query: `${kw}${loc} site:linkedin.com posts OR comments`, platform: "linkedin" },
+      );
+    }
+    if (platforms.includes("instagram")) {
+      platformQueries.push(
+        { query: `${kw}${loc} site:instagram.com`, platform: "instagram" },
+      );
+    }
+    if (platforms.includes("facebook")) {
+      platformQueries.push(
+        { query: `${kw}${loc} site:facebook.com groups`, platform: "facebook" },
+      );
+    }
+    if (platforms.includes("tiktok")) {
+      platformQueries.push(
+        { query: `${kw}${loc} site:tiktok.com`, platform: "tiktok" },
+      );
+    }
+    if (platforms.includes("youtube")) {
+      platformQueries.push(
+        { query: `${kw}${loc} site:youtube.com`, platform: "youtube" },
+      );
+    }
+    if (platforms.includes("quora")) {
+      platformQueries.push(
+        { query: `${kw}${loc} site:quora.com`, platform: "quora" },
+      );
+    }
+    // Broad web / Google
+    if (platforms.includes("google") || platforms.includes("web")) {
+      platformQueries.push(
+        { query: `${kw}${loc} forum OR community recommendation`, platform: "web" },
+        { query: `${kw}${loc} review OR "looking for" OR "anyone tried"`, platform: "web" },
+      );
+    }
+    // Always include Quora — high quality consumer Q&A
+    if (!platforms.includes("quora")) {
+      platformQueries.push({ query: `${kw}${loc} site:quora.com`, platform: "quora" });
+    }
+    // Long-tail queries as broad web searches
+    (long_tail as string[]).slice(0, 3).forEach((q) => {
+      platformQueries.push({ query: q, platform: "web" });
+    });
+
+    tasks.push(
+      Promise.allSettled(
+        platformQueries.map(({ query, platform }) => firecrawlSearch(query, platform, firecrawlKey))
+      ).then((results) => {
+        for (const r of results) {
+          if (r.status === "fulfilled") scrapedResults.push(...r.value);
+        }
       })
     );
-    for (const r of fcResults) {
-      if (r.status === "fulfilled") fcTexts.push(...r.value);
-    }
   }
 
-  // If we have Reddit posts, build profiles directly from structured data
-  // then enrich with OpenAI scoring — much faster than scraping
-  const ts = Date.now();
+  // Run Reddit + all Firecrawl searches simultaneously
+  await Promise.allSettled(tasks);
 
-  if (posts.length > 0) {
-    // Deduplicate by author
+  // ── Build Reddit profiles directly from structured data ───────────────────
+
+  const profiles: SocialProfile[] = [];
+
+  if (redditPosts.length > 0) {
     const seen = new Set<string>();
-    const uniquePosts = posts.filter((p) => {
+    const uniquePosts = redditPosts.filter((p) => {
       if (seen.has(p.author)) return false;
       seen.add(p.author);
       return true;
-    });
+    }).slice(0, 25);
 
-    // Score and extract consumer signals via OpenAI
-    const postSummaries = uniquePosts.slice(0, 30).map((p, i) =>
-      `[${i}] u/${p.author} in r/${p.subreddit}:\nTitle: ${p.title}\n${p.selftext ? "Body: " + p.selftext.slice(0, 300) : ""}`
-    ).join("\n\n");
-
-    let enriched: Array<{
-      index: number;
-      interest_score: number;
-      purchase_intent: "browsing" | "researching" | "ready_to_buy" | null;
-      consumer_signals: string[];
-      is_seller: boolean;
-      similar_products: string[];
-      keywords_matched: string[];
-    }> = [];
-
+    // Quick AI scoring for Reddit posts
     try {
       const aiResp = await openai.chat.completions.create({
         model: process.env.AI_MODEL ?? "gpt-4o-mini",
         messages: [
           {
             role: "system",
-            content: `Score Reddit posts for consumer purchase intent.
-For each post: is this a real individual SEEKING to buy/hire/find "${description}"?
-EXCLUDE anyone promoting/selling services.
-Return scores and signals for each post.`,
+            content: `Score Reddit posts for consumer purchase intent toward "${description}". Skip sellers/promoters. Return a score per post.`,
           },
           {
             role: "user",
-            content: `Product/service: "${description}" (context: ${product_context || "not specified"})
-Location: ${loc || "any"}
+            content: `Product/service: "${description}"${product_context ? ` (${product_context})` : ""}
+Location: ${location || "any"}
 
-Posts to score:
-${postSummaries}
+Posts:
+${uniquePosts.map((p, i) => `[${i}] u/${p.author} r/${p.subreddit}: ${p.title}${p.selftext ? " — " + p.selftext.slice(0, 200) : ""}`).join("\n")}
 
-For each post return:
-{ "index": N, "interest_score": 0-100, "purchase_intent": "ready_to_buy|researching|browsing|null", "consumer_signals": [], "is_seller": false, "keywords_matched": [], "similar_products": [] }
-
+For each post: { "index": N, "interest_score": 0-100, "purchase_intent": "ready_to_buy|researching|browsing|null", "consumer_signals": [], "is_seller": false, "keywords_matched": [] }
 Return JSON: { "posts": [...] }`,
           },
         ],
         response_format: { type: "json_object" },
-        max_tokens: 2000,
-        temperature: 0.2,
+        max_tokens: 1500,
+        temperature: 0.1,
       });
 
-      const aiData = JSON.parse(aiResp.choices[0]?.message?.content ?? "{}") as {
-        posts?: typeof enriched;
-      };
-      enriched = aiData.posts ?? [];
-    } catch {
-      // If AI fails, assign default scores so posts still appear
-      enriched = uniquePosts.slice(0, 30).map((_, i) => ({
-        index: i,
-        interest_score: 55,
-        purchase_intent: "browsing" as const,
-        consumer_signals: [],
-        is_seller: false,
-        keywords_matched: [],
-        similar_products: [],
-      }));
-    }
+      const scored = (JSON.parse(aiResp.choices[0]?.message?.content ?? "{}") as {
+        posts?: Array<{ index: number; interest_score: number; purchase_intent: SocialProfile["purchase_intent"]; consumer_signals: string[]; is_seller: boolean; keywords_matched: string[] }>;
+      }).posts ?? [];
 
-    const enrichMap = new Map(enriched.map((e) => [e.index, e]));
+      const scoreMap = new Map(scored.map((s) => [s.index, s]));
 
-    const profiles: SocialProfile[] = uniquePosts
-      .slice(0, 30)
-      .map((p, i): SocialProfile | null => {
-        const e = enrichMap.get(i);
-        if (e?.is_seller) return null;
-        const score = e?.interest_score ?? 50;
-        const postBody = p.selftext || p.title;
-        return {
-          id: `b2c-${ts}-${i}`,
+      for (let i = 0; i < uniquePosts.length; i++) {
+        const p = uniquePosts[i];
+        const s = scoreMap.get(i);
+        if (s?.is_seller) continue;
+        const score = s?.interest_score ?? 50;
+        if (score < 25) continue;
+        profiles.push({
+          id: `b2c-reddit-${ts}-${i}`,
           platform: "reddit",
           username: p.author,
-          display_name: null,
-          first_name: null,
-          last_name: null,
+          display_name: null, first_name: null, last_name: null,
           profile_url: `https://reddit.com/user/${p.author}`,
           post_text: (p.title + (p.selftext ? " — " + p.selftext : "")).slice(0, 300),
           post_url: `https://reddit.com${p.permalink}`,
           post_date: new Date(p.created_utc * 1000).toISOString(),
-          keywords_matched: e?.keywords_matched ?? [],
+          keywords_matched: s?.keywords_matched ?? [],
           interest_score: score,
-          purchase_intent: e?.purchase_intent ?? null,
-          consumer_signals: e?.consumer_signals ?? [],
+          purchase_intent: s?.purchase_intent ?? null,
+          consumer_signals: s?.consumer_signals ?? [],
           is_seller: false,
-          shopping_signals: {
-            mentions_buying: /buy|hire|purchase|cost|price|quote/i.test(postBody),
-            platform_mentions: [],
-            frequency: null,
-          },
-          contact: {
-            dm_url: `https://www.reddit.com/message/compose?to=${p.author}`,
-            type: "DM",
-          },
+          shopping_signals: { mentions_buying: /buy|hire|purchase|cost|price|quote/i.test(p.title + p.selftext), platform_mentions: [], frequency: null },
+          contact: { dm_url: `https://www.reddit.com/message/compose?to=${p.author}`, type: "DM" },
           ai_message: null,
-          similar_products: e?.similar_products ?? [],
-        };
-      })
-      .filter((p): p is SocialProfile => p !== null && p.interest_score >= 30)
-      .sort((a, b) => b.interest_score - a.interest_score);
-
-    return jsonResponse({ profiles, total: profiles.length, demo: false });
+          similar_products: [],
+        });
+      }
+    } catch {
+      // Fallback: add unscored Reddit posts
+      for (let i = 0; i < uniquePosts.slice(0, 10).length; i++) {
+        const p = uniquePosts[i];
+        profiles.push({
+          id: `b2c-reddit-${ts}-${i}`,
+          platform: "reddit", username: p.author,
+          display_name: null, first_name: null, last_name: null,
+          profile_url: `https://reddit.com/user/${p.author}`,
+          post_text: (p.title + (p.selftext ? " — " + p.selftext : "")).slice(0, 300),
+          post_url: `https://reddit.com${p.permalink}`,
+          post_date: new Date(p.created_utc * 1000).toISOString(),
+          keywords_matched: [], interest_score: 55, purchase_intent: null,
+          consumer_signals: [], is_seller: false,
+          shopping_signals: { mentions_buying: false, platform_mentions: [], frequency: null },
+          contact: { dm_url: `https://www.reddit.com/message/compose?to=${p.author}`, type: "DM" },
+          ai_message: null, similar_products: [],
+        });
+      }
+    }
   }
 
-  // Fallback: use Firecrawl text content if Reddit returned nothing
-  if (fcTexts.length > 0) {
+  // ── Extract profiles from scraped non-Reddit content ─────────────────────
+
+  if (scrapedResults.length > 0) {
     try {
       const aiResp = await openai.chat.completions.create({
         model: process.env.AI_MODEL ?? "gpt-4o-mini",
         messages: [
           {
             role: "system",
-            content: `Extract consumer lead profiles from web content. Find real individuals seeking to buy/hire. Skip sellers.`,
+            content: `Extract CONSUMER profiles from social content across Twitter, LinkedIn, Instagram, Facebook, TikTok, YouTube, Quora, and the web.
+Find real individuals seeking to buy/hire/find "${description}". Skip sellers, businesses promoting themselves, and ads.`,
           },
           {
             role: "user",
-            content: `Find consumers seeking: "${description}"\n\nContent:\n${fcTexts.map((r, i) => `[${i}] ${r.url}\n${r.title}\n${r.content}`).join("\n---\n")}\n\nReturn JSON: { "profiles": [{ "platform": "web", "username": "...", "post_text": "...", "interest_score": 0-100, "purchase_intent": null, "consumer_signals": [], "is_seller": false, "contact": { "dm_url": null, "type": "View" } }] }`,
+            content: `Product/service: "${description}"${product_context ? ` (${product_context})` : ""}
+Location: ${location || "any"}
+
+Content from multiple platforms:
+${scrapedResults.slice(0, 20).map((r, i) => `[${i}] Platform: ${r.platform}\nURL: ${r.url}\n${r.title}\n${r.content}`).join("\n\n---\n\n")}
+
+For each real consumer found return:
+{
+  "platform": "${scrapedResults.map(r => r.platform).filter((v,i,a) => a.indexOf(v) === i).join("|")}",
+  "username": "handle or name extracted from URL/content",
+  "display_name": "shown name if available or null",
+  "first_name": null, "last_name": null,
+  "profile_url": "link to their profile or null",
+  "post_text": "their exact words showing consumer need, max 280 chars",
+  "post_url": "link to the specific post or null",
+  "post_date": null,
+  "interest_score": 0-100,
+  "purchase_intent": "ready_to_buy|researching|browsing|null",
+  "consumer_signals": ["e.g. asked for price", "requested recommendation"],
+  "is_seller": false,
+  "contact": { "dm_url": null, "type": "DM|Message|Connect|View" },
+  "similar_products": []
+}
+Return JSON: { "profiles": [...] }`,
           },
         ],
         response_format: { type: "json_object" },
-        max_tokens: 2000,
+        max_tokens: 3000,
         temperature: 0.2,
       });
-      const d = JSON.parse(aiResp.choices[0]?.message?.content ?? "{}") as { profiles?: Array<Partial<SocialProfile>> };
-      const profiles: SocialProfile[] = (d.profiles ?? [])
-        .filter((p) => !p.is_seller && p.username && p.post_text)
-        .map((p, i): SocialProfile => ({
-          id: `b2c-fc-${ts}-${i}`,
+
+      const extracted = (JSON.parse(aiResp.choices[0]?.message?.content ?? "{}") as {
+        profiles?: Array<Partial<SocialProfile>>;
+      }).profiles ?? [];
+
+      let idx = 0;
+      for (const p of extracted) {
+        if (p.is_seller || !p.username || !p.post_text) continue;
+        if ((p.interest_score ?? 0) < 25) continue;
+        profiles.push({
+          id: `b2c-${p.platform ?? "web"}-${ts}-${idx++}`,
           platform: p.platform ?? "web",
-          username: (p.username ?? `user_${i}`).replace(/^@/, ""),
+          username: (p.username ?? "").replace(/^@/, ""),
           display_name: p.display_name ?? null,
-          first_name: null, last_name: null,
+          first_name: p.first_name ?? null,
+          last_name: p.last_name ?? null,
           profile_url: p.profile_url ?? null,
           post_text: (p.post_text ?? "").slice(0, 300),
           post_url: p.post_url ?? null,
-          post_date: null,
-          keywords_matched: [],
-          interest_score: p.interest_score ?? 50,
+          post_date: p.post_date ?? null,
+          keywords_matched: p.keywords_matched ?? [],
+          interest_score: Math.min(100, Math.max(0, Math.round(p.interest_score ?? 50))),
           purchase_intent: p.purchase_intent ?? null,
           consumer_signals: p.consumer_signals ?? [],
           is_seller: false,
-          shopping_signals: { mentions_buying: false, platform_mentions: [], frequency: null },
-          contact: { dm_url: p.contact?.dm_url ?? null, type: p.contact?.type ?? "View" },
+          shopping_signals: { mentions_buying: p.shopping_signals?.mentions_buying ?? false, platform_mentions: [], frequency: null },
+          contact: {
+            dm_url: p.contact?.dm_url ?? null,
+            type: p.contact?.type ?? contactType(p.platform ?? "web"),
+          },
           ai_message: null,
-          similar_products: [],
-        }));
-      if (profiles.length > 0) return jsonResponse({ profiles, total: profiles.length, demo: false });
-    } catch { /* fall through to demo */ }
+          similar_products: p.similar_products ?? [],
+        });
+      }
+    } catch { /* no scraped profiles this run */ }
   }
 
-  // Last resort: demo profiles
+  // ── Sort and return ───────────────────────────────────────────────────────
+
+  if (profiles.length > 0) {
+    profiles.sort((a, b) => b.interest_score - a.interest_score);
+    return jsonResponse({ profiles, total: profiles.length, demo: false });
+  }
+
+  // Fallback demo
   return jsonResponse({
     profiles: buildDemoProfiles(description, product_context),
     total: 3,
     demo: true,
   });
+}
+
+function contactType(platform: string): SocialProfile["contact"]["type"] {
+  switch (platform.toLowerCase()) {
+    case "reddit": case "twitter": case "instagram": case "tiktok": return "DM";
+    case "facebook": return "Message";
+    case "linkedin": return "Connect";
+    default: return "View";
+  }
 }
 
 function buildDemoProfiles(description: string, _ctx: string): SocialProfile[] {
@@ -327,7 +426,7 @@ function buildDemoProfiles(description: string, _ctx: string): SocialProfile[] {
       id: `demo-${ts}-1`, platform: "reddit", username: "homefix_seeker",
       display_name: "Sarah M.", first_name: "Sarah", last_name: "M.",
       profile_url: "https://reddit.com/user/homefix_seeker",
-      post_text: `Just got quoted $3,200 for "${snippet}". Anyone know a reliable place? Called 2 places already — really frustrated.`,
+      post_text: `Just got quoted $3,200 for "${snippet}". Anyone know a reliable place? Called 2 places — really frustrated.`,
       post_url: null, post_date: new Date(Date.now() - 7200000).toISOString(),
       keywords_matched: description.split(" ").slice(0, 4),
       interest_score: 92, purchase_intent: "ready_to_buy",
@@ -335,34 +434,34 @@ function buildDemoProfiles(description: string, _ctx: string): SocialProfile[] {
       is_seller: false,
       shopping_signals: { mentions_buying: true, platform_mentions: [], frequency: "occasional" },
       contact: { dm_url: "https://reddit.com/message/compose?to=homefix_seeker", type: "DM" },
-      ai_message: null, similar_products: ["free estimate", "consultation"],
+      ai_message: null, similar_products: [],
     },
     {
-      id: `demo-${ts}-2`, platform: "reddit", username: "comparing_options_now",
+      id: `demo-${ts}-2`, platform: "twitter", username: "comparing_options_now",
       display_name: null, first_name: null, last_name: null,
-      profile_url: "https://reddit.com/user/comparing_options_now",
-      post_text: `Comparing options for ${snippet}. Prices all over the place. Anyone have firsthand experience? Making a decision this week.`,
+      profile_url: "https://twitter.com/comparing_options_now",
+      post_text: `Comparing options for ${snippet}. Prices all over the place. Making a decision this week.`,
       post_url: null, post_date: new Date(Date.now() - 14400000).toISOString(),
       keywords_matched: description.split(" ").slice(0, 3),
       interest_score: 85, purchase_intent: "researching",
       consumer_signals: ["comparing prices", "mentioned decision timeline"],
       is_seller: false,
       shopping_signals: { mentions_buying: true, platform_mentions: [], frequency: "occasional" },
-      contact: { dm_url: "https://reddit.com/message/compose?to=comparing_options_now", type: "DM" },
+      contact: { dm_url: "https://twitter.com/comparing_options_now", type: "DM" },
       ai_message: null, similar_products: [],
     },
     {
-      id: `demo-${ts}-3`, platform: "reddit", username: "first_timer_q",
+      id: `demo-${ts}-3`, platform: "quora", username: "first_timer_q",
       display_name: null, first_name: null, last_name: null,
-      profile_url: "https://reddit.com/user/first_timer_q",
-      post_text: `Never dealt with ${snippet} before. What's a fair price? Any red flags when choosing someone?`,
+      profile_url: null,
+      post_text: `Never dealt with ${snippet} before. What's a fair price? Any red flags?`,
       post_url: null, post_date: new Date(Date.now() - 86400000).toISOString(),
       keywords_matched: description.split(" ").slice(0, 3),
       interest_score: 68, purchase_intent: "browsing",
       consumer_signals: ["first-time buyer", "asked for price guidance"],
       is_seller: false,
       shopping_signals: { mentions_buying: false, platform_mentions: [], frequency: null },
-      contact: { dm_url: "https://reddit.com/message/compose?to=first_timer_q", type: "DM" },
+      contact: { dm_url: null, type: "View" },
       ai_message: null, similar_products: [],
     },
   ];

@@ -844,7 +844,7 @@ function DiscoveryModal({
   const [generateLandingPage, setGenerateLandingPage] = useState(false);
   const [forClient, setForClient] = useState(false);
   const [saveName, setSaveName] = useState("");
-  const [b2cPlatforms, setB2cPlatforms] = useState<string[]>(["reddit", "google"]);
+  const [b2cPlatforms, setB2cPlatforms] = useState<string[]>(["reddit", "twitter", "linkedin", "instagram", "facebook", "tiktok", "youtube", "quora", "google"]);
   const [longTail, setLongTail] = useState("");
   const [b2cSearching, setB2cSearching] = useState(false);
   const [error, setError] = useState("");
