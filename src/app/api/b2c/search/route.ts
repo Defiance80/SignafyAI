@@ -53,14 +53,33 @@ interface ScrapedResult {
 
 // ─── Platform search helpers ─────────────────────────────────────────────────
 
-async function searchReddit(queries: string[]): Promise<RedditPost[]> {
+async function getRedditToken(clientId: string, secret: string): Promise<string | null> {
+  try {
+    const resp = await fetch("https://www.reddit.com/api/v1/access_token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": "Basic " + Buffer.from(`${clientId}:${secret}`).toString("base64"),
+        "User-Agent": "SignafyAI/1.0 b2c-research",
+      },
+      body: "grant_type=client_credentials",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json() as { access_token?: string };
+    return data.access_token ?? null;
+  } catch { return null; }
+}
+
+async function searchReddit(queries: string[], token?: string): Promise<RedditPost[]> {
+  const baseUrl = token ? "https://oauth.reddit.com" : "https://www.reddit.com";
+  const headers: Record<string, string> = { "User-Agent": "SignafyAI/1.0 b2c-research" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const results = await Promise.allSettled(
     queries.map(async (q) => {
-      const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(q)}&sort=relevance&limit=10&type=link`;
-      const resp = await fetch(url, {
-        headers: { "User-Agent": "SignafyAI/1.0 consumer-research" },
-        signal: AbortSignal.timeout(8000),
-      });
+      const url = `${baseUrl}/search.json?q=${encodeURIComponent(q)}&sort=relevance&limit=10&type=link`;
+      const resp = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
       if (!resp.ok) return [];
       const data = await resp.json() as { data?: { children?: Array<{ data: RedditPost }> } };
       return (data.data?.children ?? [])
@@ -75,25 +94,21 @@ async function firecrawlSearch(query: string, platform: string, apiKey: string):
   const resp = await fetch("https://api.firecrawl.dev/v1/search", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      query,
-      limit: 5,
-      scrapeOptions: { formats: ["markdown"], onlyMainContent: true },
-    }),
+    // No scrapeOptions — plain search returns snippets without scraping each page,
+    // which is faster and avoids failures on login-walled social platforms
+    body: JSON.stringify({ query, limit: 5 }),
     signal: AbortSignal.timeout(10000),
   });
   if (!resp.ok) return [];
   const data = await resp.json() as {
-    data?: Array<{ url: string; markdown?: string; content?: string; metadata?: { title?: string } }>;
+    data?: Array<{ url: string; markdown?: string; description?: string; content?: string; metadata?: { title?: string; description?: string } }>;
   };
   return (data.data ?? [])
-    .filter((r) => (r.markdown ?? r.content ?? "").length > 50)
-    .map((r) => ({
-      platform,
-      url: r.url ?? "",
-      title: r.metadata?.title ?? "",
-      content: (r.markdown ?? r.content ?? "").slice(0, 1500),
-    }));
+    .map((r) => {
+      const text = r.markdown ?? r.content ?? r.description ?? r.metadata?.description ?? "";
+      return { platform, url: r.url ?? "", title: r.metadata?.title ?? "", content: text.slice(0, 1500) };
+    })
+    .filter((r) => r.content.length > 20 || r.title.length > 10);
 }
 
 // ─── Main route ──────────────────────────────────────────────────────────────
@@ -124,6 +139,13 @@ export async function POST(request: Request) {
 
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: process.env.OPENAI_BASE_URL });
   const firecrawlKey = process.env.FIRECRAWL_API_KEY;
+  const redditClientId = process.env.REDDIT_CLIENT_ID;
+  const redditSecret = process.env.REDDIT_CLIENT_SECRET;
+
+  // Get Reddit OAuth token if credentials are configured — bypasses datacenter IP blocks
+  const redditToken = (redditClientId && redditSecret)
+    ? await getRedditToken(redditClientId, redditSecret)
+    : null;
 
   const kw = keywords.length > 0
     ? keywords.slice(0, 5).join(" ")
@@ -138,16 +160,16 @@ export async function POST(request: Request) {
 
   const tasks: Promise<void>[] = [];
 
-  // Reddit — public JSON API, no key needed
+  // Reddit — OAuth API if credentials set (bypasses datacenter IP block), else unauthenticated
   if (platforms.includes("reddit")) {
     tasks.push(
       searchReddit([
         `${kw}${loc} recommend`,
         `${kw}${loc} looking for`,
         `${kw}${loc} how much cost`,
-        `${kw}${loc} best help`,
-        `${kw}${loc} need`,
-      ]).then((posts) => { redditPosts.push(...posts); })
+        `${kw}${loc} best advice`,
+        `${kw}${loc} need help`,
+      ], redditToken ?? undefined).then((posts) => { redditPosts.push(...posts); })
     );
   }
 
@@ -155,68 +177,22 @@ export async function POST(request: Request) {
   if (firecrawlKey) {
     const platformQueries: Array<{ query: string; platform: string }> = [];
 
-    if (platforms.includes("twitter") || platforms.includes("x")) {
-      platformQueries.push(
-        { query: `${kw}${loc} site:x.com`, platform: "twitter" },
-        { query: `${kw}${loc} site:twitter.com`, platform: "twitter" },
-      );
-    }
-    if (platforms.includes("linkedin")) {
-      platformQueries.push(
-        { query: `${kw}${loc} site:linkedin.com posts OR comments`, platform: "linkedin" },
-      );
-    }
-    if (platforms.includes("instagram")) {
-      platformQueries.push(
-        { query: `${kw}${loc} site:instagram.com`, platform: "instagram" },
-      );
-    }
-    if (platforms.includes("facebook")) {
-      platformQueries.push(
-        { query: `${kw}${loc} site:facebook.com groups`, platform: "facebook" },
-      );
-    }
-    if (platforms.includes("tiktok")) {
-      platformQueries.push(
-        { query: `${kw}${loc} site:tiktok.com`, platform: "tiktok" },
-      );
-    }
-    if (platforms.includes("youtube")) {
-      platformQueries.push(
-        { query: `${kw}${loc} site:youtube.com`, platform: "youtube" },
-      );
-    }
-    if (platforms.includes("quora")) {
-      platformQueries.push(
-        { query: `${kw}${loc} site:quora.com`, platform: "quora" },
-      );
-    }
-    // Broad web / Google
-    if (platforms.includes("google") || platforms.includes("web")) {
-      platformQueries.push(
-        { query: `${kw}${loc} forum OR community recommendation`, platform: "web" },
-        { query: `${kw}${loc} review OR "looking for" OR "anyone tried"`, platform: "web" },
-      );
-    }
-    if (platforms.includes("yelp")) {
-      platformQueries.push(
-        { query: `${kw}${loc} site:yelp.com`, platform: "yelp" },
-      );
-    }
-    if (platforms.includes("trustpilot")) {
-      platformQueries.push(
-        { query: `${kw}${loc} site:trustpilot.com`, platform: "trustpilot" },
-      );
-    }
-    if (platforms.includes("craigslist")) {
-      platformQueries.push(
-        { query: `${kw}${loc} site:craigslist.org`, platform: "craigslist" },
-      );
-    }
-    // Always include Quora — high quality consumer Q&A
-    if (!platforms.includes("quora")) {
-      platformQueries.push({ query: `${kw}${loc} site:quora.com`, platform: "quora" });
-    }
+    // Natural-language queries work more reliably with Firecrawl than site: operators
+    if (platforms.includes("quora"))      platformQueries.push({ query: `${kw}${loc} Quora questions answers`, platform: "quora" });
+    if (platforms.includes("yelp"))       platformQueries.push({ query: `${kw}${loc} Yelp reviews local`, platform: "yelp" });
+    if (platforms.includes("trustpilot")) platformQueries.push({ query: `${kw}${loc} Trustpilot reviews`, platform: "trustpilot" });
+    if (platforms.includes("craigslist")) platformQueries.push({ query: `${kw}${loc} Craigslist wanted services`, platform: "craigslist" });
+    if (platforms.includes("youtube"))    platformQueries.push({ query: `${kw}${loc} YouTube comments opinions`, platform: "youtube" });
+    if (platforms.includes("twitter") || platforms.includes("x")) platformQueries.push({ query: `${kw}${loc} Twitter discussion opinions`, platform: "twitter" });
+    if (platforms.includes("facebook"))   platformQueries.push({ query: `${kw}${loc} Facebook groups community`, platform: "facebook" });
+    if (platforms.includes("linkedin"))   platformQueries.push({ query: `${kw}${loc} LinkedIn professional posts`, platform: "linkedin" });
+    // Broad web searches — forums, communities, review sites
+    platformQueries.push(
+      { query: `${kw}${loc} forum community recommendation advice`, platform: "web" },
+      { query: `${kw}${loc} looking for need help reviews`, platform: "web" },
+    );
+    // Always include Quora if not selected
+    if (!platforms.includes("quora")) platformQueries.push({ query: `${kw}${loc} Quora questions`, platform: "quora" });
     // Long-tail queries as broad web searches
     (long_tail as string[]).slice(0, 3).forEach((q) => {
       platformQueries.push({ query: q, platform: "web" });
