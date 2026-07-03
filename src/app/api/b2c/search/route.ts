@@ -60,75 +60,104 @@ export async function POST(request: Request) {
   const firecrawlKey = process.env.FIRECRAWL_API_KEY;
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: process.env.OPENAI_BASE_URL });
 
-  // Build search queries from templates — much faster than calling OpenAI for query gen
+  // No key at all → demo immediately
+  if (!firecrawlKey) {
+    return jsonResponse({
+      profiles: buildDemoProfiles(description, product_context),
+      queries_used: [],
+      total: 3,
+      demo: true,
+      demo_reason: "no_key",
+    });
+  }
+
+  // Build search queries from templates
   const kw = keywords.length > 0
     ? keywords.slice(0, 4).join(" ")
     : description.trim().split(/\s+/).slice(0, 5).join(" ");
   const loc = location.trim() ? ` ${location.trim()}` : "";
 
+  // Mix of site-specific and broad queries for better coverage
   const templateQueries = [
-    `site:reddit.com "${kw}"${loc} looking for`,
-    `site:reddit.com "${kw}"${loc} recommend`,
-    `"${kw}"${loc} "how much" OR "price" OR "cost" site:reddit.com`,
-    `"${kw}"${loc} "anyone know" OR "anyone tried" site:reddit.com`,
-    `"${kw}"${loc} help -"we offer" -"our services" site:reddit.com`,
+    `${kw}${loc} looking for OR need OR recommend site:reddit.com`,
+    `${kw}${loc} price OR cost OR quote OR "how much" site:reddit.com`,
+    `${kw}${loc} recommendation OR suggestions`,
+    `${kw}${loc} best OR cheapest OR affordable`,
+    `reddit ${kw}${loc} help`,
   ];
 
-  // Include any user-supplied long-tail queries (max 3 extra)
   const ltQueries = (long_tail as string[]).slice(0, 3);
   const allQueries = [...templateQueries, ...ltQueries].slice(0, 6);
 
-  // Firecrawl: 5 results per query, 5s timeout, allSettled so one failure doesn't kill the batch
+  // Firecrawl search — 8s timeout, allSettled so one failure doesn't kill the batch
   const searchResults: Array<{ url: string; content: string; title: string }> = [];
+  const fcErrors: string[] = [];
 
-  if (firecrawlKey) {
-    const fcResults = await Promise.allSettled(
-      allQueries.map(async (query) => {
-        const resp = await fetch("https://api.firecrawl.dev/v1/search", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${firecrawlKey}`,
-          },
-          body: JSON.stringify({
-            query,
-            limit: 5,
-            scrapeOptions: { formats: ["markdown"], onlyMainContent: true },
-          }),
-          signal: AbortSignal.timeout(5000),
-        });
-        if (!resp.ok) return [];
-        const data = await resp.json() as {
-          data?: Array<{ url: string; markdown?: string; metadata?: { title?: string } }>;
-        };
-        return (data.data ?? [])
-          .filter((r) => r.markdown && r.markdown.length > 100)
-          .map((r) => ({
-            url: r.url ?? "",
-            content: r.markdown!.slice(0, 2000),
-            title: r.metadata?.title ?? "",
-          }));
-      })
-    );
+  const fcResults = await Promise.allSettled(
+    allQueries.map(async (query) => {
+      const resp = await fetch("https://api.firecrawl.dev/v1/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${firecrawlKey}`,
+        },
+        body: JSON.stringify({
+          query,
+          limit: 5,
+          scrapeOptions: { formats: ["markdown"], onlyMainContent: true },
+        }),
+        signal: AbortSignal.timeout(8000),
+      });
 
-    for (const result of fcResults) {
-      if (result.status === "fulfilled") {
-        searchResults.push(...result.value);
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => resp.status.toString());
+        throw new Error(`FC ${resp.status}: ${errText.slice(0, 100)}`);
       }
+
+      const data = await resp.json() as {
+        success?: boolean;
+        data?: Array<{ url: string; markdown?: string; content?: string; metadata?: { title?: string } }>;
+      };
+
+      return (data.data ?? [])
+        .filter((r) => (r.markdown ?? r.content ?? "").length > 50)
+        .map((r) => ({
+          url: r.url ?? "",
+          content: (r.markdown ?? r.content ?? "").slice(0, 2000),
+          title: r.metadata?.title ?? "",
+        }));
+    })
+  );
+
+  for (const result of fcResults) {
+    if (result.status === "fulfilled") {
+      searchResults.push(...result.value);
+    } else {
+      fcErrors.push(result.reason instanceof Error ? result.reason.message : String(result.reason));
     }
   }
 
-  // No Firecrawl results → return demo profiles
+  // All Firecrawl calls failed → return debug info instead of silent demo
   if (searchResults.length === 0) {
+    const allFailed = fcErrors.length === allQueries.length;
+    const errSample = fcErrors.slice(0, 2).join("; ");
     return jsonResponse({
       profiles: buildDemoProfiles(description, product_context),
       queries_used: allQueries,
       total: 3,
       demo: true,
+      demo_reason: allFailed ? "api_error" : "no_results",
+      debug: {
+        queries_run: allQueries.length,
+        errors: fcErrors,
+        hint: allFailed
+          ? `Firecrawl returned errors for all queries. First error: ${errSample}`
+          : `Firecrawl returned ${fcResults.filter(r => r.status === "fulfilled").length} pages but none had usable content. Errors: ${errSample || "none"}`,
+      },
     });
   }
 
-  // Single OpenAI extraction call across all results (up to 25 pages)
+  // OpenAI extraction from all pages
   const pages = searchResults.slice(0, 25);
   let profiles: SocialProfile[] = [];
 
@@ -140,13 +169,12 @@ export async function POST(request: Request) {
           role: "system",
           content: `Extract CONSUMER lead profiles from social media content.
 
-INCLUDE: real individuals asking questions, seeking recommendations, comparing options, mentioning they need a product/service, expressing frustration with current solution, asking about pricing or availability.
+INCLUDE: real individuals asking questions, seeking recommendations, comparing options, mentioning they need a product/service, expressing frustration, asking about pricing.
 
-EXCLUDE — mark is_seller=true or skip entirely:
+EXCLUDE (skip or mark is_seller=true):
 - Anyone writing "we offer", "our services", "hire us", "contact us for", "DM for pricing"
 - Business accounts, sponsored content, ads
-- Generic articles, blog posts with no individual poster
-- Bots or automated posts
+- Generic articles or blog posts with no individual poster
 
 Return as many DISTINCT consumers as possible (aim for 10+).`,
         },
@@ -154,39 +182,31 @@ Return as many DISTINCT consumers as possible (aim for 10+).`,
           role: "user",
           content: `Find consumers seeking: "${description}"
 Product/service context: ${product_context || "not specified"}
-Location filter: ${location || "any"}
+Location: ${location || "any"}
 
-Pages to analyze:
+Pages:
 ${pages.map((r, i) => `[${i + 1}] ${r.url}\n${r.title}\n${r.content}`).join("\n\n---\n\n")}
 
-For each REAL consumer found return JSON:
+For each REAL consumer return:
 {
   "platform": "reddit|twitter|youtube|google|yelp|web|tiktok|instagram|facebook|linkedin",
-  "username": "handle without @ prefix",
-  "display_name": "their shown name or null",
-  "first_name": "only if visible in their post/profile, else null",
-  "last_name": "only if explicitly visible, else null",
-  "profile_url": "direct URL to their profile or null",
-  "post_text": "exact quote showing their need, max 280 chars",
-  "post_url": "URL to the specific post or null",
-  "post_date": "ISO date if visible, else null",
-  "keywords_matched": ["terms from their post matching the search"],
+  "username": "handle without @",
+  "display_name": "shown name or null",
+  "first_name": "only if visible, else null",
+  "last_name": "only if visible, else null",
+  "profile_url": "profile URL or null",
+  "post_text": "exact quote of need, max 280 chars",
+  "post_url": "post URL or null",
+  "post_date": "ISO date or null",
+  "keywords_matched": [],
   "interest_score": 0-100,
   "purchase_intent": "ready_to_buy|researching|browsing|null",
-  "consumer_signals": ["e.g. asked for price", "requested recommendation"],
+  "consumer_signals": [],
   "is_seller": false,
-  "shopping_signals": {
-    "mentions_buying": true/false,
-    "platform_mentions": [],
-    "frequency": "frequent|occasional|null"
-  },
-  "contact": {
-    "dm_url": "e.g. https://reddit.com/message/compose?to=USERNAME",
-    "type": "DM|Message|Inbox|Connect|View"
-  },
+  "shopping_signals": { "mentions_buying": false, "platform_mentions": [], "frequency": null },
+  "contact": { "dm_url": null, "type": "DM" },
   "similar_products": []
 }
-
 Return JSON: { "profiles": [...] }`,
         },
       ],
@@ -200,7 +220,6 @@ Return JSON: { "profiles": [...] }`,
     };
     const raw = (data.profiles ?? []).filter((p) => !p.is_seller && p.username && p.post_text);
 
-    // Deduplicate by username+platform
     const seen = new Set<string>();
     const ts = Date.now();
     profiles = raw
@@ -240,12 +259,12 @@ Return JSON: { "profiles": [...] }`,
       }))
       .sort((a, b) => b.interest_score - a.interest_score);
   } catch {
-    // OpenAI failed — return demo profiles instead of empty
     return jsonResponse({
       profiles: buildDemoProfiles(description, product_context),
       queries_used: allQueries,
       total: 3,
       demo: true,
+      demo_reason: "extraction_failed",
     });
   }
 
@@ -289,7 +308,7 @@ function buildDemoProfiles(description: string, _ctx: string): SocialProfile[] {
       id: `demo-${ts}-1`, platform: "reddit", username: "homefix_seeker",
       display_name: "Sarah M.", first_name: "Sarah", last_name: "M.",
       profile_url: "https://reddit.com/user/homefix_seeker",
-      post_text: `Just got quoted $3,200 for what sounds basic. Anyone know a reliable place for "${snippet}"? Called 2 places already — stories don't match. Really frustrated.`,
+      post_text: `Just got quoted $3,200 for what sounds basic. Anyone know a reliable place for "${snippet}"? Called 2 places already — really frustrated.`,
       post_url: null, post_date: new Date(Date.now() - 7200000).toISOString(),
       keywords_matched: description.split(" ").slice(0, 4),
       interest_score: 92, purchase_intent: "ready_to_buy",
@@ -297,7 +316,7 @@ function buildDemoProfiles(description: string, _ctx: string): SocialProfile[] {
       is_seller: false,
       shopping_signals: { mentions_buying: true, platform_mentions: [], frequency: "occasional" },
       contact: { dm_url: "https://reddit.com/message/compose?to=homefix_seeker", type: "DM" },
-      ai_message: null, similar_products: ["free estimate", "consultation", "service warranty"],
+      ai_message: null, similar_products: ["free estimate", "consultation"],
     },
     {
       id: `demo-${ts}-2`, platform: "twitter", username: "comparing_options_now",
@@ -307,25 +326,25 @@ function buildDemoProfiles(description: string, _ctx: string): SocialProfile[] {
       post_url: null, post_date: new Date(Date.now() - 14400000).toISOString(),
       keywords_matched: description.split(" ").slice(0, 3),
       interest_score: 85, purchase_intent: "researching",
-      consumer_signals: ["comparing prices", "mentioned decision timeline", "seeking personal experience"],
+      consumer_signals: ["comparing prices", "mentioned decision timeline"],
       is_seller: false,
       shopping_signals: { mentions_buying: true, platform_mentions: [], frequency: "occasional" },
       contact: { dm_url: "https://twitter.com/comparing_options_now", type: "DM" },
-      ai_message: null, similar_products: ["price comparison guide", "free quote"],
+      ai_message: null, similar_products: ["price comparison guide"],
     },
     {
       id: `demo-${ts}-3`, platform: "reddit", username: "first_timer_q",
       display_name: null, first_name: null, last_name: null,
       profile_url: "https://reddit.com/user/first_timer_q",
-      post_text: `Never dealt with ${snippet} before. What should I look for? What's a fair price? Any red flags when choosing someone?`,
+      post_text: `Never dealt with ${snippet} before. What should I look for? What's a fair price? Any red flags?`,
       post_url: null, post_date: new Date(Date.now() - 86400000).toISOString(),
       keywords_matched: description.split(" ").slice(0, 3),
       interest_score: 68, purchase_intent: "browsing",
-      consumer_signals: ["first-time buyer", "asked for price guidance", "researching what to look for"],
+      consumer_signals: ["first-time buyer", "asked for price guidance"],
       is_seller: false,
       shopping_signals: { mentions_buying: false, platform_mentions: [], frequency: null },
       contact: { dm_url: "https://reddit.com/message/compose?to=first_timer_q", type: "DM" },
-      ai_message: null, similar_products: ["beginner consultation", "free inspection"],
+      ai_message: null, similar_products: ["beginner consultation"],
     },
   ];
 }

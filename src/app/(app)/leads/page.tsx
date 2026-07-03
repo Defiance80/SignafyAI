@@ -885,11 +885,25 @@ function DiscoveryModal({
           }),
           signal: AbortSignal.timeout(55000), // 55s client timeout — prevents infinite spinner
         });
-        const data = await resp.json() as { profiles?: SocialProfile[]; demo?: boolean; error?: string };
+        const data = await resp.json() as {
+          profiles?: SocialProfile[];
+          demo?: boolean;
+          demo_reason?: string;
+          debug?: { queries_run?: number; errors?: string[]; hint?: string };
+          error?: string;
+        };
         if (!resp.ok) throw new Error(data.error ?? "Search failed");
         const profiles = data.profiles ?? [];
         if (data.demo) {
-          setError(`Demo results shown — Firecrawl is not configured. Add FIRECRAWL_API_KEY to your environment to get real results.`);
+          const reason = data.demo_reason ?? "unknown";
+          const hint = data.debug?.hint ?? "";
+          const demoMessages: Record<string, string> = {
+            no_key:             "FIRECRAWL_API_KEY is not set in environment variables.",
+            api_error:          `Firecrawl API returned errors. ${hint}`,
+            no_results:         `Firecrawl found pages but none had usable content. Try broader keywords. ${hint}`,
+            extraction_failed:  "AI extraction failed. Demo results shown.",
+          };
+          setError(`Demo results — ${demoMessages[reason] ?? (hint || "Firecrawl returned no usable results.")}`);
         }
         onLaunched(`b2c-${Date.now()}`, "b2c", false, {
           profiles,
