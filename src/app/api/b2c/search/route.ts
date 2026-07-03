@@ -198,6 +198,21 @@ export async function POST(request: Request) {
         { query: `${kw}${loc} review OR "looking for" OR "anyone tried"`, platform: "web" },
       );
     }
+    if (platforms.includes("yelp")) {
+      platformQueries.push(
+        { query: `${kw}${loc} site:yelp.com`, platform: "yelp" },
+      );
+    }
+    if (platforms.includes("trustpilot")) {
+      platformQueries.push(
+        { query: `${kw}${loc} site:trustpilot.com`, platform: "trustpilot" },
+      );
+    }
+    if (platforms.includes("craigslist")) {
+      platformQueries.push(
+        { query: `${kw}${loc} site:craigslist.org`, platform: "craigslist" },
+      );
+    }
     // Always include Quora — high quality consumer Q&A
     if (!platforms.includes("quora")) {
       platformQueries.push({ query: `${kw}${loc} site:quora.com`, platform: "quora" });
@@ -414,6 +429,7 @@ function contactType(platform: string): SocialProfile["contact"]["type"] {
     case "reddit": case "twitter": case "instagram": case "tiktok": return "DM";
     case "facebook": return "Message";
     case "linkedin": return "Connect";
+    case "craigslist": return "Inbox";
     default: return "View";
   }
 }

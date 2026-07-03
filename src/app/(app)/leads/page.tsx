@@ -844,7 +844,7 @@ function DiscoveryModal({
   const [generateLandingPage, setGenerateLandingPage] = useState(false);
   const [forClient, setForClient] = useState(false);
   const [saveName, setSaveName] = useState("");
-  const [b2cPlatforms, setB2cPlatforms] = useState<string[]>(["reddit", "twitter", "linkedin", "instagram", "facebook", "tiktok", "youtube", "quora", "google"]);
+  const [b2cPlatforms, setB2cPlatforms] = useState<string[]>(["reddit", "twitter", "linkedin", "instagram", "facebook", "tiktok", "youtube", "quora", "google", "craigslist", "yelp", "trustpilot"]);
   const [longTail, setLongTail] = useState("");
   const [b2cSearching, setB2cSearching] = useState(false);
   const [error, setError] = useState("");
@@ -1124,14 +1124,18 @@ function DiscoveryModal({
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {([
-                  { id: "reddit",    label: "Reddit",      icon: "🔴", desc: "Forums · Q&A · community posts" },
-                  { id: "twitter",   label: "Twitter / X", icon: "𝕏",  desc: "Real-time · opinions · DMs" },
-                  { id: "youtube",   label: "YouTube",     icon: "▶",  desc: "Comments · how-to · comparisons" },
-                  { id: "google",    label: "Google / Web", icon: "🌐", desc: "Reviews · blogs · forums" },
-                  { id: "instagram", label: "Instagram",   icon: "📸", desc: "Posts · stories · hashtags" },
-                  { id: "tiktok",    label: "TikTok",      icon: "🎵", desc: "Viral content · comments" },
-                  { id: "facebook",  label: "Facebook",    icon: "🔵", desc: "Groups · Marketplace · comments" },
-                  { id: "linkedin",  label: "LinkedIn",    icon: "💼", desc: "Professional posts · B2B signals" },
+                  { id: "reddit",      label: "Reddit",        icon: "🔴", desc: "Forums · Q&A · community posts" },
+                  { id: "twitter",     label: "Twitter / X",   icon: "𝕏",  desc: "Real-time · opinions · DMs" },
+                  { id: "youtube",     label: "YouTube",       icon: "▶",  desc: "Comments · how-to · comparisons" },
+                  { id: "google",      label: "Google / Web",  icon: "🌐", desc: "Reviews · blogs · forums" },
+                  { id: "quora",       label: "Quora",         icon: "❓", desc: "Questions · answers · intent" },
+                  { id: "yelp",        label: "Yelp",          icon: "⭐", desc: "Reviews · local · service seekers" },
+                  { id: "trustpilot",  label: "Trustpilot",    icon: "✅", desc: "Reviews · comparisons · complaints" },
+                  { id: "craigslist",  label: "Craigslist",    icon: "📋", desc: "Wanted · community · local services" },
+                  { id: "instagram",   label: "Instagram",     icon: "📸", desc: "Posts · stories · hashtags" },
+                  { id: "tiktok",      label: "TikTok",        icon: "🎵", desc: "Viral content · comments" },
+                  { id: "facebook",    label: "Facebook",      icon: "🔵", desc: "Groups · Marketplace · comments" },
+                  { id: "linkedin",    label: "LinkedIn",      icon: "💼", desc: "Professional posts · B2B signals" },
                 ] as const).map(({ id, label, icon, desc }) => {
                   const active = b2cPlatforms.includes(id);
                   return (
