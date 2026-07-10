@@ -36,3 +36,4 @@ Docs/*secret*
 Docs/*key*
 *.token
 *.secret
+.vercel

@@ -10,8 +10,23 @@ import {
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { scoreColor, relativeTime } from "@/lib/utils";
 import type { Lead, LeadStatus, Business, GeneratedAsset } from "@/lib/supabase/types";
+import type { DemoReason } from "@/app/api/b2c/search/route";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+
+/**
+ * Demo data means one of seven things went wrong. Four are server misconfiguration
+ * and no amount of rewording the search will fix them — so say so plainly.
+ */
+const DEMO_REASON_MESSAGES: Record<DemoReason, string> = {
+  no_ai_key: "the server has no OpenAI key configured. Set OPENAI_API_KEY and redeploy.",
+  no_search_key: "the server has no Serper key configured. Set SERPER_API_KEY and redeploy.",
+  search_api_error: "every search request failed upstream — usually an expired key or exhausted credits. Open /api/b2c/diagnose.",
+  no_results: "the searches ran but found nothing. Try broader keywords, or drop the location.",
+  extraction_failed: "the AI call failed. Open /api/b2c/diagnose — it will name the cause.",
+  extraction_truncated: "the AI response was cut off before it finished. Narrow the search and retry.",
+  no_qualified_profiles: "real conversations were found, but none looked like buyers. Try broader keywords.",
+};
 
 const STATUS_MAP: Record<LeadStatus, { color: string; bg: string; label: string }> = {
   new:       { color: "#60a5fa", bg: "rgba(96,165,250,0.12)",  label: "New" },
@@ -888,12 +903,21 @@ function DiscoveryModal({
         const data = await resp.json() as {
           profiles?: SocialProfile[];
           demo?: boolean;
+          demo_reason?: DemoReason;
+          hint?: string;
           error?: string;
         };
         if (!resp.ok) throw new Error(data.error ?? "Search failed");
         const profiles = data.profiles ?? [];
         if (data.demo) {
-          setError("No live results found for this search — showing demo profiles. Try different keywords or a broader description.");
+          // A demo fallback has seven distinct causes. Say which one, so the next
+          // action is obvious instead of "try different keywords" for a 401.
+          const reason = data.demo_reason;
+          setError(
+            reason && DEMO_REASON_MESSAGES[reason]
+              ? `Demo results — ${DEMO_REASON_MESSAGES[reason]}`
+              : `Demo results — ${data.hint ?? "the search returned nothing usable."}`
+          );
         }
         onLaunched(`b2c-${Date.now()}`, "b2c", false, {
           profiles,
