@@ -20,12 +20,12 @@ import type { DemoReason } from "@/app/api/b2c/search/route";
  */
 const DEMO_REASON_MESSAGES: Record<DemoReason, string> = {
   no_ai_key: "the server has no OpenAI key configured. Set OPENAI_API_KEY and redeploy.",
-  no_search_key: "the server has no Serper key configured. Set SERPER_API_KEY and redeploy.",
-  search_api_error: "every search request failed upstream — usually an expired key or exhausted credits. Open /api/b2c/diagnose.",
-  no_results: "the searches ran but found nothing. Try broader keywords, or drop the location.",
+  no_search_source: "no free search source responded. Reddit needs REDDIT_CLIENT_ID/SECRET to work from the server; DuckDuckGo throttles it. Open /api/b2c/diagnose.",
+  search_api_error: "every search request was blocked or throttled. Usually Reddit is missing OAuth. Open /api/b2c/diagnose.",
+  no_results: "the searches ran but found nothing local. Try a bigger nearby city, broaden the keywords, or check the location.",
   extraction_failed: "the AI call failed. Open /api/b2c/diagnose — it will name the cause.",
   extraction_truncated: "the AI response was cut off before it finished. Narrow the search and retry.",
-  no_qualified_profiles: "real conversations were found, but none looked like buyers. Try broader keywords.",
+  no_qualified_profiles: "conversations were found, but none were local buyers. Try broader keywords or a wider area.",
 };
 
 const STATUS_MAP: Record<LeadStatus, { color: string; bg: string; label: string }> = {
@@ -85,6 +85,7 @@ interface SocialProfile {
   purchase_intent: "browsing" | "researching" | "ready_to_buy" | null;
   consumer_signals: string[];
   is_seller: boolean;
+  location_match?: "in_area" | "nearby" | "unknown";
   shopping_signals: {
     mentions_buying: boolean;
     platform_mentions: string[];
@@ -896,6 +897,7 @@ function DiscoveryModal({
             keywords: kwList ?? [],
             product_context: clientService.trim() || undefined,
             location: location || undefined,
+            radius_miles: 25, // local-only: search this area + towns within 25 miles
             long_tail: ltList ?? [],
           }),
           signal: AbortSignal.timeout(55000), // 55s client timeout — prevents infinite spinner
@@ -965,6 +967,7 @@ function DiscoveryModal({
             keywords: kwList ?? [],
             product_context: clientService.trim() || undefined,
             location: location || undefined,
+            radius_miles: 25, // local-only: search this area + towns within 25 miles
             long_tail: ltList ?? [],
           }),
         })
@@ -1791,6 +1794,19 @@ function SocialProfileCard({
           <span className="text-xs font-mono truncate" style={{ color: "var(--color-text-muted)" }}>
             @{profile.username}
           </span>
+          {/* Local match badge — greenlights leads in the target area */}
+          {profile.location_match === "in_area" && (
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0"
+              style={{ background: "rgba(52,211,153,0.15)", color: "#34d399" }}>
+              📍 In area
+            </span>
+          )}
+          {profile.location_match === "nearby" && (
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0"
+              style={{ background: "rgba(96,165,250,0.15)", color: "#60a5fa" }}>
+              📍 Nearby
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {/* Save button */}

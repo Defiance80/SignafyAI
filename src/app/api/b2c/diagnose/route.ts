@@ -95,41 +95,89 @@ async function checkOpenAI(): Promise<Check> {
   }
 }
 
-async function checkSerper(): Promise<Check> {
-  const key = process.env.SERPER_API_KEY;
-  if (!key) {
-    return { name: "serper", status: "fail", detail: "SERPER_API_KEY is missing. Get one at serper.dev." };
+/**
+ * Reddit is the primary free source. Without OAuth it's blocked from datacenter IPs,
+ * so a "skipped" here means Reddit will silently return nothing in production.
+ */
+async function checkReddit(): Promise<Check> {
+  const id = process.env.REDDIT_CLIENT_ID;
+  const secret = process.env.REDDIT_CLIENT_SECRET;
+  if (!id || !secret) {
+    return {
+      name: "reddit",
+      status: "fail",
+      detail:
+        "REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET not set. Reddit blocks unauthenticated requests from datacenter IPs (Vercel), so Reddit results will be empty in production. Create a free 'script' app at reddit.com/prefs/apps.",
+    };
   }
 
-  const resp = await fetch("https://google.serper.dev/search", {
+  const tokenResp = await fetch("https://www.reddit.com/api/v1/access_token", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-API-KEY": key },
-    body: JSON.stringify({ q: "signafyai connectivity check", num: 1 }),
-    signal: AbortSignal.timeout(10000),
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: "Basic " + Buffer.from(`${id}:${secret}`).toString("base64"),
+      "User-Agent": "SignafyAI/1.0 b2c-diagnose",
+    },
+    body: "grant_type=client_credentials",
+    signal: AbortSignal.timeout(8000),
   });
-
-  if (!resp.ok) {
-    const text = redact(await resp.text().catch(() => ""));
-    const guess =
-      resp.status === 401 || resp.status === 403
-        ? "Bad or revoked key."
-        : resp.status === 402
-          ? "Out of Serper credits."
-          : resp.status === 429
-            ? "Rate limited — Serper caps concurrent searches."
-            : "Check the Serper dashboard.";
-    return { name: "serper", status: "fail", detail: `HTTP ${resp.status}: ${text} — ${guess}` };
+  if (!tokenResp.ok) {
+    return { name: "reddit", status: "fail", detail: `token HTTP ${tokenResp.status}: ${redact(await tokenResp.text().catch(() => ""))}` };
   }
+  const { access_token } = (await tokenResp.json()) as { access_token?: string };
+  if (!access_token) return { name: "reddit", status: "fail", detail: "token endpoint returned no access_token" };
 
-  const data = (await resp.json()) as { organic?: unknown[] };
-  return { name: "serper", status: "ok", detail: `search returned ${data.organic?.length ?? 0} organic result(s)` };
+  const searchResp = await fetch("https://oauth.reddit.com/search?q=test&limit=1&type=link&raw_json=1", {
+    headers: { Authorization: `Bearer ${access_token}`, "User-Agent": "SignafyAI/1.0 b2c-diagnose" },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!searchResp.ok) return { name: "reddit", status: "fail", detail: `authenticated search HTTP ${searchResp.status}` };
+  return { name: "reddit", status: "ok", detail: "OAuth token issued and authenticated search succeeded" };
+}
+
+/** DuckDuckGo HTML is the free web sweep. It throttles datacenter IPs, so a fail
+ *  here is common and non-fatal — Reddit carries the search on its own. */
+async function checkDuckDuckGo(): Promise<Check> {
+  const resp = await fetch("https://html.duckduckgo.com/html/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
+    },
+    body: "q=signafyai connectivity check",
+    signal: AbortSignal.timeout(9000),
+  });
+  if (!resp.ok) {
+    return { name: "duckduckgo", status: "fail", detail: `HTTP ${resp.status} — DuckDuckGo throttles server IPs. Non-fatal; Reddit still works.` };
+  }
+  const html = await resp.text();
+  const hits = (html.match(/class="result__a"/g) ?? []).length;
+  return hits > 0
+    ? { name: "duckduckgo", status: "ok", detail: `returned ${hits} web result(s)` }
+    : { name: "duckduckgo", status: "fail", detail: "200 but zero results — likely soft-blocked this IP. Non-fatal." };
+}
+
+/** Free geocoder. Confirms zip/city → coordinates works for local scoping. */
+async function checkGeocode(): Promise<Check> {
+  const resp = await fetch("https://api.zippopotam.us/us/90210", {
+    headers: { "User-Agent": "SignafyAI/1.0 b2c-diagnose" },
+    signal: AbortSignal.timeout(6000),
+  });
+  if (!resp.ok) return { name: "geocode", status: "fail", detail: `Zippopotam HTTP ${resp.status}. Location scoping degrades to raw text.` };
+  const data = (await resp.json()) as { places?: Array<{ "place name"?: string }> };
+  return { name: "geocode", status: "ok", detail: `zip lookup ok (90210 → ${data.places?.[0]?.["place name"] ?? "?"})` };
 }
 
 export async function GET(request: Request) {
   const ctx = await requireOrgContext(request).catch(() => null);
   if (!ctx) return errorResponse("Unauthorized", 401);
 
-  const checks = await Promise.all([timed("openai", checkOpenAI), timed("serper", checkSerper)]);
+  const checks = await Promise.all([
+    timed("openai", checkOpenAI),
+    timed("reddit", checkReddit),
+    timed("duckduckgo", checkDuckDuckGo),
+    timed("geocode", checkGeocode),
+  ]);
 
   const env = {
     OPENAI_API_KEY: fingerprint(process.env.OPENAI_API_KEY),
@@ -137,18 +185,25 @@ export async function GET(request: Request) {
     OPENAI_BASE_URL: process.env.OPENAI_BASE_URL || "unset (correct when AI_PROVIDER=openai)",
     AI_MODEL: process.env.AI_MODEL ?? "unset (defaults to gpt-4o-mini)",
     AI_PROVIDER: process.env.AI_PROVIDER ?? "unset",
-    SERPER_API_KEY: fingerprint(process.env.SERPER_API_KEY),
+    REDDIT_CLIENT_ID: fingerprint(process.env.REDDIT_CLIENT_ID),
+    REDDIT_CLIENT_SECRET: fingerprint(process.env.REDDIT_CLIENT_SECRET),
     VERCEL_ENV: process.env.VERCEL_ENV ?? "local",
   };
 
-  const failing = checks.filter((c) => c.status === "fail");
-  const healthy = failing.length === 0;
+  const openaiOk = checks.find((c) => c.name === "openai")?.status === "ok";
+  const redditOk = checks.find((c) => c.name === "reddit")?.status === "ok";
+  const ddgOk = checks.find((c) => c.name === "duckduckgo")?.status === "ok";
+  // The pipeline works if the AI is reachable AND at least one search source is live.
+  const canReturnRealLeads = openaiOk && (redditOk || ddgOk);
 
   return jsonResponse({
-    healthy,
-    summary: healthy
-      ? "Both dependencies are reachable. Any demo fallback from /api/b2c/search now means the search genuinely found nothing — check debug.profiles_extracted vs profiles_kept."
-      : `Broken: ${failing.map((c) => c.name).join(", ")}. Fix these before touching queries or prompts.`,
+    healthy: canReturnRealLeads,
+    can_return_real_leads: canReturnRealLeads,
+    summary: canReturnRealLeads
+      ? "The AI plus at least one free search source are live. Any demo fallback now means the search genuinely found nothing local — check debug.profiles_extracted vs profiles_kept."
+      : !openaiOk
+        ? "OpenAI is unreachable — fix that first; nothing else matters until it works."
+        : "Both search sources are down. Reddit needs REDDIT_CLIENT_ID/SECRET; DuckDuckGo throttles server IPs. Set up Reddit OAuth.",
     checks,
     env,
   });
